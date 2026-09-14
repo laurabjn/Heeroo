@@ -12,7 +12,7 @@ import {
     Alert,
     TouchableWithoutFeedback
 } from 'react-native';
-import { Icon, Button, Header } from 'react-native-elements';
+import { Icon, Button, Header } from '@rneui/themed';
 import Polyline from '@mapbox/polyline';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline as MapViewPolyline } from 'react-native-maps';
 import { colors, customMapStyle } from '../common/theme';

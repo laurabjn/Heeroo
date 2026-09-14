@@ -4,12 +4,12 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { colors } from '../common/theme';
 import { google_map_key } from '../common/key';
 import { CloseBtn } from '../components';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import Polyline from '@mapbox/polyline';
 const { width, height } = Dimensions.get('window');
 import Icon from 'react-native-vector-icons/AntDesign';
-import Geolocation from '@react-native-community/geolocation';
-navigator.geolocation = require('@react-native-community/geolocation')
+import Geolocation from '../common/geolocation';
+navigator.geolocation = Geolocation;
 import languageJSON from './../common/language'
 
 export default class SearchModal extends Component {

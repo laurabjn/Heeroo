@@ -12,7 +12,7 @@ import {
 
 } from 'react-native';
 
-import { Header, CheckBox } from 'react-native-elements';
+import { Header, CheckBox } from '@rneui/themed';
 import { colors } from '../common/theme';
 var { width, height } = Dimensions.get('window');
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -98,7 +98,7 @@ export default class CardDetailsScreen extends React.Component {
     //firebase.database().ref('settings/').on()
   }
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     var pdata = this.props.route.params.data;
     if (pdata) {
       data = {
@@ -229,7 +229,7 @@ export default class CardDetailsScreen extends React.Component {
               }
             }
           })
-          this.props.navigation.navigate('ratingPage', { data: paramData });
+          this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: paramData } });
         })
 
       })

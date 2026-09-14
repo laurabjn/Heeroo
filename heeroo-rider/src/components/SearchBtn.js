@@ -2,7 +2,8 @@ import React from 'react';
 import { 
     StyleSheet,
     TouchableOpacity,
-  } from 'react-native';
+    Platform,
+} from 'react-native';
 import { colors } from '../common/theme';
 import Icon from 'react-native-vector-icons/EvilIcons';
 

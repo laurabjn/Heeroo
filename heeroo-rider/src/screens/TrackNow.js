@@ -10,7 +10,7 @@ import {
     Linking,
     Alert,
 } from 'react-native';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import haversine from "haversine";
 import MapView, {
     Marker,
@@ -18,7 +18,7 @@ import MapView, {
     PROVIDER_GOOGLE,
     Polyline as MapViewPolyline
 } from "react-native-maps";
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 
 import { colors, customMapStyle } from '../common/theme';
 import Polyline from '@mapbox/polyline';

@@ -62,3 +62,12 @@
 # Fichiers de debug hérités contenant des données réelles
 heeroo-rider/a.json
 **/logs.txt
+
+# Expo — les projets natifs sont générés au build (prebuild / CNG), jamais versionnés
+**/.expo/
+**/expo-env.d.ts
+heeroo-rider/android/
+heeroo-rider/ios/
+heeroo-driver/android/
+heeroo-driver/ios/
+**/GoogleService-Info.plist.bak

@@ -9,7 +9,9 @@ import {
     Alert,
     TextInput,
     Image,
-    Keyboard
+    Keyboard,
+    Platform,
+    Linking,
 } from "react-native";
 import MaterialButtonDark from "../components/MaterialButtonDark";
 import firebase from 'firebase/compat/app';
@@ -19,7 +21,7 @@ import 'firebase/compat/database';
 import languageJSON from '../common/language';
 import { colors } from '../common/theme';
 import { TouchableOpacity } from "react-native-gesture-handler";
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import { checkUserEmail } from "../helpers/user";
 
 export default class EmailLoginScreen extends Component {

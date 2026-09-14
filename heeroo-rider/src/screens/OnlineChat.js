@@ -10,10 +10,11 @@ import {
   Keyboard,
   TextInput,
   TouchableWithoutFeedback,
-  StatusBar
+  StatusBar,
+    Platform,
 } from "react-native";
 import { colors } from "../common/theme";
-import { Icon, Header } from "react-native-elements";
+import { Icon, Header } from "@rneui/themed";
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';

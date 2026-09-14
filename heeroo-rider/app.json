@@ -1,4 +1,99 @@
 {
-  "name": "HeerooRider",
-  "displayName": "Heeroo"
+  "expo": {
+    "name": "Heeroo",
+    "slug": "heeroo-rider",
+    "version": "1.7.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/appIcon.png",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
+    "ios": {
+      "bundleIdentifier": "org.Terence.HeerooRider",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo utilise votre position pour suivre votre course en temps réel.",
+        "NSCameraUsageDescription": "Heeroo utilise l'appareil photo pour votre photo de profil.",
+        "NSPhotoLibraryUsageDescription": "Heeroo accède à vos photos pour votre photo de profil.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
+      }
+    },
+    "android": {
+      "package": "com.heeroo.rider",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/appIcon.png",
+        "backgroundColor": "#181717"
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
+        }
+      }
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Heeroo accède à vos photos pour votre photo de profil.",
+          "cameraPermission": "Heeroo utilise l'appareil photo pour votre photo de profil."
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Montserrat-Regular.ttf",
+            "./assets/fonts/Montserrat-Light.ttf",
+            "./assets/fonts/Montserrat-SemiBold.ttf",
+            "./assets/fonts/Montserrat-Bold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/appIcon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#181717"
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1082626e-4221-4984-a57b-0d72840e5594"
+      }
+    },
+    "owner": "laurabjns-team"
+  }
 }

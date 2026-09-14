@@ -5,7 +5,8 @@ import {
     Text,
     KeyboardAvoidingView,
     Linking,
-    Platform
+    Platform,
+    Alert,
 } from "react-native";
 import MaterialButtonDark from "../components/MaterialButtonDark";
 import MaskedInput from 'react-native-mask-input'
@@ -19,7 +20,7 @@ import { google_map_key } from '../common/key';
 import { facebook_id } from '../common/key';
 import { colors } from '../common/theme';
 import { PhoneInput } from "../components";
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import Geocoder from 'react-native-geocoding';
 import { checkLocationPermission } from "../common/permission";
 export default class LoginScreen extends Component {

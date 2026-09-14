@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Dimensions, Modal, ActivityIndicator, ScrollView, KeyboardAvoidingView, Image, TouchableWithoutFeedback, LayoutAnimation, Platform, Keyboard } from 'react-native';
 import Background from './Background';
-import { Icon, Avatar, Button, Header, Input } from 'react-native-elements'
+import { Icon, Avatar, Button, Header, Input } from '@rneui/themed'
 import { colors } from '../common/theme';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';

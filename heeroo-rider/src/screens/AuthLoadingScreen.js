@@ -12,7 +12,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import GetPushToken from '../common/GetPushToken';
 import languageJSON from '../common/language';
 import { colors } from '../common/theme';
@@ -49,7 +49,7 @@ export class AuthLoadingScreen extends React.Component {
               if (userData.val().usertype == 'rider') {
                 GetPushToken();
                 this._setSettings().then(() => {
-                  this.props.navigation.navigate('Root');
+                  this.props.navigation.reset({ index: 0, routes: [{ name: 'Root' }] });
                 });
               }
               else {
@@ -67,7 +67,7 @@ export class AuthLoadingScreen extends React.Component {
                 email: user.email ? user.email : '',
                 mobile: user.phoneNumber ? user.phoneNumber.replace('"', '') : '',
               };
-              this.props.navigation.navigate("Reg", { requireData: data })
+              this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth', state: { index: 0, routes: [{ name: 'Reg', params: { requireData: data } }] } }] })
             }
           })
         } else {
@@ -80,7 +80,7 @@ export class AuthLoadingScreen extends React.Component {
             email: user.email ? user.email : '',
             mobile: user.phoneNumber ? user.phoneNumber.replace('"', '') : '',
           };
-          this.props.navigation.navigate("Reg", { requireData: data })
+          this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth', state: { index: 0, routes: [{ name: 'Reg', params: { requireData: data } }] } }] })
         }
       } else {
         this.props.navigation.reset({
@@ -94,8 +94,9 @@ export class AuthLoadingScreen extends React.Component {
 
   componentDidMount() {
 
-    this.unsubscribe = messaging().onMessage(async remoteMessage => {
-      Alert.alert(remoteMessage.notification.title ? remoteMessage.notification.title : 'Titre Notification', remoteMessage.notification.body ? remoteMessage.notification.body : 'Corps Notification')
+    this.unsubscribe = onMessage(getMessaging(), async remoteMessage => {
+      const notif = remoteMessage.notification || {};
+      Alert.alert(notif.title || 'Notification', notif.body || '')
     });
   }
 

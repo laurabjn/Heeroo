@@ -2,24 +2,25 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging, requestPermission, getToken, AuthorizationStatus } from '@react-native-firebase/messaging';
 import { Platform } from 'react-native';
 
 
 export default async function registerForPushNotificationsAsync() {
 
-  const authStatus = await messaging().requestPermission();
+  const messaging = getMessaging();
+  const authStatus = await requestPermission(messaging);
 
   const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    authStatus === AuthorizationStatus.AUTHORIZED ||
+    authStatus === AuthorizationStatus.PROVISIONAL;
 
   if (!enabled) {
     console.log("notification NOT ENABLED")
     return;
   }
 
-  const token = await messaging().getToken();
+  const token = await getToken(messaging);
   if (token) {
     firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/').update({
       pushToken: token,

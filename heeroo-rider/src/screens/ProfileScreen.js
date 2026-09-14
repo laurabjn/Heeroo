@@ -12,8 +12,7 @@ import {
     ActivityIndicator,
     Alert
 } from 'react-native';
-import { Icon, Header } from 'react-native-elements';
-import ActionSheet from 'react-native-actionsheet';
+import { Icon, Header } from '@rneui/themed';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,11 +20,9 @@ var { width, height } = Dimensions.get('window');
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
-import 'firebase/compat/firestore';
+import 'firebase/compat/storage';
 import { DrawerToggle } from '../components';
-import { Camera, CameraPermissionStatus } from 'react-native-vision-camera';
-
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function SideMenu(props) {
 
@@ -73,54 +70,48 @@ export default function SideMenu(props) {
 
 
     const showActionSheet = () => {
-        ActionSheet.show()
+        Alert.alert(
+            languageJSON.photo_upload_action_sheet_title,
+            null,
+            [
+                { text: languageJSON.camera, onPress: () => _pickImage('camera') },
+                { text: languageJSON.galery, onPress: () => _pickImage('library') },
+                { text: languageJSON.cancel, style: 'cancel' },
+            ],
+            { cancelable: true }
+        );
     }
 
-    const uploadImage = () => {
-        return (
-            <View>
-                <ActionSheet
-                    //ref={o => ActionSheet = o}
-                    title={languageJSON.photo_upload_action_sheet_title}
-                    options={[languageJSON.camera, languageJSON.galery, languageJSON.cancel]}
-                    cancelButtonIndex={2}
-                    destructiveButtonIndex={1}
-                    onPress={(index) => {
-                        if (index == 0) {
-                            _pickImage(launchCamera);
-                        } else if (index == 1) {
-                            _pickImage(launchImageLibrary);
-                        } else {
-                            //console.log('actionsheet close')
-                        }
-                    }}
-                />
-            </View>
-        )
-    }
-
-
-
-    const _pickImage = async (res) => {
-        var pickFrom = res;
-        const { status } = await Camera.requestCameraPermissionsAsync()
-        if (status == 'granted') {
-            setloader(true)
-            let result = await pickFrom({
-                allowsEditing: true,
-                aspect: [3, 3],
-                base64: true
-            });
-            if (!result.cancelled) {
-                uploadmultimedia(result.uri)
-                setprofile_image('data:image/jpeg;base64,' + result.base64)
-            }
-            setloader(false)
+    const _pickImage = async (source) => {
+        const permission = source === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permission.status !== 'granted') {
+            return;
         }
+        const options = {
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+        };
+        setloader(true);
+        try {
+            const result = source === 'camera'
+                ? await ImagePicker.launchCameraAsync(options)
+                : await ImagePicker.launchImageLibraryAsync(options);
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const uri = result.assets[0].uri;
+                setprofile_image(uri);
+                await uploadmultimedia(uri);
+            }
+        } catch (e) {
+            console.log('pickImage error', e);
+        }
+        setloader(false);
     };
 
-
-    const uploadmultimedia = async () => {
+    const uploadmultimedia = async (uri) => {
         const blob = await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.onload = function () {
@@ -130,7 +121,7 @@ export default function SideMenu(props) {
                 reject(new TypeError(languageJSON.network_request_failed)); // error occurred, rejecting
             };
             xhr.responseType = 'blob'; // use BlobModule's UriHandler
-            xhr.open('GET', url, true); // fetch the blob from uri in async mode
+            xhr.open('GET', uri, true); // fetch the blob from uri in async mode
             xhr.send(null); // no initial data
         });
 
@@ -209,14 +200,11 @@ export default function SideMenu(props) {
                 containerStyle={styles.headerStyle}
             />
             <View style={styles.scrollStyle}>
-                {
-                    uploadImage()
-                }
                 <View style={styles.viewStyle}>
                     <View style={styles.imageParentView}>
                         <View style={styles.imageViewStyle} >
                             {
-                                loader == true ? getloader() : <TouchableOpacity onPress={() => showActionSheet}>
+                                loader == true ? getloader() : <TouchableOpacity onPress={showActionSheet}>
                                     <Image source={profile_image ? { uri: profile_image } : require('../../assets/images/avatar.png')} style={{ borderRadius: 95 / 2, width: 95, height: 95 }} />
                                 </TouchableOpacity>
                             }

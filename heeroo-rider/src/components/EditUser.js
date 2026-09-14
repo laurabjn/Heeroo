@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Dimensions, ScrollView, KeyboardAvoidingView, Image, TouchableWithoutFeedback, LayoutAnimation, Platform } from 'react-native';
-import { Icon, Button, Header, Input } from 'react-native-elements';
+import { Icon, Button, Header, Input } from '@rneui/themed';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 var { height } = Dimensions.get('window');
@@ -28,7 +28,7 @@ export default class EditUser extends React.Component {
         }
     }
 
-    async componentWillMount() {
+    async UNSAFE_componentWillMount() {
         var curuser = firebase.auth().currentUser;
         const userData = firebase.database().ref('users/' + curuser.uid);
         if (curuser.email) this.setState({ loginType: 'email' });

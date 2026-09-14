@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { TouchableOpacity, BaseButton, TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { MapComponent, DrawerToggle, NotificationBtn, Path } from '../components';
-import { Icon, Button, Avatar, Header } from 'react-native-elements';
+import { Icon, Button, Avatar, Header } from '@rneui/themed';
 import { colors } from '../common/theme';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';

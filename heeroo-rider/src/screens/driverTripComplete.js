@@ -11,8 +11,8 @@ import {
     Dimensions,
 
 } from 'react-native';
-import { Divider, Button, Header, Icon } from 'react-native-elements';
-import StarRating from 'react-native-star-rating';
+import { Divider, Button, Header, Icon } from '@rneui/themed';
+import StarRating from '../components/StarRating';
 import { colors } from '../common/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 var { width } = Dimensions.get('window');

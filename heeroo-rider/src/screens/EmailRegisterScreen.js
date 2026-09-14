@@ -8,7 +8,8 @@ import {
     KeyboardAvoidingView,
     Alert,
     TextInput,
-    Image
+    Image,
+    Platform,
 } from "react-native";
 import MaterialButtonDark from "../components/MaterialButtonDark";
 import firebase from 'firebase/compat/app';
@@ -20,7 +21,7 @@ import languageJSON from '../common/language';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import SegmentedControlTab from 'react-native-segmented-control-tab';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import { BackBtn } from '../components';
 import { colors } from '../common/theme';
 

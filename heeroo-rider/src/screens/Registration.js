@@ -1,11 +1,11 @@
 import React from 'react';
 import { Registration } from '../components';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Alert } from 'react-native';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import { checkLocationPermission } from '../common/permission';
 import Geocoder from 'react-native-geocoding';
 
@@ -66,12 +66,18 @@ export default class RegistrationPage extends React.Component {
 
   }
 
+  // Retour depuis l'écran de profil = abandon de l'inscription : on se déconnecte,
+  // l'écouteur d'authentification de AuthLoadingScreen ramène au login.
+  cancelRegistration() {
+    firebase.auth().signOut();
+  }
+
   updateProfile(data) {
     firebase.auth().currentUser.updateProfile({
       displayName: data.firstName + ' ' + data.lastName,
     }).then(() => {
       firebase.database().ref('users/').child(firebase.auth().currentUser.uid).set(data).then(() => {
-        this.props.navigation.navigate('Root');
+        this.props.navigation.reset({ index: 0, routes: [{ name: 'Root' }] });
       });
     });
   }
@@ -111,7 +117,7 @@ export default class RegistrationPage extends React.Component {
       <View style={styles.containerView} >
         <Registration reqData={registrationData ? registrationData : ""}
           onPressRegister={(fname, lname, email, mobile, password, viaRef, referralVia) => this.clickRegister(fname, lname, email, mobile, password, viaRef, referralVia)}
-          onPress={() => { this.clickRegister() }} navigation={this.props.navigation} loading={this.state.loading}>
+          onPress={() => { this.clickRegister() }} onBack={() => this.cancelRegistration()} navigation={this.props.navigation} loading={this.state.loading}>
         </Registration>
       </View>
     );

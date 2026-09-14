@@ -10,7 +10,7 @@ import {
   ScrollView, Dimensions,
 
 } from 'react-native';
-import { Header, Icon } from 'react-native-elements';
+import { Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
 var { height } = Dimensions.get('window');
 import firebase from 'firebase/compat/app';

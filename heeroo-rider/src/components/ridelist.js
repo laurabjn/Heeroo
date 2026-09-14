@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, } from 'react-native';
-import { Icon } from 'react-native-elements'
+import { Icon } from '@rneui/themed'
 import { colors } from '../common/theme';
 import { Path } from '../components';
 import languageJSON from '../common/language';

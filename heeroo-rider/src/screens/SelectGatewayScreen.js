@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableHighlight, Image, TouchableWithoutFeedback, Text, } from 'react-native';
-import { Header, } from 'react-native-elements';
+import { Header, } from '@rneui/themed';
 import languageJSON from '../common/language';
 import { colors } from '../common/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';

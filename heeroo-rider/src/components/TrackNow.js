@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { StyleSheet, View, PermissionsAndroid, Dimensions } from 'react-native';
+import { StyleSheet, View, PermissionsAndroid, Dimensions, Platform } from 'react-native';
 import haversine from "haversine";
 import MapView, {
     Marker,
@@ -15,7 +15,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 
 import { google_map_key } from '../common/key';
 import language from '../common/language';

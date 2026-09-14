@@ -5,23 +5,15 @@
     "project_id": "projet-test-d7cd9",
     "storage_bucket": "projet-test-d7cd9.appspot.com"
   },
-  "android": {
-    "googleServicesFile": "./google-services.json"
-  },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:355117543035:android:ef788a87ad0ef544d8fcde",
+        "mobilesdk_app_id": "1:355117543035:android:23cc5622a359655ed8fcde",
         "android_client_info": {
-          "package_name": "com.heerooRider.driver"
+          "package_name": "com.heeroo.rider"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "355117543035-kp8kdccgscujdcv7i2mjd6cc363nj5pj.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyCGTbMyPuPHBqCW_2UhMsd97EH_5OmSe9s"
@@ -29,12 +21,26 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "355117543035-kp8kdccgscujdcv7i2mjd6cc363nj5pj.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:355117543035:android:ef788a87ad0ef544d8fcde",
+        "android_client_info": {
+          "package_name": "com.samajakarta.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGTbMyPuPHBqCW_2UhMsd97EH_5OmSe9s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
         }
       }
     }

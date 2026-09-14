@@ -15,11 +15,11 @@ import {
 
     ActivityIndicator
 } from 'react-native';
-import { Icon, Button, Header } from 'react-native-elements';
+import { Icon, Button, Header } from '@rneui/themed';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Polyline from '@mapbox/polyline';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline as MapViewPolyline } from 'react-native-maps';
-import StarRating from 'react-native-star-rating';
+import StarRating from '../components/StarRating';
 import RadioForm from 'react-native-simple-radio-button';
 import { colors, customMapStyle } from '../common/theme';
 import firebase from 'firebase/compat/app';

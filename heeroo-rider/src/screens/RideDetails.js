@@ -13,8 +13,7 @@ import {
 } from 'react-native';
 import Polyline from '@mapbox/polyline';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline as MapViewPolyline } from 'react-native-maps';
-import { Header, Rating, Avatar, Button, Icon } from 'react-native-elements';
-import Dash from 'react-native-dash';
+import { Header, Rating, Avatar, Button, Icon } from '@rneui/themed';
 import { colors, customMapStyle } from '../common/theme';
 var { width, height } = Dimensions.get('window');
 import firebase from 'firebase/compat/app';
@@ -126,7 +125,7 @@ export default class RideDetails extends React.Component {
                 bokkingId: data.bookingId,
                 coords: data.coords,
             }
-            this.props.navigation.navigate('BookedCab', { passData: bookingData });
+            this.props.navigation.navigate('Map', { screen: 'BookedCab', params: { passData: bookingData } });
         } else if (data.status == 'START') {
             this.props.navigation.navigate('trackRide', { data: data, bId: data.bookingId });
         } else {

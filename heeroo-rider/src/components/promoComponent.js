@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 
 } from "react-native";
-import { Avatar, Button } from "react-native-elements";
+import { Avatar, Button } from "@rneui/themed";
 import { colors } from "../common/theme";
 import firebase from 'firebase/compat/app';
 import AsyncStorage from '@react-native-async-storage/async-storage';

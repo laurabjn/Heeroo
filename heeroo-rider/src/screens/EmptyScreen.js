@@ -5,9 +5,9 @@ import {
     StyleSheet,
     View,
     StatusBar,
-
+    Text,
 } from 'react-native';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../common/theme';
 

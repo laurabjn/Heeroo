@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Icon } from 'react-native-elements';
-import { NavigationActions } from 'react-navigation';
+import { Icon } from '@rneui/themed';
 import firebase from 'firebase/compat/app';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'firebase/compat/auth';
@@ -11,7 +10,6 @@ import 'firebase/compat/database';
 import SideMenuHeader from './SideMenuHeader';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
-import { BlurView, VibrancyView } from "@react-native-community/blur";
 var { width, height } = Dimensions.get('window');
 import {
     DrawerContentScrollView,
