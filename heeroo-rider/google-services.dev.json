@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "825776782989",
+    "firebase_url": "https://heeroo-dev-49beb-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "heeroo-dev-49beb",
+    "storage_bucket": "heeroo-dev-49beb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:825776782989:android:a37a6dfbdee4ca792c6cc4",
+        "android_client_info": {
+          "package_name": "com.heeroo.rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuKsR5_Lpq7G854duPX_ZKG8jFgoVZ1K8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,270 @@
+{
+  "settings": [
+    {
+      "code": "EUR",
+      "country": "FR",
+      "panic": "+33 7 12 12 12 12",
+      "symbol": "€"
+    },
+    {
+      "code": "FCFA",
+      "country": "SN",
+      "panic": "+221 7 12 12 12 13",
+      "symbol": "FCFA",
+      "tableData": {
+        "id": 1
+      }
+    },
+    {
+      "code": "EUR",
+      "country": "BE",
+      "panic": "+32 7 13 13 13 13",
+      "symbol": "€",
+      "tableData": {
+        "id": 2
+      }
+    },
+    {
+      "code": "USD",
+      "country": "US",
+      "panic": "+1 5 56 34 34 34",
+      "symbol": "$",
+      "tableData": {
+        "id": 3
+      }
+    },
+    {
+      "code": "EUR",
+      "country": "DE",
+      "panic": "+32 7 54 54 54 54",
+      "symbol": "€",
+      "tableData": {
+        "id": 4
+      }
+    },
+    {
+      "country": "GM",
+      "symbol": "dalassi",
+      "tableData": {
+        "id": 5
+      }
+    },
+    {
+      "code": "FCFA",
+      "country": "CM",
+      "panic": "+221 7 12 12 12 13",
+      "symbol": "FCFA",
+      "tableData": {
+        "id": 6
+      }
+    },
+    {
+      "code": "FCFA",
+      "country": "BJ",
+      "panic": "+221 7 12 12 12 13",
+      "symbol": "FCFA",
+      "tableData": {
+        "id": 7
+      }
+    },
+    {
+      "country": "PF",
+      "tableData": {
+        "id": 8
+      }
+    }
+  ],
+  "rates": {
+    "car_type": [
+      {
+        "convenience_fees": 0,
+        "country": "FR",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_eco.png?alt=media&token=218be0a8-5f5a-4eca-a5af-8bc3653dbb43",
+        "min_fare": "10",
+        "name": "Green",
+        "rate_per_hour": 5,
+        "rate_per_kilometer": 1,
+        "tableData": {
+          "id": 0
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "FR",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_eco.png?alt=media&token=218be0a8-5f5a-4eca-a5af-8bc3653dbb43",
+        "min_fare": "8",
+        "name": "Confort",
+        "rate_per_hour": 20,
+        "rate_per_kilometer": 1,
+        "tableData": {
+          "id": 1
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "FR",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_berline.png?alt=media&token=8b4e20ae-9d21-4ec6-88d0-0afb703bf2c3",
+        "min_fare": "12",
+        "name": "Berline",
+        "rate_per_hour": 67,
+        "rate_per_kilometer": 1.06,
+        "tableData": {
+          "id": 2
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "FR",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_van.png?alt=media&token=c8356d5d-785b-412f-ab87-d73eee17cbf0",
+        "min_fare": "15",
+        "name": "Van",
+        "rate_per_hour": 45,
+        "rate_per_kilometer": 1.06,
+        "tableData": {
+          "id": 3
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "SN",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_scoot.png?alt=media&token=26e7a4e1-de1f-4be0-83b7-5f422eb42254",
+        "min_fare": "3",
+        "name": "Scooter",
+        "rate_per_hour": 3,
+        "rate_per_kilometer": 3,
+        "tableData": {
+          "id": 4
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "CM",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_scoot.png?alt=media&token=26e7a4e1-de1f-4be0-83b7-5f422eb42254",
+        "min_fare": "3",
+        "name": "Scooter",
+        "rate_per_hour": 3,
+        "rate_per_kilometer": 3,
+        "tableData": {
+          "id": 5
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "BJ",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_scoot.png?alt=media&token=26e7a4e1-de1f-4be0-83b7-5f422eb42254",
+        "min_fare": "3",
+        "name": "Scooter",
+        "rate_per_hour": 3,
+        "rate_per_kilometer": 3,
+        "tableData": {
+          "id": 6
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "SN",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_eco.png?alt=media&token=218be0a8-5f5a-4eca-a5af-8bc3653dbb43",
+        "min_fare": "7",
+        "name": "Eco",
+        "rate_per_hour": 7,
+        "rate_per_kilometer": 7,
+        "tableData": {
+          "id": 7
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "SN",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_berline.png?alt=media&token=8b4e20ae-9d21-4ec6-88d0-0afb703bf2c3",
+        "min_fare": "12",
+        "name": "Berline",
+        "rate_per_hour": 12,
+        "rate_per_kilometer": 12,
+        "tableData": {
+          "id": 8
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "SN",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_van.png?alt=media&token=c8356d5d-785b-412f-ab87-d73eee17cbf0",
+        "min_fare": "2",
+        "name": "Van",
+        "rate_per_hour": 12,
+        "rate_per_kilometer": 12,
+        "tableData": {
+          "id": 9
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "CM",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_eco.png?alt=media&token=218be0a8-5f5a-4eca-a5af-8bc3653dbb43",
+        "min_fare": "10",
+        "name": "Eco",
+        "rate_per_hour": 10,
+        "rate_per_kilometer": 10,
+        "tableData": {
+          "id": 10
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "CM",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_berline.png?alt=media&token=8b4e20ae-9d21-4ec6-88d0-0afb703bf2c3",
+        "min_fare": "1",
+        "name": "Berline",
+        "rate_per_hour": 1,
+        "rate_per_kilometer": 1,
+        "tableData": {
+          "id": 11
+        }
+      },
+      {
+        "convenience_fees": 0,
+        "country": "FR",
+        "image": "https://firebasestorage.googleapis.com/v0/b/projet-test-d7cd9.appspot.com/o/vehicules%2Ficon_berline.png?alt=media&token=8b4e20ae-9d21-4ec6-88d0-0afb703bf2c3",
+        "min_fare": "7.50",
+        "name": "Taxi",
+        "rate_per_hour": 20,
+        "rate_per_kilometer": 1
+      }
+    ]
+  },
+  "About_Us": {
+    "contents": "Heeroo est une application de réservation de taxi - moto pour une mise en relation entre clients et chauffeurs via un système de géolocalisation. Un système de livraison est aussi disponible pour vous faciliter votre quotidien. Tout cela en toute sécurité en respectant les gestes barrière !",
+    "email": "contact@heeroo.co",
+    "heading": "Heeroo",
+    "phone": "+91 9635xxxxxx"
+  },
+  "cancel_reason": [
+    {
+      "label": "Impossible de contacter le chauffeur",
+      "value": 0
+    },
+    {
+      "label": "Le véhicule n'avance pas dans ma direction",
+      "value": 1
+    },
+    {
+      "label": "Ma raison n'est pas listée",
+      "value": 2
+    },
+    {
+      "label": "Le chauffeur ne suit pas l'itinéraire",
+      "value": 3
+    },
+    {
+      "label": "Le chauffeur est trop lent",
+      "value": 4
+    }
+  ],
+  "referral": {
+    "bonus": {
+      "amount": 36,
+      "id": "bonus",
+      "key": "bonus",
+      "updatedAt": 1564495712585
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { LogBox } from 'react-native';
 import 'react-native-gesture-handler';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
@@ -14,15 +15,12 @@ LogBox.ignoreLogs([
   "[react-native-gesture-handler] Seems like you're using an old API with gesture components, check out new Gestures system!",
 ]);
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyCdon7gKg8g-dNoYvuk4_gVy4y1zBKrKUw',
-  authDomain: 'projet-test-d7cd9.firebaseapp.com',
-  databaseURL: 'https://projet-test-d7cd9-default-rtdb.firebaseio.com',
-  projectId: 'projet-test-d7cd9',
-  storageBucket: 'projet-test-d7cd9.appspot.com',
-  messagingSenderId: '355117543035',
-  appId: '1:355117543035:web:b3ee9267f2e3f89bd8fcde',
-};
+// Projet Firebase choisi au build par app.config.js (APP_ENV) :
+// développement par défaut, production uniquement pour le profil EAS "production".
+const firebaseConfig = Constants.expoConfig.extra.firebase;
+if (Constants.expoConfig.extra.appEnv !== 'production') {
+  console.log('[Heeroo] environnement', Constants.expoConfig.extra.appEnv, '->', firebaseConfig.projectId);
+}
 
 // L'app est initialisée une fois avec l'API modulaire pour brancher la
 // persistance de session sur AsyncStorage ; l'API compat (firebase.auth(),
