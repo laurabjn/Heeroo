@@ -1,0 +1,64 @@
+# Ignorer le dossier node_modules partout dans le projet
+**/node_modules/
+
+# Ignorer les fichiers de log partout dans le projet
+**/*.log
+**/*.log.*
+
+# Fichiers générés par l'OS (macOS)
+**/.DS_Store
+**/.swp
+
+# iOS
+**/ios/Pods/
+**/ios/build/
+**/ios/DerivedData/
+**/ios/*.xcodeproj/project.xcworkspace/
+**/ios/*.xcuserdata/
+**/ios/*.xcuserstate
+
+# Android
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+**/android/.idea/
+**/android/local.properties
+**/android/*.iml
+
+# Firebase (firebase.json et .firebaserc sont versionnés : ils décrivent le déploiement)
+**/firebase-debug.log
+**/firebase-debug.*
+**/functions/node_modules/
+
+# Bundler output files
+**/index.android.bundle
+**/index.ios.bundle
+
+# Fichiers de build
+**/build/
+**/build/Release-iphoneos/
+**/*.xcarchive
+**/*.ipa
+**/*.app
+
+# Fichiers de configuration d'environnement
+**/.env
+**/*.keystore
+**/*.jks
+**/*.p12
+**/*.mobileprovision
+**/android/key.properties
+**/.env.*
+
+# Configurations spécifiques aux IDE (JetBrains, VS Code)
+**/.idea/
+**/.vscode/
+
+# Documents client et exports (jamais dans le code)
+/*.pdf
+/*.json.bak
+/export-*.json
+
+# Fichiers de debug hérités contenant des données réelles
+heeroo-rider/a.json
+**/logs.txt

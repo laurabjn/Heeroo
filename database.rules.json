@@ -1,0 +1,47 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "settings":      { ".read": true, ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+    "rates":         { ".read": true, ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+    "About_Us":      { ".read": true, ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+    "cancel_reason": { ".read": true, ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+    "referral":      { ".read": true, ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+
+    "notifications": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "offers": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      "$offerId": {
+        "user_avail": { ".write": "auth != null" }
+      }
+    },
+
+    "bookings": { ".read": "auth != null", ".write": "auth != null" },
+    "chat":     { ".read": "auth != null", ".write": "auth != null" },
+
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null",
+
+        "isAdmin":  { ".validate": "root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+        "approved": { ".validate": "newData.val() === false || root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+        "usertype": { ".validate": "(auth.uid === $uid && (newData.val() === 'rider' || newData.val() === 'driver')) || root.child('users').child(auth.uid).child('isAdmin').val() === true" },
+
+        "my_bookings":         { ".validate": true },
+        "my-booking":          { ".validate": true },
+        "waiting_riders_list": { ".validate": true },
+        "queue":               { ".validate": true },
+        "ratings":             { ".validate": true },
+
+        "$other": { ".validate": "auth.uid === $uid || root.child('users').child(auth.uid).child('isAdmin').val() === true" }
+      }
+    }
+  }
+}
