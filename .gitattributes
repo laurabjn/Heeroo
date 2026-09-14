@@ -1,0 +1,12 @@
+# Fins de ligne normalisées en LF (scripts Gradle/CocoaPods, CI)
+* text=auto eol=lf
+*.bat text eol=crlf
+
+# Binaires
+*.png binary
+*.jpg binary
+*.gif binary
+*.wav binary
+*.ttf binary
+*.jks binary
+*.keystore binary
