@@ -11,10 +11,6 @@ Application de réservation de VTC (France / Sénégal), dérivée du template G
 
 Backend : Firebase (projet `projet-test-d7cd9` — Realtime Database, Auth, Storage, Cloud Functions, Hosting pour le back-office).
 
-## État du dépôt
-
-Ce dépôt a été recréé le 14 septembre 2026 à partir du code livré par le prestataire précédent. Les projets natifs `android/` et `ios/` n'ont pas été conservés et sont à reconstruire ; les identifiants publiés sont `org.Terence.HeerooRider` et `org.Terence.HeerooDriver` (iOS). Le code des Cloud Functions (`functions/`) n'est pas dans le dépôt.
-
 ## Lancer les projets
 
 ```bash
