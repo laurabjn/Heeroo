@@ -1,6 +1,5 @@
 import languageJSON from './language';
 import { firebase_server_key, sendMessage_url } from './key';
-import messaging from '@react-native-firebase/messaging';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';

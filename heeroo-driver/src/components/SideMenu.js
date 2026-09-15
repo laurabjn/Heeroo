@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Icon } from 'react-native-elements';
+import { Text, View, Dimensions, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { Icon } from '@rneui/themed';
 import SideMenuHeader from './SideMenuHeader';
 
 import { colors } from '../common/theme';

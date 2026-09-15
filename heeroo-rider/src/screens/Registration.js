@@ -1,6 +1,7 @@
 import React from 'react';
 import { Registration } from '../components';
 import { StyleSheet, View, Alert } from 'react-native';
+import languageJSON from '../common/language';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
@@ -28,7 +29,7 @@ export default class RegistrationPage extends React.Component {
 
           Geocoder.from(position.coords.latitude, position.coords.longitude)
             .then(json => {
-
+              let isoCountryCode = null;
               json.results[0].address_components.forEach(element => {
                 if (element.types[0] == "country") {
                   isoCountryCode = element.short_name
@@ -76,9 +77,13 @@ export default class RegistrationPage extends React.Component {
     firebase.auth().currentUser.updateProfile({
       displayName: data.firstName + ' ' + data.lastName,
     }).then(() => {
-      firebase.database().ref('users/').child(firebase.auth().currentUser.uid).set(data).then(() => {
-        this.props.navigation.reset({ index: 0, routes: [{ name: 'Root' }] });
-      });
+      return firebase.database().ref('users/').child(firebase.auth().currentUser.uid).set(data);
+    }).then(() => {
+      this.props.navigation.reset({ index: 0, routes: [{ name: 'Root' }] });
+    }).catch((error) => {
+      console.log('[Registration] échec de la création du profil', error);
+      this.setState({ loading: false });
+      Alert.alert(languageJSON.Error, error.message || String(error));
     });
   }
   async clickRegister(fname, lname, email, mobile, viaRef, referralVia) {

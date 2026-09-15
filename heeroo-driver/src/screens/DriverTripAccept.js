@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, StyleSheet, Dimensions, FlatList, Modal, TouchableHighlight, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
-import { Button, Header } from 'react-native-elements';
+import { Button, Header } from '@rneui/themed';
 import Polyline from '@mapbox/polyline';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import { colors, mapStyle } from '../common/theme';
@@ -17,11 +17,11 @@ import { RequestPushMsg } from '../common/RequestPushMsg';
 import { google_map_key } from '../common/key';
 import languageJSON from '../common/language';
 import { DrawerToggle, NotificationBtn, Path } from '../components';
-import { Icon } from 'react-native-elements';
+import { Icon } from '@rneui/themed';
 import { Pin, Car } from '../icons'
 import countryCurrency from './../constants/countryCurrency.json'
 import { checkLocationPermission } from '../common/permission';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 
 
 export default class DriverTripAccept extends React.Component {

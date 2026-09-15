@@ -9,6 +9,8 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
 import 'firebase/compat/storage';
+import Geocoder from 'react-native-geocoding';
+import { google_map_key } from './src/common/key';
 import AppContainer from './src/navigation/AppNavigator';
 
 LogBox.ignoreLogs([
@@ -28,6 +30,10 @@ if (Constants.expoConfig.extra.appEnv !== 'production') {
 const app = initializeApp(firebaseConfig);
 initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
 firebase.initializeApp(firebaseConfig);
+
+// Géocodage inverse (pays de l'utilisateur, adresses) : initialisé une seule fois ici,
+// les écrans l'utilisent avant même que la carte ne soit montée.
+Geocoder.init(google_map_key, { language: 'fr' });
 
 export default class App extends React.Component {
   render() {

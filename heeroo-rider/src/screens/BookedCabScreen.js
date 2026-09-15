@@ -437,7 +437,7 @@ export default class BookedCabScreen extends React.Component {
                                             maxStars={5}
                                             starSize={18}
                                             fullStar={fullStar}
-                                            halfStar={'ios-star-half'}
+                                            halfStar={'star-half'}
                                             emptyStar={emptyStar}
                                             iconSet={'Ionicons'}
                                             fullStarColor={"#fed428"}

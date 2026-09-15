@@ -1,7 +1,7 @@
 // import React from "react";
 import React, { Component } from "react";
 import { View, StyleSheet} from "react-native";
-import { Avatar, Input, Icon } from "react-native-elements";
+import { Avatar, Input, Icon } from "@rneui/themed";
 import { colors } from "../common/theme";
 import Layout from '../constants/Layout';
 

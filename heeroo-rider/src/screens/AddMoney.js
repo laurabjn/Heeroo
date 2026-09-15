@@ -103,10 +103,10 @@ export default class AddMoneyScreen extends React.Component {
   }
   render() {
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.mainView}>
+      <KeyboardAvoidingView behavior="padding" style={styles.mainView}>
         <Header
           backgroundColor={colors.GREY.default}
-          leftComponent={{ icon: 'ios-arrow-back', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { this.goBack() } }}
+          leftComponent={{ icon: 'arrow-back', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { this.goBack() } }}
           centerComponent={<Text style={styles.headerTitleStyle}>{languageJSON.add_money_tile}</Text>}
           containerStyle={styles.headerStyle}
           innerContainerStyles={{ marginLeft: 10, marginRight: 10 }}

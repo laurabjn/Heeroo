@@ -266,5 +266,24 @@
       "key": "bonus",
       "updatedAt": 1564495712585
     }
+  },
+  "users": {
+    "FDKIJrEZJwYiuf14zDoLADtmWPO2": {
+      "firstName": "Moussa",
+      "lastName": "Diallo",
+      "email": "chauffeur.test@heeroo-dev.fr",
+      "mobile": "+33612345678",
+      "usertype": "driver",
+      "approved": true,
+      "queue": false,
+      "driverActiveStatus": false,
+      "carType": "Berline",
+      "vehicleModel": "Berline",
+      "vehicleNumber": "GA-123-BC",
+      "companyName": "Diallo Transport",
+      "companyAddress": "12 rue de la Paix, 75002 Paris",
+      "country": "FR",
+      "createdAt": 1757894400000
+    }
   }
 }

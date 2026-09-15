@@ -158,7 +158,8 @@ export default class Registration extends React.Component {
                     containerStyle={styles.headerContainerStyle}
                     innerContainerStyles={styles.headerInnerContainer}
                 />
-                <ScrollView >
+<KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+                <ScrollView keyboardShouldPersistTaps="handled" >
                     <View style={styles.containerStyle}>
                         <View >
 
@@ -279,6 +280,7 @@ export default class Registration extends React.Component {
                         </View>
                     </View>
                 </ScrollView>
+</KeyboardAvoidingView>
                 {this.loading()}
             </View>
         );

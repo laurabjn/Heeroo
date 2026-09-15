@@ -12,9 +12,8 @@ import {
     Alert,
     Switch
 } from 'react-native';
-import { Icon, Header } from 'react-native-elements';
-import ActionSheet from 'react-native-actionsheet';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { Icon, Header } from '@rneui/themed';
+import * as ImagePicker from 'expo-image-picker';
 
 import { colors } from '../common/theme';
 
@@ -41,7 +40,7 @@ export default class ProfileScreen extends React.Component {
         }
     }
 
-    async componentWillMount() {
+    async UNSAFE_componentWillMount() {
         var curuser = firebase.auth().currentUser;
         this.setState({ currentUser: curuser }, () => {
             const userData = firebase.database().ref('users/' + this.state.currentUser.uid);
@@ -57,47 +56,39 @@ export default class ProfileScreen extends React.Component {
     }
 
     showActionSheet = () => {
-        this.ActionSheet.show()
+        Alert.alert(
+            languageJSON.photo_upload_action_sheet_title,
+            null,
+            [
+                { text: languageJSON.camera, onPress: () => this._pickImage('camera') },
+                { text: languageJSON.galery, onPress: () => this._pickImage('library') },
+                { text: languageJSON.cancel, style: 'cancel' },
+            ],
+            { cancelable: true }
+        );
     }
 
-    uploadImage() {
-        return (
-            <View>
-                <ActionSheet
-                    ref={o => this.ActionSheet = o}
-                    title={languageJSON.photo_upload_action_sheet_title}
-                    options={[languageJSON.camera, languageJSON.galery, languageJSON.cancel]}
-                    cancelButtonIndex={2}
-                    destructiveButtonIndex={1}
-                    onPress={(index) => {
-                        if (index == 0) {
-                            this._pickImage(launchCamera);
-                        } else if (index == 1) {
-                            this._pickImage(launchImageLibrary);
-                        } else {
-                            //console.log('actionsheet close')
-                        }
-                    }}
-                />
-            </View>
-        )
-    }
-
-
-
-    _pickImage = async (res) => {
-        var pickFrom = res;
-        if (checkCameraPermission()) {
-            this.setState({ loader: true })
-            let result = await pickFrom();
-
-            if (!result.didCancel) {
-                this.uploadmultimedia(result.assets[0].uri)
-
+    _pickImage = async (source) => {
+        const permission = source === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permission.status !== 'granted') {
+            return;
+        }
+        const options = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 };
+        this.setState({ loader: true });
+        try {
+            const result = source === 'camera'
+                ? await ImagePicker.launchCameraAsync(options)
+                : await ImagePicker.launchImageLibraryAsync(options);
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                await this.uploadmultimedia(result.assets[0].uri);
+            } else {
+                this.setState({ loader: false });
             }
-            else {
-                this.setState({ loader: false })
-            }
+        } catch (e) {
+            console.log('pickImage error', e);
+            this.setState({ loader: false });
         }
     };
 
@@ -207,9 +198,6 @@ export default class ProfileScreen extends React.Component {
                     containerStyle={styles.headerStyle}
                 />
                 <ScrollView style={styles.scrollStyle}>
-                    {
-                        this.uploadImage()
-                    }
                     <View style={styles.scrollViewStyle} >
                         <Text style={styles.profStyle}>{languageJSON.active_status}</Text>
                         <Switch

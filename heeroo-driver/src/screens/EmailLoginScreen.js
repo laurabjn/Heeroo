@@ -20,7 +20,7 @@ import languageJSON from '../common/language';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import SegmentedControlTab from 'react-native-segmented-control-tab';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import { BackBtn } from '../components';
 import { colors } from '../common/theme'
 import { checkUserEmail } from "../helpers/user";
@@ -186,7 +186,7 @@ export default class EmailLoginScreen extends Component {
     render() {
 
         return (
-            <View style={styles.container}>
+            <KeyboardAvoidingView behavior="padding" style={styles.container}>
                 <Header
                     backgroundColor={"transparent"}
                     centerComponent={<Text style={styles.headerText}>{languageJSON.login_button}</Text>}
@@ -230,7 +230,7 @@ export default class EmailLoginScreen extends Component {
                         {languageJSON.forgot_password_link1} <Text style={styles.linkTextBold}>{languageJSON.forgot_password_link2} </Text>
                     </Text>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         );
     }
 }

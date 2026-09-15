@@ -1,4 +1,117 @@
 {
-  "name": "HeerooDriver",
-  "displayName": " Heeroo Driver"
+  "expo": {
+    "name": "Heeroo Driver",
+    "slug": "heeroo-driver",
+    "version": "1.4.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/appIcon.png",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
+    "ios": {
+      "bundleIdentifier": "org.Terence.HeerooDriver",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo Driver suit votre position pendant les courses pour guider le passager, même quand l'application est en arrière-plan.",
+        "NSCameraUsageDescription": "Heeroo utilise l'appareil photo pour votre photo de profil.",
+        "NSPhotoLibraryUsageDescription": "Heeroo accède à vos photos pour votre photo de profil.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "location"
+        ]
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
+      }
+    },
+    "android": {
+      "package": "com.heeroo.driver",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/appIcon.png",
+        "backgroundColor": "#181717"
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
+        }
+      }
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Heeroo Driver utilise votre position pour recevoir les courses proches de vous.",
+          "locationAlwaysAndWhenInUsePermission": "Heeroo Driver suit votre position pendant les courses, même en arrière-plan, pour guider le passager.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Heeroo accède à vos photos pour votre photo de profil.",
+          "cameraPermission": "Heeroo utilise l'appareil photo pour votre photo de profil."
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Montserrat-Regular.ttf",
+            "./assets/fonts/Montserrat-Light.ttf",
+            "./assets/fonts/Montserrat-SemiBold.ttf",
+            "./assets/fonts/Montserrat-Bold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/appIcon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#181717"
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5c242f0d-3877-4b30-a54a-9ef7ec069511"
+      },
+      "appEnv": "development",
+      "firebase": {
+        "apiKey": "AIzaSyBiY6kn9SzdBguaoO2u8sCAP9b-vimbwn0",
+        "authDomain": "heeroo-dev-49beb.firebaseapp.com",
+        "databaseURL": "https://heeroo-dev-49beb-default-rtdb.europe-west1.firebasedatabase.app",
+        "projectId": "heeroo-dev-49beb",
+        "storageBucket": "heeroo-dev-49beb.firebasestorage.app",
+        "messagingSenderId": "825776782989",
+        "appId": "1:825776782989:web:82c03984b7536ffb2c6cc4"
+      }
+    },
+    "owner": "laurabjns-team"
+  }
 }

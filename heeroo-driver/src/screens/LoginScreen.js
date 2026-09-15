@@ -23,7 +23,7 @@ import { google_map_key } from '../common/key';
 import { colors } from '../common/theme';
 import { PhoneInput } from "../components";
 import { checkLocationPermission } from "../common/permission";
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import Geocoder from 'react-native-geocoding';
 
 export default class LoginScreen extends Component {

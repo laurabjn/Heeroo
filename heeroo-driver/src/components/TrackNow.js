@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { StyleSheet, View, Image, Dimensions } from 'react-native';
+import { StyleSheet, View, Image, Dimensions, Platform } from 'react-native';
 import haversine from "haversine";
 import MapView, {
     Marker,
@@ -17,7 +17,7 @@ import 'firebase/compat/database';
 import { google_map_key } from '../common/key';
 import language from '../common/language';
 import { Car, Pin } from '../icons'
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import { checkCameraPermission, checkLocationPermission } from '../common/permission';
 
 const LATITUDE_DELTA = 0.04;

@@ -5,7 +5,8 @@ import {
     TouchableOpacity,
     View,
     Text, SafeAreaView,
-    ScrollView
+    ScrollView,
+    Platform,
 } from 'react-native';
 import { displayName } from '../../app.json'
 import { colors } from '../common/theme';
@@ -23,7 +24,7 @@ export default class TicketBtn extends React.Component {
         return (
             <View>
                 <TouchableOpacity style={[styles.backButton]} onPress={() => this.setState({ showTicket: true })} >
-                    <Icon name="filetext1" size={20} color={colors.TEXT} />
+                    <Icon name="file-text" size={20} color={colors.TEXT} />
                 </TouchableOpacity>
                 <Modal
                     visible={this.state.showTicket}>

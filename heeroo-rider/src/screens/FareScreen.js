@@ -161,7 +161,7 @@ export default class FareScreen extends React.Component {
                 }}>
                 <Header
                     backgroundColor={colors.GREY.default}
-                    rightComponent={{ icon: 'ios-close', type: 'ionicon', color: colors.WHITE, size: 45, component: TouchableWithoutFeedback, onPress: () => { this.setState({ promodalVisible: false }) } }}
+                    rightComponent={{ icon: 'close', type: 'ionicon', color: colors.WHITE, size: 45, component: TouchableWithoutFeedback, onPress: () => { this.setState({ promodalVisible: false }) } }}
                     centerComponent={<Text style={styles.headerTitleStyle}>{languageJSON.your_promo}</Text>}
                     containerStyle={styles.headerStyle}
                     innerContainerStyles={{ marginLeft: 10, marginRight: 10 }}

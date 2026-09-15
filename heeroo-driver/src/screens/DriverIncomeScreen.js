@@ -1,5 +1,5 @@
 import React from 'react';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import { colors } from '../common/theme';
 import {
     StyleSheet,

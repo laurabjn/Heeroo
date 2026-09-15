@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Modal, View, StyleSheet, Text, TouchableOpacity,TextInput } from "react-native";
-import { Icon, Button } from "react-native-elements";
+import { Icon, Button } from "@rneui/themed";
 import { colors } from "../common/theme";
 import  languageJSON  from '../common/language';
 export default class TripStartModal extends Component {

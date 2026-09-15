@@ -19,7 +19,7 @@ export default class DrawerToggle extends React.Component {
         <TouchableOpacity
             style={[styles.drawerToggle,style]}
             onPress={this.toggleDrawer}>
-            <Icon name="md-menu" size={Platform.OS == "ios" ?30 :25} color={colors.TEXT} />
+            <Icon name="menu" size={Platform.OS == "ios" ?30 :25} color={colors.TEXT} />
         </TouchableOpacity>
     );
   }

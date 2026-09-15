@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Dimensions, FlatList, StyleSheet, Image } from 'react-native';
-import { Icon } from 'react-native-elements'
+import { Icon } from '@rneui/themed'
 import { colors } from '../common/theme';
 const devWidth=Dimensions.get("window").width;
 

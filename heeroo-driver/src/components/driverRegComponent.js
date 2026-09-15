@@ -1,15 +1,14 @@
 import React from 'react';
 import { View, Text, Dimensions, ScrollView, StatusBar, KeyboardAvoidingView, Image, TouchableWithoutFeedback, LayoutAnimation, Platform, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import Background from './Background';
-import { Icon, Button, Header, Input } from 'react-native-elements';
+import { Icon, Button, Header, Input } from '@rneui/themed';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 import { BackBtn } from '../components'
 import AntDesign from "react-native-vector-icons/AntDesign";
 import { Camera } from '../icons';
-import ActionSheet from 'react-native-actionsheet';
 import firebase from 'firebase/compat/app';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
@@ -91,15 +90,23 @@ export default class DiverReg extends React.Component {
             {this.state[key + "_loading"] ?
                 <ActivityIndicator size="small" color="red" />
                 :
-                <AntDesign name={this.state[key] ? "checkcircleo" : "pluscircleo"} size={25} color={this.state[key] ? colors.PRIMARY : colors.SEPARATOR_LIGHT} />
+                <AntDesign name={this.state[key] ? "check-circle" : "plus-circle"} size={25} color={this.state[key] ? colors.PRIMARY : colors.SEPARATOR_LIGHT} />
             }
         </TouchableOpacity>
     )
 
     showActionSheet = (key) => {
-        this.ActionSheet.show()
         this.setState({ file_key: key });
-
+        Alert.alert(
+            languageJSON.photo_upload_action_sheet_title,
+            languageJSON[key],
+            [
+                { text: languageJSON.camera, onPress: () => this._pickImage('camera') },
+                { text: languageJSON.galery, onPress: () => this._pickImage('library') },
+                { text: languageJSON.cancel, style: 'cancel' },
+            ],
+            { cancelable: true }
+        );
     }
 
     validateFile(key) {
@@ -110,43 +117,28 @@ export default class DiverReg extends React.Component {
         return valid
     }
 
-    uploadImage() {
-        return (
-            <View>
-                <ActionSheet
-                    ref={o => this.ActionSheet = o}
-                    title={languageJSON.photo_upload_action_sheet_title}
-                    options={[languageJSON.camera, languageJSON.galery, languageJSON.cancel]}
-                    cancelButtonIndex={2}
-                    destructiveButtonIndex={1}
-
-                    onPress={(index) => {
-                        if (index == 0) {
-                            this._pickImage(launchCamera);
-                        } else if (index == 1) {
-                            this._pickImage(launchImageLibrary);
-                        }
-                    }}
-                />
-            </View>
-        )
-    }
-
-    _pickImage = async (res) => {
-        var pickFrom = res;
-
-        if (checkCameraPermission()) {
-            this.setState({ [this.state.file_key + "_loading"]: true })
-
-            let result = await pickFrom();
-
-            if (!result.didCancel) {
-                this.uploadmultimedia(result.assets[0].uri)
-
+    _pickImage = async (source) => {
+        const key = this.state.file_key;
+        const permission = source === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permission.status !== 'granted') {
+            return;
+        }
+        const options = { mediaTypes: ['images'], allowsEditing: false, quality: 0.7 };
+        this.setState({ [key + "_loading"]: true });
+        try {
+            const result = source === 'camera'
+                ? await ImagePicker.launchCameraAsync(options)
+                : await ImagePicker.launchImageLibraryAsync(options);
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                await this.uploadmultimedia(result.assets[0].uri);
+            } else {
+                this.setState({ [key + "_loading"]: false });
             }
-            else {
-                this.setState({ [this.state.file_key + "_loading"]: false })
-            }
+        } catch (e) {
+            console.log('pickImage error', e);
+            this.setState({ [key + "_loading"]: false });
         }
     };
 
@@ -387,7 +379,8 @@ export default class DiverReg extends React.Component {
                     containerStyle={styles.headerContainerStyle}
                     centerComponent={<Text style={styles.headerStyle}>{languageJSON.driver_registration}</Text>}
                 />
-                <ScrollView style={styles.scrollViewStyle}>
+<KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+                <ScrollView keyboardShouldPersistTaps="handled" style={styles.scrollViewStyle}>
                     <View style={styles.containerStyle}>
 
                         <View style={styles.textInputContainerStyle}>
@@ -608,8 +601,8 @@ export default class DiverReg extends React.Component {
                             buttonStyle={styles.registerButton}
                         />
                     </View>
-                    {this.uploadImage()}
                 </ScrollView>
+</KeyboardAvoidingView>
             </View>
         );
     }

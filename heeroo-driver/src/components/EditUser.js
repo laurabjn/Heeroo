@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Dimensions, ScrollView, KeyboardAvoidingView, Image, TouchableWithoutFeedback, LayoutAnimation, Platform } from 'react-native';
 import Background from './Background';
-import { Icon, Button, Header, Input } from 'react-native-elements'
+import { Icon, Button, Header, Input } from '@rneui/themed'
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 var { height } = Dimensions.get('window');
@@ -31,7 +31,7 @@ export default class EditUser extends React.Component {
         }
     }
 
-    async componentWillMount() {
+    async UNSAFE_componentWillMount() {
         var curuser = firebase.auth().currentUser;
         const userData = firebase.database().ref('users/' + curuser.uid);
         if (curuser.email) this.setState({ loginType: 'email' });
@@ -136,7 +136,8 @@ export default class EditUser extends React.Component {
                     centerComponent={<Text style={styles.headerStyle}>{languageJSON.update_profile}</Text>}
                 />
                 <View style={styles.form}>
-                    <ScrollView contentContainerStyle={styles.scrollViewStyle}>
+<KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+                    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollViewStyle}>
 
                         <View style={styles.containerStyle}>
 
@@ -274,6 +275,7 @@ export default class EditUser extends React.Component {
                         />
 
                     </ScrollView>
+</KeyboardAvoidingView>
                 </View>
             </View>
         );

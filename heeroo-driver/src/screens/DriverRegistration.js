@@ -12,7 +12,7 @@ import 'firebase/compat/database';
 import languageJSON from '../common/language';
 import { google_map_key } from '../common/key';
 import { checkLocationPermission, checkCameraPermission } from "../common/permission";
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import Geocoder from 'react-native-geocoding';
 
 export default class DriverRegistrationPage extends React.Component {
@@ -105,6 +105,12 @@ export default class DriverRegistrationPage extends React.Component {
   }
 
   //register button click after all validation
+  // Retour depuis l'inscription = abandon : déconnexion, l'écouteur
+  // d'authentification de AuthLoadingScreen ramène au login.
+  cancelRegistration = () => {
+    firebase.auth().signOut();
+  }
+
   clickRegister = async (fname, lname, mobile, email, vehicleNum, vehicleName, image, companyName, companyAddress, file_identity_front,
     file_identity_back, carteGrise, permis, carteVTC, rir, attestation, carteVerte, assuranceRC, photoAvantVehicule, photoChauffeur
   ) => {
@@ -188,7 +194,7 @@ export default class DriverRegistrationPage extends React.Component {
     const registrationData = this.props.route.params.requireData
     return (
       <View style={styles.containerView}>
-        <DiverReg reqData={registrationData ? registrationData : ""} onPressRegister={this.clickRegister} navigation={this.props.navigation} loading={this.state.loading}></DiverReg>
+        <DiverReg reqData={registrationData ? registrationData : ""} onPressRegister={this.clickRegister} onBack={() => this.cancelRegistration()} navigation={this.props.navigation} loading={this.state.loading}></DiverReg>
       </View>
     );
   }

@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import Polyline from '@mapbox/polyline';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
-import { Header, Rating, Avatar, Button, Icon } from 'react-native-elements';
-import Dash from 'react-native-dash';
+import { Header, Rating, Avatar, Button, Icon } from '@rneui/themed';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -148,7 +147,7 @@ export default class RideDetails extends React.Component {
                 if (snap.val()) {
                     let bookingData = snap.val();
                     bookingData.bookingId = item.bookingUid;
-                    this.props.navigation.navigate('DriverTripStart', { allDetails: bookingData })
+                    this.props.navigation.navigate('DriverTripAccept', { screen: 'DriverTripStart', params: { allDetails: bookingData } })
                 }
             })
         }

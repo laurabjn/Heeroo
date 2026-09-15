@@ -43,10 +43,13 @@ export default function SideMenu(props) {
         const userRoot = firebase.database().ref('users/' + curuser);
         userRoot.on('value', userData => {
             if (userData.val()) {
-                var str = userData.val().location.add
-                var tempAdd = str.split(",")[3] + ',' + str.split(",")[4];
+                // L'adresse n'existe qu'une fois la position géocodée depuis la carte
+                const user = userData.val();
+                const str = user.location && user.location.add ? user.location.add : '';
+                const parts = str.split(',');
+                const tempAdd = parts.length >= 5 ? parts[3] + ',' + parts[4] : str;
                 settempAddress(tempAdd)
-                setuserData(userData.val())
+                setuserData(user)
             }
         })
     }, []);

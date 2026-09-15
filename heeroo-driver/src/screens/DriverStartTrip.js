@@ -10,12 +10,12 @@ import {
     Linking,
     TouchableOpacity,
     SafeAreaView,
-    Alert
+    Alert,
+    Platform,
 } from 'react-native';
 import { MapComponent, TripStartModal } from '../components';
 import TicketBtn from '../components/TicketBtn';
-import { NavigationApps, actions, googleMapsTravelModes } from "react-native-navigation-apps";
-import { Button, Header, Icon } from 'react-native-elements';
+import { Button, Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
 import { RequestPushMsg } from '../common/RequestPushMsg';
 import firebase from 'firebase/compat/app';
@@ -26,10 +26,9 @@ import languageJSON from '../common/language';
 var { width, height } = Dimensions.get('window');
 import { google_map_key } from '../common/key';
 import { DrawerToggle, NotificationBtn } from '../components';
-import { showLocation, Popup } from 'react-native-map-link'
 import { getDistance } from 'geolib';
 
-import BackgroundGeolocation from '@mauron85/react-native-background-geolocation';
+import BackgroundGeolocation from '../common/backgroundGeolocation';
 import { checkLocationPermission } from '../common/permission';
 
 export default class DriverStartTrip extends React.Component {
@@ -54,7 +53,7 @@ export default class DriverStartTrip extends React.Component {
         }
     }
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
         const allDetails = this.props.route.params.allDetails
         const riderData = firebase.database().ref('users/' + allDetails.customer)
 

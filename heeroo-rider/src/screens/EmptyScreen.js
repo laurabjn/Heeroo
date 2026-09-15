@@ -24,9 +24,9 @@ export default class EmptyNotificationPage extends React.Component {
             <View style={styles.mainView}>
                 <Header
                     backgroundColor={colors.GREY.default}
-                    leftComponent={{ icon: 'md-menu', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { this.props.navigation.toggleDrawer(); } }}
+                    leftComponent={{ icon: 'menu', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { this.props.navigation.toggleDrawer(); } }}
                     centerComponent={<Text style={styles.headerTitleStyle}>{languageJSON.my_rides}</Text>}
-                    rightComponent={{ icon: 'ios-notifications', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { } }}
+                    rightComponent={{ icon: 'notifications', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { } }}
                     containerStyle={styles.headerStyle}
                     innerContainerStyles={styles.inrContStyle}
                 />

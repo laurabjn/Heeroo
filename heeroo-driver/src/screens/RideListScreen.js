@@ -7,7 +7,7 @@ import {
     StatusBar,
     TouchableWithoutFeedback
 } from 'react-native';
-import { Header } from 'react-native-elements';
+import { Header } from '@rneui/themed';
 import { colors } from '../common/theme';
 
 import firebase from 'firebase/compat/app';

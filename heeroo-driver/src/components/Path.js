@@ -4,7 +4,7 @@ import {
   View
 } from 'react-native';
 import { colors } from '../common/theme';
-import { Icon } from 'react-native-elements';
+import { Icon } from '@rneui/themed';
 
 export default class Path extends React.Component {
 

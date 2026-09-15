@@ -39,57 +39,43 @@ export class AuthLoadingScreen extends React.Component {
   // Fetch the token from storage then navigate to our appropriate place
   bootstrapAsync = () => {
     firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        if (user.displayName) {
-
-          const userData = firebase.database().ref('users/' + user.uid);
-          userData.once('value', userData => {
-            if (userData.val()) {
-
-              if (userData.val().usertype == 'rider') {
-                GetPushToken();
-                this._setSettings().then(() => {
-                  this.props.navigation.reset({ index: 0, routes: [{ name: 'Root' }] });
-                });
-              }
-              else {
-
-                firebase.auth().signOut();
-                alert(languageJSON.valid_rider);
-              }
-            } else {
-
-              var data = {};
-              data.profile = {
-                name: user.name ? user.name : '',
-                last_name: user.last_name ? user.last_name : '',
-                first_name: user.first_name ? user.first_name : '',
-                email: user.email ? user.email : '',
-                mobile: user.phoneNumber ? user.phoneNumber.replace('"', '') : '',
-              };
-              this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth', state: { index: 0, routes: [{ name: 'Reg', params: { requireData: data } }] } }] })
-            }
-          })
-        } else {
-
-          var data = {};
-          data.profile = {
-            name: user.name ? user.name : '',
-            last_name: user.last_name ? user.last_name : '',
-            first_name: user.first_name ? user.first_name : '',
-            email: user.email ? user.email : '',
-            mobile: user.phoneNumber ? user.phoneNumber.replace('"', '') : '',
-          };
-          this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth', state: { index: 0, routes: [{ name: 'Reg', params: { requireData: data } }] } }] })
-        }
-      } else {
-        this.props.navigation.reset({
-          index: 0,
-          routes: [{ name: 'Auth' }],
-        })
+      if (!user) {
+        this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+        return;
       }
-    })
-
+      // Le profil en base est la source de vérité (pas le displayName du compte,
+      // absent pour un compte créé hors de l'app).
+      firebase.database().ref('users/' + user.uid).once('value').then((snapshot) => {
+        const profile = snapshot.val();
+        if (profile) {
+          if (profile.usertype == 'rider') {
+            GetPushToken();
+            this._setSettings().then(() => {
+              this.props.navigation.reset({ index: 0, routes: [{ name: 'Root' }] });
+            });
+          } else {
+            firebase.auth().signOut();
+            alert(languageJSON.valid_rider);
+          }
+        } else {
+          const data = {
+            profile: {
+              name: '',
+              last_name: '',
+              first_name: '',
+              email: user.email ? user.email : '',
+              mobile: user.phoneNumber ? user.phoneNumber.replace('"', '') : '',
+            },
+          };
+          this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth', state: { index: 0, routes: [{ name: 'Reg', params: { requireData: data } }] } }] });
+        }
+      }).catch((error) => {
+        console.log('[AuthLoading] lecture du profil impossible', error);
+        firebase.auth().signOut();
+        this.props.navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+        alert(error.message || String(error));
+      });
+    });
   };
 
   componentDidMount() {

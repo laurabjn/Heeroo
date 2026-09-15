@@ -13,23 +13,20 @@ import {
 } from 'react-native';
 var { width } = Dimensions.get('window');
 import { DrawerToggle, } from '../components';
-import { NavigationApps, actions, googleMapsTravelModes } from "react-native-navigation-apps";
 import TicketBtn from '../components/TicketBtn';
 
 import { TrackNow } from '../components';
-import { Button, Header } from 'react-native-elements';
+import { Button, Header } from '@rneui/themed';
 import { colors } from '../common/theme';
 import { checkLocationPermission } from '../common/permission';
-import { GeoFire } from 'geofire';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import { farehelper } from '../common/fareCalculator';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from '../common/geolocation';
 import { google_map_key } from '../common/key';
 import languageJSON from '../common/language';
-import { showLocation, Popup } from 'react-native-map-link'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 export default class DriverCompleteTrip extends React.Component {
     constructor(props) {
@@ -47,7 +44,7 @@ export default class DriverCompleteTrip extends React.Component {
         }
     }
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
         const allDetails = this.props.route.params.allDetails
         console.log('all detail from complete trip =')
         console.log(allDetails)

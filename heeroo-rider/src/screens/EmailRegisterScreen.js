@@ -138,7 +138,7 @@ export default class EmailRegisterScreen extends Component {
     render() {
 
         return (
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container} >
+            <KeyboardAvoidingView behavior="padding" style={styles.container} >
 
                 <Header
                     backgroundColor={"transparent"}

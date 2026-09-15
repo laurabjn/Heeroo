@@ -135,7 +135,7 @@ export default class SelectGatewayPage extends React.Component {
       <View style={styles.container}>
         <Header
           backgroundColor={colors.GREY.default}
-          leftComponent={{ icon: 'ios-arrow-back', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { this.goBack() } }}
+          leftComponent={{ icon: 'arrow-back', type: 'ionicon', color: colors.WHITE, size: 30, component: TouchableWithoutFeedback, onPress: () => { this.goBack() } }}
           centerComponent={<Text style={styles.headerTitleStyle}>{languageJSON.payment}</Text>}
           containerStyle={styles.headerStyle}
           innerContainerStyles={{ marginLeft: 10, marginRight: 10 }}

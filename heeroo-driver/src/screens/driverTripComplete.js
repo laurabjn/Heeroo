@@ -8,7 +8,7 @@ import {
     Platform,
     SafeAreaView
 } from 'react-native';
-import { Button, Header, Icon } from 'react-native-elements';
+import { Button, Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 import firebase from 'firebase/compat/app';
@@ -65,7 +65,7 @@ export default class DriverTripComplete extends React.Component {
         })
     }
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
         const allDetails = this.props.route.params.allDetails
         const trip_cost = this.props.route.params.trip_cost
         const trip_end_time = this.props.route.params.trip_end_time

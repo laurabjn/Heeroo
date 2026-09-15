@@ -188,7 +188,7 @@ export default class EmailLoginScreen extends Component {
     }
     render() {
         return (
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+            <KeyboardAvoidingView behavior="padding" style={styles.container}>
                 <Header
                     backgroundColor={"transparent"}
                     centerComponent={<Text style={styles.headerText}>{languageJSON.login_button}</Text>}

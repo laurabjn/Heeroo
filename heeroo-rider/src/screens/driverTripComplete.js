@@ -255,7 +255,7 @@ export default class DriverTripComplete extends React.Component {
                             maxStars={5}
                             starSize={40}
                             fullStar={fullStar}
-                            halfStar={'ios-star-half'}
+                            halfStar={'star-half'}
                             emptyStar={emptyStar}
                             iconSet={'Ionicons'}
                             fullStarColor={colors.SECONDARY}

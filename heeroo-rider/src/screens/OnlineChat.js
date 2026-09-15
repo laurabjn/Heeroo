@@ -214,7 +214,7 @@ export default class OnlineChat extends Component {
 
   render() {
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <KeyboardAvoidingView behavior="padding" style={styles.container}>
         <Header
           backgroundColor={colors.TRANSPARENT}
           leftComponent={<BackBtn {...this.props} />}
