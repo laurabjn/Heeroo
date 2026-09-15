@@ -24,6 +24,11 @@ const FIREBASE = {
   },
 };
 
+const FUNCTIONS_BASE_URL = {
+  development: 'https://us-central1-heeroo-dev-49beb.cloudfunctions.net/',
+  production: 'https://us-central1-projet-test-d7cd9.cloudfunctions.net/',
+};
+
 const GOOGLE_SERVICES = {
   development: './google-services.dev.json',
   production: './google-services.json',
@@ -44,6 +49,7 @@ module.exports = ({ config }) => {
       ...config.extra,
       appEnv,
       firebase: FIREBASE[appEnv],
+      functionsBaseUrl: FUNCTIONS_BASE_URL[appEnv],
     },
   };
 };

@@ -1,4 +1,4 @@
-import { notifyRef, notifyEditRef } from "../config/firebase";
+import { notifyRef, notifyEditRef, authRef } from "../config/firebase";
 import {
   FETCH_NOTIFICATIONS,
   FETCH_NOTIFICATIONS_SUCCESS,
@@ -117,14 +117,15 @@ export const sendNotification = (notification) => dispatch => {
     const params = {
       list: arr
     }
-    fetch(push_notifications_url, {
+    authRef.currentUser.getIdToken().then((idToken) => fetch(push_notifications_url, {
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + idToken
       },
       method: 'post',
       body: JSON.stringify(params)
-    })
+    }))
       .then((responseJson) => {
         dispatch({
           type: SEND_NOTIFICATION_SUCCESS,

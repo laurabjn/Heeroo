@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Stockage Heeroo : photos de profil et documents des chauffeurs.
+//
+// Organisation héritée du template (un seul dossier plat) :
+//   users/<uid>                photo de profil
+//   users/<uid><cléDocument>   documents chauffeur (uid + nom du document, sans séparateur)
+//   users/driver_licenses/…    ancien emplacement des permis (conservé pour compatibilité)
+//
+// Chaque utilisateur ne lit et n'écrit que ses propres objets. L'affichage aux
+// autres utilisateurs (photo du chauffeur pour le passager) et au back-office
+// passe par les URL de téléchargement signées enregistrées en base, qui ne
+// dépendent pas de ces règles.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsObject(name) {
+      return name.matches('^' + request.auth.uid + '.*');
+    }
+
+    function acceptableUpload() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    match /users/{object} {
+      allow read: if signedIn() && ownsObject(object);
+      allow write: if signedIn() && ownsObject(object)
+                   && (request.resource == null || acceptableUpload());
+    }
+
+    match /users/driver_licenses/{timestamp}/{rest=**} {
+      allow write: if signedIn() && (request.resource == null || acceptableUpload());
+      allow read: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

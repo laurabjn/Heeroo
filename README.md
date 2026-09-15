@@ -7,7 +7,9 @@ Application de réservation de VTC (France / Sénégal), dérivée du template G
 | `heeroo-rider/` | Application Passager | Expo SDK 57, React Native 0.86, React 19 — builds via EAS |
 | `heeroo-driver/` | Application Chauffeur | React Native 0.67, React 17 |
 | `heeroo-admin/` | Back-office web | React 16, Create React App, Material-UI 4 |
+| `functions/` | Fonctions serveur (notifications, comptes, commission chauffeur) | Cloud Functions, Node 22 |
 | `database.rules.json` | Règles de sécurité Realtime Database | — |
+| `storage.rules` | Règles de sécurité Cloud Storage | — |
 
 Backend : Firebase (projet `projet-test-d7cd9` — Realtime Database, Auth, Storage, Cloud Functions, Hosting pour le back-office).
 
@@ -28,9 +30,26 @@ eas build --platform android --profile production # AAB pour Google Play
 cd heeroo-driver && npm install && npx react-native start
 ```
 
-## Règles de sécurité de la base
+## Environnements Firebase
 
-`database.rules.json` est la source de vérité. Pour publier : Console Firebase → Realtime Database → Règles, ou `firebase deploy --only database` une fois `firebase.json` en place.
+| Alias | Projet | Usage |
+|---|---|---|
+| `dev` (défaut) | `heeroo-dev-49beb` | développement et tests — base en Europe |
+| `prod` | `projet-test-d7cd9` | production — base aux États-Unis |
+
+Les apps choisissent l'environnement au build (`APP_ENV`, voir `app.config.js` et `eas.json`). Le CLI Firebase utilise `--project dev` ou `--project prod` (`.firebaserc`).
+
+## Fonctions serveur et règles
+
+```bash
+npm install -g firebase-tools && firebase login
+cd functions && npm install && cd ..
+firebase deploy --only functions,database,storage --project dev    # puis --project prod
+```
+
+Les fonctions HTTP gardent les noms et URL historiques (`sendMessage`, `check_user_email`, `delete_auth_user`, `push_notifications`) ; les deux dernières exigent un administrateur (`users/<uid>/isAdmin = true`), la première un utilisateur connecté. `onBookingCompleted` prélève la commission (taux `rates/car_type[].convenience_fees`) sur le crédit du chauffeur quand une course passe au statut `END`.
+
+Le déploiement des fonctions et la création du stockage exigent le plan Blaze sur le projet cible.
 
 ## Fichiers volontairement absents du dépôt
 

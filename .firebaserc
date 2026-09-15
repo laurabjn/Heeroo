@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "heeroo-dev-49beb",
+    "dev": "heeroo-dev-49beb",
+    "prod": "projet-test-d7cd9"
+  }
+}

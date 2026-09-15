@@ -16,5 +16,4 @@ export const exchange_access_key = '5df860682e9ae9abe41e0c898de8724b';
 
 export const baseUrl = "https://us-central1-projet-test-d7cd9.cloudfunctions.net/";
 export const delete_auth_user_url = baseUrl + "delete_auth_user";
-export const push_notifications_url = baseUrl + + "push_notifications";
-export const firebase_server_key = "AAAAUq6nrns:APA91bHNtg5wAFmWdrTPb51gb6KO7i1XGPcDWM52nEo0k7-7VRJffoR0MG7u152q4TQRflx3Lu42k2k9kQ0plC9udU-f78GyKLAKXRpuSzIsBWikil6R2RDwmGdpfLtdQ8Gp8VwZCr5A"
+export const push_notifications_url = baseUrl + "push_notifications";

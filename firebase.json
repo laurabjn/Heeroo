@@ -1,0 +1,16 @@
+{
+  "database": { "rules": "database.rules.json" },
+  "storage": { "rules": "storage.rules" },
+  "functions": [{ "source": "functions", "codebase": "default", "runtime": "nodejs22" }],
+  "hosting": {
+    "public": "heeroo-admin/build",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+  },
+  "emulators": {
+    "functions": { "port": 5001 },
+    "database": { "port": 9000 },
+    "auth": { "port": 9099 },
+    "ui": { "enabled": true }
+  }
+}

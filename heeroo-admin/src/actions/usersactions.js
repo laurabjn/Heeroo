@@ -1,4 +1,4 @@
-import { userRef, singleUserRef } from "../config/firebase";
+import { userRef, singleUserRef, authRef } from "../config/firebase";
 import { delete_auth_user_url } from "../config/keys";
 import { 
     FETCH_ALL_USERS,
@@ -79,14 +79,16 @@ export const fetchUsers = () => dispatch => {
 
   }
 
-  const deleteAuthUser = (id) => {
+  const deleteAuthUser = async (id) => {
     const params = {
       id
     }
+    const idToken = await authRef.currentUser.getIdToken();
     return fetch(delete_auth_user_url, {
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + idToken
       },
       method: 'post',
       body: JSON.stringify(params)
