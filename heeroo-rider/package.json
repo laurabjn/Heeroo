@@ -26,6 +26,7 @@
     "@react-navigation/stack": "^7.10.24",
     "@rneui/base": "^5.0.0",
     "@rneui/themed": "^5.0.0",
+    "@stripe/stripe-react-native": "0.64.0",
     "expo": "~57.0.22",
     "expo-blur": "~57.0.3",
     "expo-build-properties": "~57.0.17",

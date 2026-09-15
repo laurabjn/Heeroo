@@ -8,6 +8,8 @@
 //   POST /check_user_email   { email }                       — public
 //   POST /delete_auth_user   { id }                          — administrateur
 //   POST /push_notifications { list: [{ to, title, body }] } — administrateur
+//   POST /createPaymentIntent { bookingId }                  — utilisateur authentifié
+//   POST /stripeWebhook      (appelée par Stripe, signature vérifiée)
 //
 // Déclencheur base de données : prélèvement de la commission sur le crédit du
 // chauffeur quand une course passe au statut END.
@@ -17,19 +19,37 @@ const { onValueUpdated } = require('firebase-functions/v2/database');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
+const { defineSecret } = require('firebase-functions/params');
+const Stripe = require('stripe');
 
 admin.initializeApp();
 
 const REGION = 'us-central1';
 const COMPLETED_STATUS = 'END';
 
+// Clés Stripe : stockées dans Secret Manager (firebase functions:secrets:set),
+// ou dans functions/.secret.local pour l'émulateur. Jamais dans le code.
+const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
+const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
+
+// Devises sans sous-unité chez Stripe (montant envoyé tel quel, pas en centimes).
+const ZERO_DECIMAL_CURRENCIES = new Set(['XOF', 'XAF', 'JPY', 'KRW', 'CLP', 'VND', 'UGX', 'RWF', 'GNF', 'BIF', 'DJF', 'KMF', 'MGA', 'PYG', 'VUV', 'XPF']);
+
+function toStripeAmount(amount, currency) {
+  const value = Number(amount) || 0;
+  return ZERO_DECIMAL_CURRENCIES.has(currency) ? Math.round(value) : Math.round(value * 100);
+}
+
 // ---------------------------------------------------------------------------
 // Utilitaires
 // ---------------------------------------------------------------------------
 
 /** Enveloppe un handler HTTP : CORS, méthode POST uniquement, erreurs en JSON. */
-function httpEndpoint(handler) {
-  return functions.region(REGION).https.onRequest((req, res) => {
+function httpEndpoint(handler, options) {
+  const builder = options && options.secrets
+    ? functions.region(REGION).runWith({ secrets: options.secrets })
+    : functions.region(REGION);
+  return builder.https.onRequest((req, res) => {
     cors(req, res, async () => {
       if (req.method === 'OPTIONS') {
         res.status(204).send('');
@@ -170,6 +190,85 @@ exports.push_notifications = httpEndpoint(async (req, res) => {
   logger.info(`push_notifications: ${sent} envoyées, ${invalid} jetons périmés, ${failed} échecs`);
   res.json({ success: true, sent, invalid, failed });
 });
+
+// ---------------------------------------------------------------------------
+// Stripe — paiement par carte d'une course (feuille de paiement native).
+//
+// createPaymentIntent : l'app demande le paiement d'une course ; le montant
+// est celui de la course en base (jamais celui envoyé par l'app). Renvoie le
+// secret client à donner au PaymentSheet.
+// stripeWebhook : Stripe confirme le paiement ; c'est ici, et seulement ici,
+// que la course est marquée payée.
+// ---------------------------------------------------------------------------
+
+/** Champs de paiement recopiés sur la course et sur les deux copies utilisateur. */
+async function markBookingPaid(bookingId, booking, paymentIntent) {
+  const paid = {
+    payment_status: 'PAID',
+    payment_mode: 'Card',
+    getway: 'stripe',
+    transaction_id: paymentIntent.id,
+    customer_paid: Number(booking.trip_cost) || 0,
+    cardPaymentAmount: Number(booking.trip_cost) || 0,
+    paid_at: admin.database.ServerValue.TIMESTAMP,
+  };
+  const db = admin.database();
+  await db.ref(`bookings/${bookingId}`).update(paid);
+  if (booking.customer) await db.ref(`users/${booking.customer}/my-booking/${bookingId}`).update(paid);
+  if (booking.driver) await db.ref(`users/${booking.driver}/my_bookings/${bookingId}`).update(paid);
+}
+
+exports.createPaymentIntent = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { bookingId } = req.body || {};
+  if (!bookingId) throw httpError(400, 'Paramètre bookingId requis');
+
+  const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
+  if (!booking) throw httpError(404, 'Course introuvable');
+  if (booking.customer !== user.uid) throw httpError(403, 'Cette course ne vous appartient pas');
+  if (booking.payment_status === 'PAID') throw httpError(409, 'Course déjà payée');
+
+  const currency = String(booking.currency || req.body.currency || 'EUR').trim().toUpperCase();
+  const amount = toStripeAmount(booking.trip_cost, currency);
+  if (amount <= 0) throw httpError(400, 'Montant de la course invalide');
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const intent = await stripe.paymentIntents.create({
+    amount,
+    currency: currency.toLowerCase(),
+    automatic_payment_methods: { enabled: true },
+    description: `Course Heeroo ${bookingId}`,
+    receipt_email: user.email || undefined,
+    metadata: { bookingId, uid: user.uid, driver: booking.driver || '' },
+  });
+  res.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id, amount, currency });
+}, { secrets: [STRIPE_SECRET_KEY] });
+
+exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] })
+  .https.onRequest(async (req, res) => {
+    const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET.value());
+    } catch (error) {
+      logger.warn('Webhook Stripe : signature invalide', error.message);
+      res.status(400).send('Signature invalide');
+      return;
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
+      const intent = event.data.object;
+      const bookingId = intent.metadata && intent.metadata.bookingId;
+      if (bookingId) {
+        const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
+        if (booking && booking.payment_status !== 'PAID') {
+          await markBookingPaid(bookingId, booking, intent);
+          logger.info(`Course ${bookingId} payée par carte (${intent.id})`);
+        }
+      }
+    }
+    res.json({ received: true });
+  });
 
 // ---------------------------------------------------------------------------
 // Commission chauffeur — quand une course passe au statut END, la commission

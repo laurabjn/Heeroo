@@ -15,7 +15,6 @@ import TrackNow from './TrackNow';
 import OnlineChat from './OnlineChat';
 import WalletDetails from './WalletDetails';
 import AddMoneyScreen from './AddMoney';
-import SelectGatewayPage from './SelectGatewayScreen';
 import EmailLoginScreen from './EmailLoginScreen';
 import EmailRegisterScreen from './EmailRegisterScreen';
 
@@ -41,7 +40,6 @@ export {
     CardDetailsScreen,
     WalletDetails,
     AddMoneyScreen,
-    SelectGatewayPage,
     EmailLoginScreen,
     EmailRegisterScreen,
     NotificationPage,

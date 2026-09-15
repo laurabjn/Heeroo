@@ -87,7 +87,14 @@
           "backgroundColor": "#181717"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.org.Terence.HeerooRider",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "extra": {
       "eas": {

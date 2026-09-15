@@ -51,6 +51,12 @@ Les fonctions HTTP gardent les noms et URL historiques (`sendMessage`, `check_us
 
 Le déploiement des fonctions et la création du stockage exigent le plan Blaze sur le projet cible.
 
+### Stripe (paiement par carte, app passager)
+
+- Clés secrètes côté serveur : `firebase functions:secrets:set STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET` (émulateur : `functions/.secret.local`, modèle dans `.secret.local.example`).
+- Clé publique côté app : variable `STRIPE_PK_TEST` (dev) / `STRIPE_PK_LIVE` (prod) au build, lue par `heeroo-rider/app.config.js` — tant qu'elle est absente, le bouton « payer par carte » est masqué.
+- Webhook à déclarer dans le tableau de bord Stripe : `https://us-central1-<projet>.cloudfunctions.net/stripeWebhook`, événement `payment_intent.succeeded`.
+
 ## Fichiers volontairement absents du dépôt
 
 Voir `.gitignore` : keystores et certificats (`*.jks`, `*.keystore`, `*.p12`), fichiers `.env`, exports de base de données, documents client.

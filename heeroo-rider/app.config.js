@@ -29,6 +29,11 @@ const FUNCTIONS_BASE_URL = {
   production: 'https://us-central1-projet-test-d7cd9.cloudfunctions.net/',
 };
 
+const STRIPE_PUBLISHABLE_KEY = {
+  development: process.env.STRIPE_PK_TEST || '',   // pk_test_… du compte Stripe du client (mode test)
+  production: process.env.STRIPE_PK_LIVE || '',    // pk_live_…
+};
+
 const GOOGLE_SERVICES = {
   development: './google-services.dev.json',
   production: './google-services.json',
@@ -50,6 +55,7 @@ module.exports = ({ config }) => {
       appEnv,
       firebase: FIREBASE[appEnv],
       functionsBaseUrl: FUNCTIONS_BASE_URL[appEnv],
+      stripePublishableKey: STRIPE_PUBLISHABLE_KEY[appEnv],
     },
   };
 };

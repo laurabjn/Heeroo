@@ -11,6 +11,7 @@ import 'firebase/compat/database';
 import 'firebase/compat/storage';
 import Geocoder from 'react-native-geocoding';
 import { google_map_key } from './src/common/key';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import AppContainer from './src/navigation/AppNavigator';
 
 LogBox.ignoreLogs([
@@ -37,6 +38,14 @@ Geocoder.init(google_map_key, { language: 'fr' });
 
 export default class App extends React.Component {
   render() {
-    return <AppContainer />;
+    return (
+      <StripeProvider
+        publishableKey={Constants.expoConfig.extra.stripePublishableKey || 'pk_test_placeholder'}
+        merchantIdentifier="merchant.org.Terence.HeerooRider"
+        urlScheme="heeroo"
+      >
+        <AppContainer />
+      </StripeProvider>
+    );
   }
 }

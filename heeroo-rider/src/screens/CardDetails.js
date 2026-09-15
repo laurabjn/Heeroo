@@ -9,7 +9,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Modal,
-
+  Alert,
 } from 'react-native';
 
 import { Header, CheckBox } from '@rneui/themed';
@@ -23,7 +23,7 @@ import 'firebase/compat/database';
 
 import { PromoComp } from "../components";
 import languageJSON from '../common/language';
-import { cloud_function_server_url } from '../common/serverUrl';
+import { isCardPaymentAvailable, payBookingWithCard } from '../common/stripePayment';
 import { DrawerToggle, CloseBtn } from '../components';
 
 export default class CardDetailsScreen extends React.Component {
@@ -94,7 +94,6 @@ export default class CardDetailsScreen extends React.Component {
 
   componentDidMount() {
     this._retrieveSettings(this.props.route.params.data.pickup.country);
-    //this.getProviders();
     //firebase.database().ref('settings/').on()
   }
 
@@ -133,24 +132,6 @@ export default class CardDetailsScreen extends React.Component {
         }
       }
     })
-  }
-
-  getProviders = async () => {
-    fetch(cloud_function_server_url + '/get_providers', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        if (responseJson.length > 0) {
-          this.setState({ providers: responseJson })
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
   }
 
   onCardChange = cardData => {
@@ -237,48 +218,39 @@ export default class CardDetailsScreen extends React.Component {
 
   }
 
-  payWithCard() {
-    let data = this.state.userData;
-    let payData = {
-      email: this.state.payDetails.email,
-      amount: parseFloat(this.state.payDetails.payableAmmount).toFixed(0),
-      order_id: this.state.payDetails.txRef,
-      name: 'payment for Ride',
-      description: "OrderId " + this.state.payDetails.txRef,
-      currency: this.state.settings.code,
-      quantity: 1,
-    }
-
-    let allData = {
-      paymentMode: 'Card',
-      customer_paid: this.state.payDetails.amount - this.state.payDetails.discount,
-      discount_amount: this.state.payDetails.discount,
-      usedWalletAmmount: this.state.usedWalletAmmount ? this.state.usedWalletAmmount : 0,
-      cardPaymentAmount: this.state.payDetails.payableAmmount,
-      userId: firebase.auth().currentUser.uid,
-      currentwlbal: this.state.walletBalance,
-      paymentType: 'Debit',
-      bookingKey: data.bookingKey,
-      driver: data.driver,
-      drop: data.drop,
-      pickup: data.pickup,
-      tripdate: data.tripdate,
-      trip_start_time: data.trip_start_time,
-      driver_name: data.driver_name,
-      driver_image: data.driver_image
-    }
-
-    if (payData && allData) {
-      firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/my-booking/' + allData.bookingKey + '/').update({
-        paymentstart: true
-      }).then(() => {
-        this.props.navigation.navigate("paymentMethod", {
-          payData: payData,
-          allData: allData,
-          settings: this.state.settings,
-          providers: this.state.providers
-        });
-      })
+  async payWithCard() {
+    const booking = this.state.userData;
+    if (!booking || !booking.bookingKey) return;
+    this.setState({ loadingModal: true });
+    try {
+      const result = await payBookingWithCard({ bookingId: booking.bookingKey, email: this.state.payDetails.email });
+      if (result.canceled) {
+        this.setState({ loadingModal: false });
+        return;
+      }
+      // Le webhook Stripe marque la course payée côté serveur ; on reflète
+      // l'état localement pour ne pas faire attendre l'utilisateur.
+      const paid = {
+        payment_status: 'PAID',
+        payment_mode: 'Card',
+        getway: 'stripe',
+        transaction_id: result.paymentIntentId,
+        customer_paid: this.state.payDetails.amount - this.state.payDetails.discount,
+        discount_amount: this.state.payDetails.discount,
+        usedWalletMoney: 0,
+        cardPaymentAmount: this.state.payDetails.payableAmmount,
+      };
+      const uid = firebase.auth().currentUser.uid;
+      await firebase.database().ref('bookings/' + booking.bookingKey + '/').update(paid);
+      await firebase.database().ref('users/' + uid + '/my-booking/' + booking.bookingKey + '/').update(paid);
+      if (booking.driver) {
+        await firebase.database().ref('users/' + booking.driver + '/my_bookings/' + booking.bookingKey + '/').update(paid);
+      }
+      this.setState({ loadingModal: false });
+      this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: booking } });
+    } catch (error) {
+      this.setState({ loadingModal: false });
+      Alert.alert(languageJSON.Error, error.message || String(error));
     }
   }
 
@@ -534,7 +506,7 @@ export default class CardDetailsScreen extends React.Component {
                   <Text style={styles.buttonTitle}>{languageJSON.pay_cash}</Text>
                 </TouchableOpacity>
                 : null}
-              {this.state.providers ?
+              {isCardPaymentAvailable() ?
                 <TouchableOpacity
                   style={styles.cardPayBtn}
                   onPress={() => {

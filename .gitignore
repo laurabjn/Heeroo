@@ -71,3 +71,7 @@ heeroo-rider/ios/
 heeroo-driver/android/
 heeroo-driver/ios/
 **/GoogleService-Info.plist.bak
+
+# Secrets des fonctions pour l'émulateur (jamais versionnés)
+**/.secret.local
+**/.env.local

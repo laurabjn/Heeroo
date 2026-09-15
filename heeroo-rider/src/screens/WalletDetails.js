@@ -18,7 +18,6 @@ import 'firebase/compat/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore'; import languageJSON from '../common/language';
-import { cloud_function_server_url } from '../common/serverUrl';
 
 export default class WalletDetails extends React.Component {
   constructor(props) {
@@ -58,27 +57,9 @@ export default class WalletDetails extends React.Component {
       }
     })
     this._retrieveSettings();
-    this.getProviders();
   }
 
 
-  getProviders = async () => {
-    fetch(cloud_function_server_url + '/get_providers', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        if (responseJson.length > 0) {
-          this.setState({ providers: responseJson })
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
 
   doReacharge() {
     if (this.state.providers) {

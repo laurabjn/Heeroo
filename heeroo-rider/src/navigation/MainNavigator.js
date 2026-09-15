@@ -19,7 +19,6 @@ import {
     OnlineChat,
     WalletDetails,
     AddMoneyScreen,
-    SelectGatewayPage,
     EmailLoginScreen,
     EmailRegisterScreen,
     EmptyNotificationPage,
@@ -29,129 +28,6 @@ import SideMenu from '../components/SideMenu';
 import { Dimensions } from 'react-native';
 var { width, height } = Dimensions.get('window');
 import languageJSON from '../common/language';
-
-//app stack for user end
-export const AppStack = {
-    ratingPage: {
-        screen: DriverTripCompleteSreen,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-    RideList: {
-        screen: RideListPage,
-        navigationOptions: {
-            headerShown: null,
-        }
-
-    },
-    Notifications: {
-        screen: NotificationPage,
-        navigationOptions: {
-            headerShown: null,
-        }
-    },
-    EmptyNotification: {
-        screen: EmptyNotificationPage,
-        navigationOptions: {
-            headerShown: null,
-        }
-    },
-
-    Profile: {
-        screen: ProfileScreen,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-    CardDetails: {
-        screen: CardDetailsScreen,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-    About: {
-        screen: AboutPage,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-    Map: {
-        screen: MapScreen,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-    onlineChat: {
-        screen: OnlineChat,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-    BookedCab: {
-        screen: BookedCabScreen,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-
-    FareDetails: {
-        screen: FareScreen,
-        navigationOptions: {
-            headerShown: null,
-        }
-    },
-    RideDetails: {
-        screen: RideDetails,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-
-    // Search: {
-    //     screen:  SearchScreen,
-    //     navigationOptions:{
-    //         headerShown: false
-    //     } 
-    // },
-    editUser: {
-        screen: EditProfilePage,
-        navigationOptions: {
-            headerShown: false
-        }
-
-    },
-    trackRide: {
-        screen: TrackNow,
-        navigationOptions: {
-            headerShown: false
-        }
-
-    },
-    wallet: {
-        screen: WalletDetails,
-        navigationOptions: {
-            headerShown: false
-        }
-
-    },
-    addMoney: {
-        screen: AddMoneyScreen,
-        navigationOptions: {
-            headerShown: false
-        }
-    },
-
-    paymentMethod: {
-        screen: SelectGatewayPage,
-        navigationOptions: {
-            headerShown: false
-        }
-    }
-
-
-
-}
 
 const AuthStack = createStackNavigator();
 const RootDrawer = createDrawerNavigator();
