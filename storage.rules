@@ -32,7 +32,7 @@ service firebase.storage {
                    && (request.resource == null || acceptableUpload());
     }
 
-    match /users/driver_licenses/{timestamp}/{rest=**} {
+    match /users/driver_licenses/{uploadId}/{rest=**} {
       allow write: if signedIn() && (request.resource == null || acceptableUpload());
       allow read: if false;
     }

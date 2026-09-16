@@ -1,4 +1,5 @@
 export default {
+    location_error: 'Impossible de déterminer votre position. Vérifiez que la localisation est activée et autorisée pour Heeroo.',
     email_placeholder: "E-mail",
     Error: "Erreur",
     password_placeholder: "Mot de passe",

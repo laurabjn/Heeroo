@@ -303,12 +303,21 @@ export default class MScreen extends React.Component {
                         this.createPassDataObj(pos, formatted_address, curuser)
                     })
                     .catch((error) => {
-                        console.error('error = ');
-                        console.error(error);
+                        console.log('[MapScreen] géocodage impossible', error);
+                        this.setState({
+                            region: { latitude: pos.latitude, longitude: pos.longitude, latitudeDelta: 0.020922, longitudeDelta: 0.020421 },
+                            geolocationFetchComplete: true
+                        });
                     });
             },
-            error => console.log('Error', JSON.stringify(error)),
-            { enableHighAccuracy: true, timeout: 20000, maximumAge: 1 },
+            error => {
+                // Sans position, on affiche quand même la carte (région par défaut)
+                // et on explique, au lieu d'un écran vide.
+                console.log('[MapScreen] localisation impossible', JSON.stringify(error));
+                this.setState({ geolocationFetchComplete: true });
+                Alert.alert(languageJSON.Error, error && error.message ? error.message : languageJSON.location_error);
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
         );
     }
 
