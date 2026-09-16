@@ -10,6 +10,9 @@
 //   POST /push_notifications { list: [{ to, title, body }] } — administrateur
 //   POST /createPaymentIntent { bookingId }                  — utilisateur authentifié
 //   POST /stripeWebhook      (appelée par Stripe, signature vérifiée)
+//   POST /createWaveCheckout  { amount }                     — chauffeur authentifié
+//   POST /confirmWaveCheckout { sessionId }                  — chauffeur authentifié
+//   POST /waveWebhook        (appelée par Wave, signature vérifiée)
 //
 // Déclencheur base de données : prélèvement de la commission sur le crédit du
 // chauffeur quand une course passe au statut END.
@@ -31,6 +34,9 @@ const COMPLETED_STATUS = 'END';
 // ou dans functions/.secret.local pour l'émulateur. Jamais dans le code.
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
+const WAVE_API_KEY = defineSecret('WAVE_API_KEY');
+const WAVE_WEBHOOK_SECRET = defineSecret('WAVE_WEBHOOK_SECRET');
+const crypto = require('crypto');
 
 // Devises sans sous-unité chez Stripe (montant envoyé tel quel, pas en centimes).
 const ZERO_DECIMAL_CURRENCIES = new Set(['XOF', 'XAF', 'JPY', 'KRW', 'CLP', 'VND', 'UGX', 'RWF', 'GNF', 'BIF', 'DJF', 'KMF', 'MGA', 'PYG', 'VUV', 'XPF']);
@@ -266,6 +272,157 @@ exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECR
           logger.info(`Course ${bookingId} payée par carte (${intent.id})`);
         }
       }
+    }
+    res.json({ received: true });
+  });
+
+// ---------------------------------------------------------------------------
+// Wave — recharge du crédit chauffeur (Sénégal, FCFA).
+//
+// createWaveCheckout : le chauffeur choisit un montant ; on crée une session
+// Wave Checkout et on renvoie l'URL à ouvrir (app Wave ou navigateur). La
+// recharge est enregistrée en attente dans walletTopups/{sessionId}.
+// waveWebhook : Wave confirme le paiement ; le crédit est ajouté au solde
+// du chauffeur — seule source de vérité, idempotent.
+// confirmWaveCheckout : secours si le webhook tarde — l'app demande à
+// vérifier la session auprès de Wave au retour dans l'app.
+// ---------------------------------------------------------------------------
+
+const WAVE_API = 'https://api.wave.com/v1';
+const WAVE_CURRENCY = 'XOF';
+const WAVE_MIN_TOPUP = 1000;    // FCFA
+const WAVE_MAX_TOPUP = 500000;  // FCFA
+
+function hostingUrl(path) {
+  const config = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
+  return `https://${config.projectId}.web.app${path}`;
+}
+
+async function waveRequest(method, path, body) {
+  const response = await fetch(WAVE_API + path, {
+    method,
+    headers: { Authorization: `Bearer ${WAVE_API_KEY.value()}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    logger.error('Wave', response.status, data);
+    throw httpError(502, data.message || `Wave a répondu ${response.status}`);
+  }
+  return data;
+}
+
+/** Crédite le chauffeur pour une session payée. Idempotent via walletTopups/{id}/status. */
+async function creditWaveTopup(sessionId, session) {
+  const topupRef = admin.database().ref(`walletTopups/${sessionId}`);
+  const topup = (await topupRef.once('value')).val();
+  if (!topup) {
+    logger.warn(`Recharge Wave ${sessionId} inconnue`);
+    return false;
+  }
+  if (topup.status === 'completed') return true;
+
+  const amount = Number(session.amount);
+  if (!(amount > 0) || String(session.currency).toUpperCase() !== WAVE_CURRENCY) {
+    logger.warn(`Recharge Wave ${sessionId} : montant ou devise inattendus`, session.amount, session.currency);
+    return false;
+  }
+
+  const driverRef = admin.database().ref(`users/${topup.uid}`);
+  await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + amount);
+  await driverRef.child('walletHistory').push({
+    type: 'Credit',
+    reason: 'wave_topup',
+    amount,
+    date: admin.database.ServerValue.TIMESTAMP,
+    txRef: sessionId,
+    transaction_id: session.transaction_id || null,
+  });
+  await topupRef.update({
+    status: 'completed',
+    transaction_id: session.transaction_id || null,
+    completed_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  logger.info(`Recharge Wave ${sessionId} : +${amount} ${WAVE_CURRENCY} pour ${topup.uid}`);
+  return true;
+}
+
+exports.createWaveCheckout = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const profile = (await admin.database().ref(`users/${user.uid}`).once('value')).val();
+  if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+
+  const amount = Math.round(Number(req.body && req.body.amount));
+  if (!(amount >= WAVE_MIN_TOPUP && amount <= WAVE_MAX_TOPUP)) {
+    throw httpError(400, `Montant entre ${WAVE_MIN_TOPUP} et ${WAVE_MAX_TOPUP} FCFA`);
+  }
+
+  const session = await waveRequest('POST', '/checkout/sessions', {
+    amount: String(amount),
+    currency: WAVE_CURRENCY,
+    success_url: hostingUrl('/wave/succes.html'),
+    error_url: hostingUrl('/wave/echec.html'),
+    client_reference: user.uid,
+  });
+
+  await admin.database().ref(`walletTopups/${session.id}`).set({
+    uid: user.uid,
+    amount,
+    currency: WAVE_CURRENCY,
+    status: 'pending',
+    created_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  res.json({ sessionId: session.id, launchUrl: session.wave_launch_url, amount, currency: WAVE_CURRENCY });
+}, { secrets: [WAVE_API_KEY] });
+
+exports.confirmWaveCheckout = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { sessionId } = req.body || {};
+  if (!sessionId) throw httpError(400, 'Paramètre sessionId requis');
+
+  const topup = (await admin.database().ref(`walletTopups/${sessionId}`).once('value')).val();
+  if (!topup || topup.uid !== user.uid) throw httpError(404, 'Recharge introuvable');
+  if (topup.status === 'completed') {
+    res.json({ status: 'completed' });
+    return;
+  }
+
+  const session = await waveRequest('GET', `/checkout/sessions/${encodeURIComponent(sessionId)}`);
+  if (session.checkout_status === 'complete' && session.payment_status === 'succeeded') {
+    await creditWaveTopup(sessionId, session);
+    res.json({ status: 'completed' });
+  } else {
+    res.json({ status: session.payment_status === 'processing' ? 'pending' : 'failed', wave: session.checkout_status });
+  }
+}, { secrets: [WAVE_API_KEY] });
+
+/** Vérifie l'en-tête Wave-Signature : t=<timestamp>,v1=<hmac-sha256(secret, timestamp + corps)>. */
+function waveSignatureValid(header, rawBody, secret) {
+  if (!header) return false;
+  const parts = Object.fromEntries(String(header).split(',').map((p) => p.split('=')));
+  if (!parts.t || !parts.v1) return false;
+  const expected = crypto.createHmac('sha256', secret).update(parts.t + rawBody.toString('utf8')).digest('hex');
+  const given = String(parts.v1);
+  return given.length === expected.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+}
+
+exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
+  .https.onRequest(async (req, res) => {
+    if (!waveSignatureValid(req.headers['wave-signature'], req.rawBody, WAVE_WEBHOOK_SECRET.value())) {
+      logger.warn('Webhook Wave : signature invalide');
+      res.status(400).send('Signature invalide');
+      return;
+    }
+    const event = req.body || {};
+    const session = event.data || {};
+    if (event.type === 'checkout.session.completed' && session.id) {
+      await creditWaveTopup(session.id, session);
+    } else if (event.type === 'checkout.session.payment_failed' && session.id) {
+      await admin.database().ref(`walletTopups/${session.id}`).update({
+        status: 'failed',
+        error: (session.last_payment_error && session.last_payment_error.code) || 'payment_failed',
+        failed_at: admin.database.ServerValue.TIMESTAMP,
+      });
     }
     res.json({ received: true });
   });

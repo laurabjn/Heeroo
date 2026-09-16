@@ -16,6 +16,7 @@ import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import languageJSON from '../common/language';
 import DrawerToggle from '../components/DrawerToggle';
+import WalletTopup from '../components/WalletTopup';
 
 
 export default class DriverIncomePage extends React.Component {
@@ -125,6 +126,7 @@ export default class DriverIncomePage extends React.Component {
                     centerComponent={<Text style={styles.headerTitleStyle}>{languageJSON.incomeText}</Text>}
                     containerStyle={styles.headerStyle}
                 />
+                <WalletTopup />
                 <View style={styles.todaysIncomeContainer}>
                     <Text style={styles.todayEarningHeaderText}>{languageJSON.today}</Text>
                     <Text style={styles.todayEarningMoneyText}>{this.state.currency.symbol} {this.state.today ? parseFloat(this.state.today).toFixed(0) : '0'}</Text>

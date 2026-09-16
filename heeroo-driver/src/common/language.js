@@ -1,4 +1,15 @@
 export default {
+    // Crédit chauffeur (recharge Wave)
+    credit_balance: 'Mon crédit',
+    topup_button: 'Recharger',
+    topup_title: 'Recharger mon crédit',
+    topup_hint: 'Choisissez un montant, puis payez avec Wave. La commission de chaque course est prélevée sur ce crédit.',
+    topup_amount_placeholder: 'Autre montant (FCFA)',
+    topup_confirm: 'Payer avec Wave',
+    topup_min_error: 'Le montant minimum est de 1 000 FCFA.',
+    topup_pending: 'Paiement Wave en attente de confirmation…',
+    topup_success: 'Votre crédit a été rechargé.',
+    topup_failed: "Le paiement n'a pas abouti. Aucun montant n'a été débité.",
     driver_near_you: "Le chauffeur arrive dans quelque instant à l’adresse de départ de la course. ",
     about_us: 'A propos',
     Error: "Erreur",
