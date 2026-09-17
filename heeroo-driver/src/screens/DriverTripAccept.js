@@ -397,7 +397,7 @@ export default class DriverTripAccept extends React.Component {
         }
     }
     getCurrencySymbol(country) {
-        data = this.state.allCurrency
+        const data = this.state.allCurrency
         let result = ''
 
         data.forEach(element => {

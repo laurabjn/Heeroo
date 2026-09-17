@@ -22,7 +22,7 @@ export default class RideList extends React.Component {
     }
 
     getCurrencySymbol(country) {
-        settings = this.props.settings
+        const settings = this.props.settings
         let result = ''
 
         settings.forEach(element => {

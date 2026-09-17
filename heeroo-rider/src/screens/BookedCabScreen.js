@@ -176,7 +176,7 @@ export default class BookedCabScreen extends React.Component {
                 if (drivers.val()) {
                     let requetedDrivers = drivers.val();
                     let count = 0;
-                    for (i = 0; i < requetedDrivers.length; i++) {
+                    for (let i = 0; i < requetedDrivers.length; i++) {
                         firebase.database().ref(`/users/` + requetedDrivers[i] + '/waiting_riders_list/' + this.state.currentBookingId + '/').remove();
                         count = count + 1;
                     }

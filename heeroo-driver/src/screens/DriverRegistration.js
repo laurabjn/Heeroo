@@ -44,6 +44,8 @@ export default class DriverRegistrationPage extends React.Component {
         Geocoder.from(position.coords.latitude, position.coords.longitude)
           .then(json => {
 
+            let isoCountryCode = null;
+
             json.results[0].address_components.forEach(element => {
               if (element.types[0] == "country") {
                 isoCountryCode = element.short_name

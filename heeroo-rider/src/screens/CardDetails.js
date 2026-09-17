@@ -100,7 +100,7 @@ export default class CardDetailsScreen extends React.Component {
   async UNSAFE_componentWillMount() {
     var pdata = this.props.route.params.data;
     if (pdata) {
-      data = {
+      const data = {
         userUId: firebase.auth().currentUser,
         amount: pdata.trip_cost,
         discount: 0,

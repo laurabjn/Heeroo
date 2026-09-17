@@ -130,6 +130,8 @@ export default class FareScreen extends React.Component {
         Geocoder.from(getCoords.droplatitude, getCoords.droplongitude)
             .then(json => {
 
+                let isoCountryCode = null;
+
                 json.results[0].address_components.forEach(element => {
                     if (element.types[0] == "country") {
                         isoCountryCode = element.short_name
