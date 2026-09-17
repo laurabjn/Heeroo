@@ -15,9 +15,18 @@ module.exports = function withFcmNotificationIcon(config, { icon, color = '#2EBD
     return cfg;
   }]);
   config = withAndroidManifest(config, (cfg) => {
+    // @react-native-firebase/messaging déclare déjà ces meta-data (couleur blanche) :
+    // on force le remplacement, sinon la fusion du manifeste échoue.
+    cfg.modResults.manifest.$ = cfg.modResults.manifest.$ || {};
+    cfg.modResults.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
     const app = AndroidConfig.Manifest.getMainApplicationOrThrow(cfg.modResults);
     AndroidConfig.Manifest.addMetaDataItemToMainApplication(app, 'com.google.firebase.messaging.default_notification_icon', '@drawable/ic_notification', 'resource');
     AndroidConfig.Manifest.addMetaDataItemToMainApplication(app, 'com.google.firebase.messaging.default_notification_color', '@color/notification_icon_color', 'resource');
+    for (const item of app['meta-data'] || []) {
+      if (String(item.$['android:name']).startsWith('com.google.firebase.messaging.default_notification_')) {
+        item.$['tools:replace'] = 'android:resource';
+      }
+    }
     return cfg;
   });
   return config;
