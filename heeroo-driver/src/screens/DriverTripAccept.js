@@ -356,6 +356,7 @@ export default class DriverTripAccept extends React.Component {
                     if (mainBookingData.requestedDriver.length == 1) {
                         firebase.database().ref('bookings/' + item.bookingId + '/').update({
                             status: "CANCELLED",
+                            cancelledBy: 'driver',
                             requestedDriver: []
                         })
                             .then(() => {
@@ -363,7 +364,8 @@ export default class DriverTripAccept extends React.Component {
                                 userDbRef.update({
                                     status: "CANCELLED",
                                 });
-                                this.sendPushNotification(item.customer, item.bookingId, languageJSON.booking_request_rejected)
+                                // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                                // this.sendPushNotification(item.customer, item.bookingId, languageJSON.booking_request_rejected)
                             })
                     }
                     else {

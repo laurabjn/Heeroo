@@ -188,6 +188,7 @@ export default class BookedCabScreen extends React.Component {
             // update status for main booking node
             firebase.database().ref(`bookings/` + this.state.currentBookingId + '/').update({
                 status: 'CANCELLED',
+                cancelledBy: 'rider',
                 reason: this.state.radio_props[this.state.value].label
             }).then(() => {
                 // It will work if driver accept the rides

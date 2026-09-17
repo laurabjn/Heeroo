@@ -23,7 +23,10 @@ export default function StarRating({
       enableHalfStar={false}
       enableSwiping={!disabled}
       onChange={(value) => { if (!disabled && selectedStar) selectedStar(value); }}
-      style={containerStyle}
+      // Étoiles serrées comme l'ancienne bibliothèque ; centrées par défaut,
+      // le conteneur de l'écran peut surcharger (alignSelf, marges…)
+      starStyle={{ marginHorizontal: disabled ? 1 : 4 }}
+      style={[{ alignSelf: 'center' }, containerStyle]}
     />
   );
 }

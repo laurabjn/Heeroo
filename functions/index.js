@@ -548,13 +548,20 @@ exports.onBookingStatusChanged = onValueUpdated(
           'Votre chauffeur attend le règlement de la course.', data);
         break;
       case 'CANCELLED':
-        // L'annulation peut venir du passager (chauffeur à prévenir) ou du chauffeur (passager à prévenir).
-        if (booking.driver && before !== 'NEW') {
-          await notifyUser(booking.driver, 'Course annulée',
-            `${customer || 'Le passager'} a annulé la course.`, data);
+        // Celui qui annule n'est pas notifié ; l'autre partie reçoit le message adapté.
+        if (booking.cancelledBy === 'rider') {
+          if (booking.driver) {
+            await notifyUser(booking.driver, 'Course annulée',
+              `${customer || 'Le passager'} a annulé la course.`, data);
+          }
+        } else if (booking.cancelledBy === 'driver') {
+          await notifyUser(booking.customer, 'Course annulée',
+            "Le chauffeur n'a pas pu prendre en charge votre course. Vous pouvez relancer une réservation.", data);
+        } else if (booking.driver) {
+          // Origine inconnue (ancienne app) : on prévient les deux, prudemment.
+          await notifyUser(booking.driver, 'Course annulée', 'La course a été annulée.', data);
+          await notifyUser(booking.customer, 'Course annulée', 'Votre course a été annulée.', data);
         }
-        await notifyUser(booking.customer, 'Course annulée',
-          booking.driver ? 'Votre course a été annulée.' : "Aucun chauffeur n'a pu prendre votre course.", data);
         break;
       default:
         return;

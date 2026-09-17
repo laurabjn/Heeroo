@@ -95,7 +95,14 @@
           "backgroundColor": "#181717"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "./plugins/withFcmNotificationIcon.js",
+        {
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#2EBD6B"
+        }
+      ]
     ],
     "extra": {
       "eas": {

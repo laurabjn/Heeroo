@@ -94,6 +94,13 @@
           "merchantIdentifier": "merchant.org.Terence.HeerooRider",
           "enableGooglePay": true
         }
+      ],
+      [
+        "./plugins/withFcmNotificationIcon.js",
+        {
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#2EBD6B"
+        }
       ]
     ],
     "extra": {
