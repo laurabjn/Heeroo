@@ -9,7 +9,8 @@ import {
     Image,
     Modal,
     SafeAreaView, Linking,
-    ActivityIndicator
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
 var { width } = Dimensions.get('window');
 import { DrawerToggle, } from '../components';
@@ -181,12 +182,16 @@ export default class DriverCompleteTrip extends React.Component {
                     longitude: location.coords.longitude,
                 };
 
-                let startLoc = '"' + this.state.rideDetails.pickup.lat + ', ' + this.state.rideDetails.pickup.lng + '"';
-                let destLoc = '"' + pos.latitude + ', ' + pos.longitude + '"';
+                let startLoc = this.state.rideDetails.pickup.lat + ',' + this.state.rideDetails.pickup.lng;
+                let destLoc = pos.latitude + ',' + pos.longitude;
                 fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${startLoc}&destination=${destLoc}&key=${google_map_key}`)
                     .then((response) => response.json())
                     .then((respJson) => {
-
+                        if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].legs) {
+                            console.log('[Directions] pas de trajet pour le calcul du prix :', respJson.status, respJson.error_message || '');
+                            Alert.alert(languageJSON.Error || 'Erreur', 'Impossible de calculer la distance de la course. Réessayez.');
+                            return;
+                        }
                         farehelper(respJson.routes[0].legs[0].distance.value, totalTimeTaken, this.state.rateDetails ? this.state.rateDetails : 1, "FR").then(
                             (fareCalculation) => {
                                 this.finalCostStore(item, fareCalculation.grandTotal, pos, respJson.routes[0].legs[0].distance.value, fareCalculation.convenience_fees)
@@ -253,7 +258,7 @@ export default class DriverCompleteTrip extends React.Component {
                 let userDbRef = firebase.database().ref('users/' + item.customer + '/my-booking/' + item.bookingId + '/');
                 userDbRef.update(riderData).then(() => {
                     this.setState({ loadingModal: false })
-                    this.props.navigation.navigate('DriverFare', { allDetails: item, trip_cost: data.trip_cost, trip_end_time: data.trip_end_time })
+                    this.props.navigation.navigate('DriverTripAccept', { screen: 'DriverFare', params: { allDetails: item, trip_cost: data.trip_cost, trip_end_time: data.trip_end_time } })
                     this.sendPushNotification(item.customer, item.bookingId)
                 })
             })
@@ -319,18 +324,6 @@ export default class DriverCompleteTrip extends React.Component {
         Linking.openURL('https://waze.com/ul?ll=' + allDetails.drop.lat + '%2C' + allDetails.drop.lng + '&navigate=yes')
     }
 
-    renderDirectionPopup = () => {
-
-        return (
-            <Popup
-                isVisible={this.state.directionPopupVisible}
-                onCancelPressed={() => this.setState({ directionPopupVisible: false })}
-                onAppPressed={() => this.setState({ directionPopupVisible: false })}
-                onBackButtonPressed={() => this.setState({ directionPopupVisible: false })}
-                options={this.state.directionData}
-            />
-        );
-    }
 
 
     render() {
@@ -362,7 +355,6 @@ export default class DriverCompleteTrip extends React.Component {
                     />
                 </View>
                 {this.loading()}
-                {this.renderDirectionPopup()}
             </View>
         );
     }

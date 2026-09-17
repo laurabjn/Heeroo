@@ -29,7 +29,6 @@ import { DrawerToggle, NotificationBtn } from '../components';
 import { getDistance } from 'geolib';
 
 import BackgroundGeolocation from '../common/backgroundGeolocation';
-import { Popup } from 'react-native-map-link';
 import { checkLocationPermission } from '../common/permission';
 
 export default class DriverStartTrip extends React.Component {
@@ -50,7 +49,14 @@ export default class DriverStartTrip extends React.Component {
             prevPosition: null,
             directionData: {},
             directionPopupVisible: false,
-            showMap: true
+            showMap: true,
+            // Données synchrones disponibles dès le premier rendu
+            rideDetails: props.route.params.allDetails,
+            curUid: firebase.auth().currentUser ? firebase.auth().currentUser.uid : '',
+        }
+        const pickup = props.route.params.allDetails && props.route.params.allDetails.pickup;
+        if (pickup && pickup.lat) {
+            this.state.region = { latitude: pickup.lat, longitude: pickup.lng, latitudeDelta: 0.1, longitudeDelta: 0.1 };
         }
     }
 
@@ -66,18 +72,7 @@ export default class DriverStartTrip extends React.Component {
             }
         })
 
-        this.setState({
-            rideDetails: allDetails,
-            region: {
-                latitude: allDetails.pickup.lat,
-                longitude: allDetails.pickup.lng,
-                latitudeDelta: 0.1,
-                longitudeDelta: 0.1,
-            },
-            curUid: firebase.auth().currentUser.uid
-        }, () => {
-            this.checkStaus()
-        })
+        this.checkStaus()
 
         //setInterval(this.updateLocation.bind(this),10000);
         const { navigation } = this.props;
@@ -363,18 +358,6 @@ export default class DriverStartTrip extends React.Component {
              */
     }
 
-    renderDirectionPopup = () => {
-
-        return (
-            <Popup
-                isVisible={this.state.directionPopupVisible}
-                onCancelPressed={() => this.setState({ directionPopupVisible: false })}
-                onAppPressed={() => this.setState({ directionPopupVisible: false })}
-                onBackButtonPressed={() => this.setState({ directionPopupVisible: false })}
-                options={this.state.directionData}
-            />
-        );
-    }
 
     render() {
 
@@ -464,9 +447,6 @@ export default class DriverStartTrip extends React.Component {
                     onChangeText={text => this.setState({ inputCode: text })}
                     enterCode={() => this.codeEnter(this.state.inputCode)}
                 />
-
-
-                {this.renderDirectionPopup()}
             </View>
         );
     }

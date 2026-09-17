@@ -218,14 +218,22 @@ export default class DriverTripAccept extends React.Component {
             var jobs = [];
             let waiting_riderData = snapshot.val().waiting_riders_list;
             for (let key in waiting_riderData) {
-                waiting_riderData[key].bookingId = key;
-                jobs.push(waiting_riderData[key]);
+                const request = waiting_riderData[key];
+                // Entrée incomplète (tentative interrompue) : on l'ignore et on la retire
+                if (!request || !request.pickup || !request.drop) {
+                    console.log('[DriverTripAccept] demande incomplète ignorée', key);
+                    firebase.database().ref('users/' + curuid + '/waiting_riders_list/' + key).remove();
+                    continue;
+                }
+                request.bookingId = key;
+                jobs.push(request);
             }
             let my_bookingsData = snapshot.val().my_bookings;
             for (let key in my_bookingsData) {
-                if (my_bookingsData[key].status == "START") {
-                    my_bookingsData[key].bookingUid = key;
-                    jobs.push(my_bookingsData[key]);
+                const booking = my_bookingsData[key];
+                if (booking && booking.status == "START" && booking.pickup && booking.drop) {
+                    booking.bookingUid = key;
+                    jobs.push(booking);
                 }
             }
 

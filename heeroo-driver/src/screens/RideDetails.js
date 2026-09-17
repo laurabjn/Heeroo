@@ -88,7 +88,7 @@ export default class RideDetails extends React.Component {
                 payButtonShow: (this.getRideDetails.payment_status == 'DUE' || this.getRideDetails.payment_status == 'WAITING' || this.getRideDetails.payment_status == 'IN_PROGRESS' || this.getRideDetails.status == 'ACCEPTED') ? true : false
             }, () => {
 
-                this.getDirections('"' + this.state.paramData.pickup.lat + ',' + this.state.paramData.pickup.lng + '"', '"' + this.state.paramData.drop.lat + ',' + this.state.paramData.drop.lng + '"');
+                this.getDirections(this.state.paramData.pickup.lat + ',' + this.state.paramData.pickup.lng, this.state.paramData.drop.lat + ',' + this.state.paramData.drop.lng);
                 this.forceUpdate();
             })
         }
@@ -97,8 +97,8 @@ export default class RideDetails extends React.Component {
 
     // find your origin and destination point coordinates and pass it to our method.
     async getDirections() {
-        let startLoc = '"' + this.state.paramData.pickup.lat + ',' + this.state.paramData.pickup.lng + '"';
-        let destinationLoc = '"' + this.state.paramData.drop.lat + ',' + this.state.paramData.drop.lng + '"';
+        let startLoc = this.state.paramData.pickup.lat + ',' + this.state.paramData.pickup.lng;
+        let destinationLoc = this.state.paramData.drop.lat + ',' + this.state.paramData.drop.lng;
         try {
             let resp = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${startLoc}&destination=${destinationLoc}&key=${google_map_key}`)
             let respJson = await resp.json();

@@ -173,7 +173,7 @@ export default class DriverTripComplete extends React.Component {
 
                     <View style={styles.questionView} >
                         {/*<Button
-                            title={languageJSON.no}
+                            title={languageJSON.notYetPaid}
                             titleStyle={styles.btnText}
                             loading={this.state.loading}
                             loadingProps={{ color: colors.TEXT_DARK }}
