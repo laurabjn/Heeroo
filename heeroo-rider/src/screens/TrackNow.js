@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     },
     headerGradient: {
         zIndex: 1,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 100
     },
     headerStyle: {

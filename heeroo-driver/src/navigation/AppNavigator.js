@@ -1,12 +1,13 @@
 import React from 'react';
 import {
-    View,
-    StatusBar,
+  View,
+  StatusBar,
 } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { AuthNavigator, RootNavigator } from './MainNavigator';
 import { AuthLoadingScreen } from '../screens/AuthLoadingScreen';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 
 const AppNavigatorStack = createStackNavigator();
@@ -24,10 +25,14 @@ function AppNavigator() {
 class AppContainer extends React.Component {
     render() {
         return (
-            <NavigationContainer>
-                <StatusBar translucent={true} backgroundColor={"transparent"} barStyle={"dark-content"} />
-                <AppNavigator />
-            </NavigationContainer>
+            <SafeAreaProvider>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }} edges={['bottom']}>
+          <NavigationContainer>
+                    <StatusBar translucent={true} backgroundColor={"transparent"} barStyle={"dark-content"} />
+                    <AppNavigator />
+                </NavigationContainer>
+        </SafeAreaView>
+      </SafeAreaProvider>
         )
     }
 }

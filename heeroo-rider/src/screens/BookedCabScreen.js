@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
 
     },
     loadingModalBlur: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     loadingModalText: {
         fontFamily: "Montserrat-Light",
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     },
     headerGradient: {
         zIndex: 1,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 80,
 
     },

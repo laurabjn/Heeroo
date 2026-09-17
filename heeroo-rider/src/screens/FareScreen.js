@@ -728,12 +728,12 @@ const styles = StyleSheet.create({
     },
     headerGradient: {
         zIndex: 1,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 100
     },
     map: {
         flex: 1,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     carsView: {
         borderRadius: size * 15,

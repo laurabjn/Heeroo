@@ -27,8 +27,7 @@ export default class MapComponent extends Component {
                 style={[mapStyle, { marginBottom: this.state.marginBottom }]}
                 region={mapRegion}
                 onRegionChangeComplete={onRegionChangeComplete}
-                onMapReady={() => { console.log('[Map] onMapReady'); this.setState({ marginBottom: 1 }); }}
-                onMapLoaded={() => console.log('[Map] onMapLoaded (tuiles chargées)')}
+                onMapReady={() => this.setState({ marginBottom: 1 })}
             >
 
                 {

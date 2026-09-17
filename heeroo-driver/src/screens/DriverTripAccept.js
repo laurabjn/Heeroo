@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
     },
     map: {
 
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         overflow: 'hidden'
     },
     triangle: {

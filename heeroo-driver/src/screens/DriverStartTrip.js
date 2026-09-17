@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
         elevation: 1
     },
     gradient: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 100,
         zIndex: 1
     },

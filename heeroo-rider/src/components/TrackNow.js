@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
         fontSize: 18
     },
     map: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         flex: 1,
 
     },

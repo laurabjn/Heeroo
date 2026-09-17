@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
         textAlign: "center"
     },
     gradient: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 100,
         zIndex: 1
     },
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     },
     map: {
         flex: 1,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     triangle: {
         width: 0,

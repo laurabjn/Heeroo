@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     map: {
         flex: 1,
         borderRadius: 10,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     innerStyle: {
         marginLeft: 10,
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20
     },
     gradient: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 100
     },
     footer: {

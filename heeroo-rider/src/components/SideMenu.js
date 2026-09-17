@@ -24,18 +24,17 @@ export default function SideMenu(props) {
     const [userData, setuserData] = useState({})
 
     useEffect(() => {
-        var curuser = firebase.auth().currentUser.uid;
-        const userRoot = firebase.database().ref('users/' + curuser);
-        userRoot.on('value', userData => {
+        const user = firebase.auth().currentUser;
+        if (!user) return undefined;
+        const userRoot = firebase.database().ref('users/' + user.uid);
+        const onValue = userRoot.on('value', userData => {
             if (userData.val()) {
                 setuserData(userData.val())
             }
         })
-
-        return () => {
-            console.log(" side menu unmounted")
-            console.log(this.state)
-        }
+        // Détache l'écouteur quand le menu disparaît (déconnexion), sinon il
+        // resterait accroché à une lecture désormais interdite par les règles.
+        return () => userRoot.off('value', onValue);
     }, []);
 
     useEffect(() => {

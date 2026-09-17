@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
     },
     headerGradient: {
         zIndex: 1,
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         height: 100
     },
     swiperGradient: {
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
         right: 0,
     },
     map: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     carsView: {
         borderRadius: size * 15,
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
         elevation: 1
     },
     carsSwipeContainer: {
-        flex: 1,
+        flexGrow: 1,
         justifyContent: "center",
         marginBottom: size * 20
     },
