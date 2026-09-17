@@ -142,7 +142,8 @@ export default class OnlineChat extends Component {
                     msgTime: firebase.database.ServerValue.TIMESTAMP,
                     source: "driver"
                   }).then(() => {
-                    this.sendPushNotification(this.state.carbookedInfo.customer, this.getParamData.bookingId, notificationBody, languageJSON.message_notification_title);
+                    // Notification de chat désormais envoyée par le serveur (déclencheur onChatMessage)
+                    // this.sendPushNotification(this.state.carbookedInfo.customer, this.getParamData.bookingId, notificationBody, languageJSON.message_notification_title);
 
                   })
                 }
@@ -161,7 +162,8 @@ export default class OnlineChat extends Component {
                       source: "driver"
                     })
 
-                    this.sendPushNotification(this.state.carbookedInfo.customer, this.getParamData.bookingId, notificationBody, languageJSON.message_notification_title);
+                    // Notification de chat désormais envoyée par le serveur (déclencheur onChatMessage)
+                    // this.sendPushNotification(this.state.carbookedInfo.customer, this.getParamData.bookingId, notificationBody, languageJSON.message_notification_title);
                   })
                 }
               } else {
@@ -179,7 +181,8 @@ export default class OnlineChat extends Component {
                       msgTime: firebase.database.ServerValue.TIMESTAMP,
                       source: "driver"
                     })
-                    this.sendPushNotification(this.state.carbookedInfo.customer, this.getParamData.bookingId, notificationBody, languageJSON.message_notification_title);
+                    // Notification de chat désormais envoyée par le serveur (déclencheur onChatMessage)
+                    // this.sendPushNotification(this.state.carbookedInfo.customer, this.getParamData.bookingId, notificationBody, languageJSON.message_notification_title);
                   } else {
                     //alert("ID not found");
                   }

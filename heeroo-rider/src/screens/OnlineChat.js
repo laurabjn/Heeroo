@@ -139,7 +139,8 @@ export default class OnlineChat extends Component {
               msgTime: firebase.database.ServerValue.TIMESTAMP,
               source: "rider"
             }).then(() => {
-              this.sendPushNotification(this.state.carbookedInfo.driver, this.getParamData.bokkingId, notificationBody, languageJSON.message_notification_title)
+              // Notification de chat désormais envoyée par le serveur (déclencheur onChatMessage)
+              // this.sendPushNotification(this.state.carbookedInfo.driver, this.getParamData.bokkingId, notificationBody, languageJSON.message_notification_title)
             })
           }
           else {
@@ -156,7 +157,8 @@ export default class OnlineChat extends Component {
                 msgTime: firebase.database.ServerValue.TIMESTAMP,
                 source: "rider"
               })
-              this.sendPushNotification(this.state.carbookedInfo.driver, this.getParamData.bokkingId, notificationBody, languageJSON.message_notification_title)
+              // Notification de chat désormais envoyée par le serveur (déclencheur onChatMessage)
+              // this.sendPushNotification(this.state.carbookedInfo.driver, this.getParamData.bokkingId, notificationBody, languageJSON.message_notification_title)
             })
           }
         } else {
@@ -174,7 +176,8 @@ export default class OnlineChat extends Component {
                 msgTime: firebase.database.ServerValue.TIMESTAMP,
                 source: "rider"
               })
-              this.sendPushNotification(this.state.carbookedInfo.driver, this.getParamData.bokkingId, notificationBody, languageJSON.message_notification_title)
+              // Notification de chat désormais envoyée par le serveur (déclencheur onChatMessage)
+              // this.sendPushNotification(this.state.carbookedInfo.driver, this.getParamData.bokkingId, notificationBody, languageJSON.message_notification_title)
             } else { }
 
           })

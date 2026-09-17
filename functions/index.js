@@ -513,6 +513,25 @@ exports.onBookingRequested = onValueCreated(
   }
 );
 
+// Message de chat : notifie le destinataire (l'autre partie de la course).
+exports.onChatMessage = onValueCreated(
+  { ref: '/chat/{bookingId}/message/{messageId}', instance: target.instance, region: target.region },
+  async (event) => {
+    const message = event.data.val();
+    if (!message || message.type === 'notification') return;
+    const booking = (await admin.database().ref(`bookings/${event.params.bookingId}`).once('value')).val();
+    if (!booking || !booking.customer || !booking.driver) return;
+
+    const fromCustomer = message.source === 'rider' || message.from === booking.customer;
+    const recipient = fromCustomer ? booking.driver : booking.customer;
+    const senderName = fromCustomer ? shortName(booking, 'customer_name') : shortName(booking, 'driver_name');
+    const text = String(message.message || '');
+    const body = (senderName ? `${senderName} : ` : '') + (text.length > 120 ? text.slice(0, 117) + '…' : text);
+    await notifyUser(recipient, 'Nouveau message', body,
+      { type: 'chat', bookingId: event.params.bookingId });
+  }
+);
+
 // Chauffeur à proximité du point de départ : l'app chauffeur écrit
 // bookings/{id}/driver_near quand il approche à moins de 100 m.
 exports.onDriverNear = onValueCreated(
