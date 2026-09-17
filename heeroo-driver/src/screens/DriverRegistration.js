@@ -161,35 +161,26 @@ export default class DriverRegistrationPage extends React.Component {
   }
 
   //upload of picture
-  uploadmultimedia = async (fname, lname, mobile, email, vehicleNum, vehicleName, url, companyName, companyAddress) => {
-    this.setState({ loading: true })
-    const blob = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = function () {
-        resolve(xhr.response); // when BlobModule finishes reading, resolve with the blob
-      };
-      xhr.onerror = function () {
-        reject(new TypeError('Network request failed')); // error occurred, rejecting
-      };
-      xhr.responseType = 'blob'; // use BlobModule's UriHandler
-      xhr.open('GET', url, true); // fetch the blob from uri in async mode
-      xhr.send(null); // no initial data
-    });
-
-    if ((blob.size / 1000000) > 2) {
-      this.setState({ loading: false }, () => { Alert.alert(languageJSON.error, languageJSON.image_size_error) })
+  uploadmultimedia = async (fname, lname, mobile, email, vehicleNum, vehicleName, uri, companyName, companyAddress) => {
+    this.setState({ loading: true });
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      if ((blob.size / 1000000) > 2) {
+        this.setState({ loading: false });
+        Alert.alert(languageJSON.error, languageJSON.image_size_error);
+        return;
+      }
+      const timestamp = new Date().getTime();
+      const imageRef = firebase.storage().ref().child('users/driver_licenses/' + timestamp + '/');
+      await imageRef.put(blob);
+      const dwnldurl = await imageRef.getDownloadURL();
+      this.clickRegister(fname, lname, mobile, email, vehicleNum, vehicleName, dwnldurl, companyName, companyAddress);
+    } catch (error) {
+      console.log('[DriverRegistration] upload licence échoué', error);
+      this.setState({ loading: false });
+      Alert.alert(languageJSON.error || 'Erreur', "L'envoi de l'image a échoué. Réessayez.");
     }
-    else {
-      var timestamp = new Date().getTime()
-      var imageRef = firebase.storage().ref().child(`users/driver_licenses/` + timestamp + `/`);
-      return imageRef.put(blob).then(() => {
-        blob.close()
-        return imageRef.getDownloadURL()
-      }).then((dwnldurl) => {
-        this.clickRegister(fname, lname, mobile, email, vehicleNum, vehicleName, dwnldurl, companyName, companyAddress);
-      })
-    }
-
   }
 
   render() {

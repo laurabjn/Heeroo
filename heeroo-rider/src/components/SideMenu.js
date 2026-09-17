@@ -60,7 +60,7 @@ export default function SideMenu(props) {
     if (currentUser) {
         return (
             <DrawerContentScrollView {...props} style={styles.mainViewStyle} >
-                <SideMenuHeader userEmail={currentUser.email} userName={userData.firstName + ' ' + userData.lastName} />
+                <SideMenuHeader userEmail={currentUser.email} userName={userData.firstName + ' ' + userData.lastName} userImage={userData.profile_image} />
                 <DrawerItemList {...props} />
                 <DrawerItem style={styles.drawerStyle} labelStyle={styles.drawerLabelStyle} label='Déconnexion' onPress={() => signOut()} />
             </DrawerContentScrollView>

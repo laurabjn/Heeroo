@@ -143,33 +143,20 @@ export default class DiverReg extends React.Component {
     };
 
 
-    async uploadmultimedia(url) {
-        const blob = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = function () {
-                resolve(xhr.response); // when BlobModule finishes reading, resolve with the blob
-            };
-            xhr.onerror = function () {
-                reject(new TypeError(languageJSON.network_request_failed)); // error occurred, rejecting
-            };
-            xhr.responseType = 'blob'; // use BlobModule's UriHandler
-            xhr.open('GET', url, true); // fetch the blob from uri in async mode
-            xhr.send(null); // no initial data
-        });
-
-        var imageRef = firebase.storage().ref().child(`users/${firebase.auth().currentUser.uid + this.state.file_key}`);
-
-        return imageRef.put(blob).then(() => {
-            blob.close()
-            return imageRef.getDownloadURL()
-        }).then((url) => {
-
-            var d = new Date();
-            this.setState({
-                [this.state.file_key]: url,
-                [this.state.file_key + "_loading"]: false
-            })
-        })
+    async uploadmultimedia(uri) {
+        const key = this.state.file_key;
+        try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            const imageRef = firebase.storage().ref().child(`users/${firebase.auth().currentUser.uid + key}`);
+            await imageRef.put(blob);
+            const url = await imageRef.getDownloadURL();
+            this.setState({ [key]: url, [key + "_loading"]: false });
+        } catch (error) {
+            console.log('[driverReg] upload document échoué', error);
+            this.setState({ [key + "_loading"]: false });
+            Alert.alert(languageJSON.error || 'Erreur', "L'envoi du document a échoué. Réessayez.");
+        }
     }
 
     // first name validation

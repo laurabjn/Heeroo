@@ -93,33 +93,20 @@ export default class ProfileScreen extends React.Component {
     };
 
     //upload picture function
-    async uploadmultimedia(url) {
-        // console.log(url)
-        const blob = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = function () {
-                resolve(xhr.response); // when BlobModule finishes reading, resolve with the blob
-            };
-            xhr.onerror = function () {
-                reject(new TypeError('Network request failed')); // error occurred, rejecting
-            };
-            xhr.responseType = 'blob'; // use BlobModule's UriHandler
-            xhr.open('GET', url, true); // fetch the blob from uri in async mode
-            xhr.send(null); // no initial data
-        });
-        console.log('After')
-        var imageRef = firebase.storage().ref().child(`users/${this.state.currentUser.uid}`);
-        return imageRef.put(blob).then(() => {
-            blob.close()
-            return imageRef.getDownloadURL()
-        }).then((url) => {
-            this.setState({ loader: false })
-            var d = new Date();
-            console.log(url);
-            firebase.database().ref(`/users/` + this.state.currentUser.uid + '/').update({
-                profile_image: url
-            })
-        })
+    async uploadmultimedia(uri) {
+        try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            const imageRef = firebase.storage().ref().child(`users/${this.state.currentUser.uid}`);
+            await imageRef.put(blob);
+            const url = await imageRef.getDownloadURL();
+            await firebase.database().ref('/users/' + this.state.currentUser.uid + '/').update({ profile_image: url });
+            this.setState({ loader: false, profile_image: url });
+        } catch (error) {
+            console.log('[ProfileScreen] upload photo échoué', error);
+            this.setState({ loader: false });
+            Alert.alert(languageJSON.Error || 'Erreur', "L'envoi de la photo a échoué. Réessayez.");
+        }
     }
 
     editProfile = () => {

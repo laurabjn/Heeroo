@@ -115,28 +115,18 @@ export default function SideMenu(props) {
     };
 
     const uploadmultimedia = async (uri) => {
-        const blob = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = function () {
-                resolve(xhr.response); // when BlobModule finishes reading, resolve with the blob
-            };
-            xhr.onerror = function () {
-                reject(new TypeError(languageJSON.network_request_failed)); // error occurred, rejecting
-            };
-            xhr.responseType = 'blob'; // use BlobModule's UriHandler
-            xhr.open('GET', uri, true); // fetch the blob from uri in async mode
-            xhr.send(null); // no initial data
-        });
-
-        var imageRef = firebase.storage().ref().child(`users/${currentUser.uid}`);
-        return imageRef.put(blob).then(() => {
-            blob.close()
-            return imageRef.getDownloadURL()
-        }).then((url) => {
-            firebase.database().ref(`/users/` + currentUser.uid + '/').update({
-                profile_image: url
-            })
-        })
+        try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            const imageRef = firebase.storage().ref().child(`users/${currentUser.uid}`);
+            await imageRef.put(blob);
+            const url = await imageRef.getDownloadURL();
+            await firebase.database().ref('/users/' + currentUser.uid + '/').update({ profile_image: url });
+            setprofile_image(url);
+        } catch (error) {
+            console.log('[ProfileScreen] upload photo échoué', error);
+            Alert.alert(languageJSON.Error || 'Erreur', "L'envoi de la photo a échoué. Réessayez.");
+        }
     }
 
     const editProfile = () => {
