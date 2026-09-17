@@ -30,7 +30,7 @@ const FUNCTIONS_BASE_URL = {
 };
 
 const STRIPE_PUBLISHABLE_KEY = {
-  development: process.env.STRIPE_PK_TEST || '',   // pk_test_… du compte Stripe du client (mode test)
+  development: process.env.STRIPE_PK_TEST || 'pk_test_BeeF7JTRF8kOrTCBdPOTkE6r00u7U7w3dD', // pk_test du compte Stripe du client (mode test, publique)
   production: process.env.STRIPE_PK_LIVE || '',    // pk_live_…
 };
 
