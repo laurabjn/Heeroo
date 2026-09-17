@@ -20,6 +20,8 @@ function rideStatus(item) {
             : { label: "Paiement en attente", color: '#ff9f43', done: false };
         case 'NOT PAID':
         case 'DUE': return { label: "Règlement attendu", color: '#ff9f43', done: false };
+        case 'WAITING': return { label: "Non réglée", color: '#ff9f43', done: true };
+        case 'PAID': return { label: "Terminée", color: '#00df8f', done: true };
         case 'CANCELLED': return { label: "Annulée", color: '#ff6a66', done: true };
         default: return { label: String(item.status || ''), color: '#9b9b9b', done: true };
     }
