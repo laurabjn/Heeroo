@@ -126,12 +126,10 @@ export default class DriverStartTrip extends React.Component {
                     var distance = getDistance({ latitude: location.latitude, longitude: location.longitude }, { latitude: this.state.rideDetails.pickup.lat, longitude: this.state.rideDetails.pickup.lng });
                     console.log('on est a ' + distance + ' metres')
 
-                    if (distance <= 100 && !!this.state.riderToken && !this.state.nearNotifSend) {
-                        console.log('donc notif envoyé')
-                        RequestPushMsg(this.state.riderToken, languageJSON.driver_near_you, null, null)
-                        this.setState({
-                            nearNotifSend: true
-                        })
+                    if (distance <= 100 && !this.state.nearNotifSend && this.state.rideDetails && this.state.rideDetails.bookingId) {
+                        // Le serveur notifie le passager (déclencheur sur bookings/<id>/driver_near)
+                        firebase.database().ref('bookings/' + this.state.rideDetails.bookingId + '/driver_near').set(true);
+                        this.setState({ nearNotifSend: true });
                     }
                     if (this.mapRef) {
                         this.mapRef.fitToCoordinates([{ latitude: location.latitude, longitude: location.longitude }, { latitude: this.state.rideDetails.pickup.lat, longitude: this.state.rideDetails.pickup.lng }], {

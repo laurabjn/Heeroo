@@ -513,6 +513,21 @@ exports.onBookingRequested = onValueCreated(
   }
 );
 
+// Chauffeur à proximité du point de départ : l'app chauffeur écrit
+// bookings/{id}/driver_near quand il approche à moins de 100 m.
+exports.onDriverNear = onValueCreated(
+  { ref: '/bookings/{bookingId}/driver_near', instance: target.instance, region: target.region },
+  async (event) => {
+    if (event.data.val() !== true) return;
+    const booking = (await admin.database().ref(`bookings/${event.params.bookingId}`).once('value')).val();
+    if (!booking) return;
+    const driver = shortName(booking, 'driver_name');
+    await notifyUser(booking.customer, 'Votre chauffeur arrive',
+      `${driver || 'Votre chauffeur'} arrive au point de départ.`,
+      { type: 'driver_near', bookingId: event.params.bookingId });
+  }
+);
+
 // Changements de statut : ACCEPTED, START, END, CANCELLED, NOT PAID / DUE.
 exports.onBookingStatusChanged = onValueUpdated(
   { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region },
