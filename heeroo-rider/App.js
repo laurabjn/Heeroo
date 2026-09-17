@@ -3,8 +3,8 @@ import { LogBox } from 'react-native';
 import 'react-native-gesture-handler';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
@@ -29,9 +29,14 @@ if (Constants.expoConfig.extra.appEnv !== 'production') {
 // L'app est initialisée une fois avec l'API modulaire pour brancher la
 // persistance de session sur AsyncStorage ; l'API compat (firebase.auth(),
 // firebase.database()) utilisée dans les écrans réutilise cette même instance.
-const app = initializeApp(firebaseConfig);
-initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
-firebase.initializeApp(firebaseConfig);
+// Tolérant au rechargement à chaud : Firebase refuse une double initialisation.
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+try {
+  initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+} catch (e) {
+  getAuth(app);
+}
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
 // Géocodage inverse (pays de l'utilisateur, adresses) : initialisé une seule fois ici,
 // les écrans l'utilisent avant même que la carte ne soit montée.
