@@ -1,17 +1,18 @@
 import React from 'react';
 import {
-    StyleSheet,
-    View,
-    Image,
-    Dimensions,
-    Text,
-    Platform,
+    ActivityIndicator,
     Alert,
+    Dimensions,
+    Image,
     Modal,
+    Platform,
     ScrollView,
-    ActivityIndicator
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
-import { TouchableOpacity, BaseButton, TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { MapComponent, DrawerToggle, NotificationBtn, Path } from '../components';
 import { Icon, Button, Avatar, Header } from '@rneui/themed';
 import { colors } from '../common/theme';
@@ -143,6 +144,8 @@ export default class MScreen extends React.Component {
 
                 Geocoder.from(position.coords.latitude, position.coords.longitude)
                     .then(json => {
+
+                        let isoCountryCode = null;
 
                         json.results[0].address_components.forEach(element => {
                             if (element.types[0] == "country") {
