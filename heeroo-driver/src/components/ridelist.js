@@ -1,11 +1,29 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, AsyncStorage } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Icon } from '@rneui/themed'
 import { colors } from '../common/theme';
 import { Path } from '../components';
 import languageJSON from '../common/language';
 import countryCurrency from './../constants/countryCurrency.json'
 
+
+// Statut lisible d'une course : libellé, couleur, et si elle est terminée (passée).
+function rideStatus(item) {
+    const paid = item.payment_status == 'PAID';
+    switch (item.status) {
+        case 'NEW': return { label: "Nouvelle demande", color: '#fdd42c', done: false };
+        case 'ACCEPTED': return { label: "À prendre en charge", color: '#00aced', done: false };
+        case 'ARRIVED': return { label: "Sur place", color: '#00aced', done: false };
+        case 'START': return { label: "Course en cours", color: '#00aced', done: false };
+        case 'END': return paid
+            ? { label: "Terminée", color: '#00df8f', done: true }
+            : { label: "Paiement en attente", color: '#ff9f43', done: false };
+        case 'NOT PAID':
+        case 'DUE': return { label: "Règlement attendu", color: '#ff9f43', done: false };
+        case 'CANCELLED': return { label: "Annulée", color: '#ff6a66', done: true };
+        default: return { label: String(item.status || ''), color: '#9b9b9b', done: true };
+    }
+}
 
 export default class RideList extends React.Component {
 
@@ -44,33 +62,12 @@ export default class RideList extends React.Component {
     //flatlist return function
     newData = ({ item, index }) => {
 
-        var statusColor = "#fdd42c";
-        switch (item.status) {
-            case "ACCEPTED":
-                statusColor = "#00aced";
-                break;
-            case "CANCELLED":
-                statusColor = "#ff6a66";
-                break;
-            case "NOT PAID":
-                statusColor = "#ff6a66";
-                break;
-            case "PAID":
-                statusColor = "#00df8f";
-                break;
-            case "NEW":
-                statusColor = "#fdd42c";
-                break;
-            case "END":
-                statusColor = "#00df8f";
-                break;
-        }
-
+        const status = rideStatus(item);
         return (
             <TouchableOpacity style={styles.itemStyle} onPress={() => this.onPressButton(item, index)}>
                 <View style={[styles.bookHeader]} >
                     <Text style={[styles.dateStyle]}>{item.tripdate ? new Date(item.tripdate).toLocaleString() : ""}</Text>
-                    <View style={[styles.locationStatus, { backgroundColor: statusColor }]} />
+                    <View style={[styles.statusBadge, { backgroundColor: status.color }]}><Text style={styles.statusText}>{status.label}</Text></View>
                 </View>
                 <View style={[styles.bookHeader]} >
                     {item.status == 'END' && item.payment_status == 'PAID' && <Text style={[styles.fareStyle]}>{item.status == 'END' && item.payment_status == 'PAID' ? item.trip_cost > 0 ? parseFloat(item.trip_cost).toFixed(0) + " " + this.getCurrencySymbol(item.pickup.country) : parseFloat(item.estimate).toFixed(0) + " " + this.getCurrencySymbol(item.pickup.country) : null}</Text>}
@@ -91,13 +88,27 @@ export default class RideList extends React.Component {
     }
 
     render() {
-        const { data } = this.props;
+        const { data } = this.props
+        const rides = data || [];
+        const ongoing = rides.filter((r) => !rideStatus(r).done);
+        const past = rides.filter((r) => rideStatus(r).done);
+        const sections = [];
+        if (ongoing.length) sections.push({ title: 'En cours', data: ongoing });
+        if (past.length) sections.push({ title: 'Passées', data: past });
         return (
             <View style={styles.container}>
-                <FlatList
-                    keyExtractor={(item, index) => index.toString()}
-                    data={data}
+                <SectionList
+                    showsVerticalScrollIndicator={false}
+                    keyExtractor={(item, index) => (item.bookingId || '') + index}
+                    sections={sections}
                     renderItem={this.newData}
+                    renderSectionHeader={({ section }) => (
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>{section.title}</Text>
+                            <Text style={styles.sectionCount}>{section.data.length}</Text>
+                        </View>
+                    )}
+                    stickySectionHeadersEnabled={false}
                 />
             </View>
         );
@@ -177,6 +188,36 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 1,
         backgroundColor: colors.SEPARATOR_LIGHT
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statusText: {
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 11,
+        color: '#ffffff',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingTop: 16,
+        paddingBottom: 6,
+        backgroundColor: colors.ITEM,
+    },
+    sectionTitle: {
+        fontFamily: 'Montserrat-Bold',
+        fontSize: 15,
+        color: colors.TEXT,
+        marginRight: 8,
+    },
+    sectionCount: {
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 12,
+        color: colors.TEXT,
+        opacity: 0.5,
     },
     locationStatus: {
         width: 12,
