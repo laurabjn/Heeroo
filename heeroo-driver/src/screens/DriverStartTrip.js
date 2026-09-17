@@ -397,7 +397,7 @@ export default class DriverStartTrip extends React.Component {
                     </View>
                     <View style={styles.client} >
                         <Image style={styles.clientImage}
-                            source={require('../../assets/images/avatar.png')}
+                            source={this.state.rideDetails && this.state.rideDetails.customer_image ? { uri: this.state.rideDetails.customer_image } : require('../../assets/images/avatar.png')}
                         />
                         <Text style={styles.clientText} >{customer_name}</Text>
                         <TouchableOpacity
