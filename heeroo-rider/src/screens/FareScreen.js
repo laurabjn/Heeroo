@@ -36,6 +36,20 @@ const { width, height } = Dimensions.get('window');
 const size = height / 812;
 
 
+// Firebase refuse les valeurs undefined : on les retire avant tout envoi.
+function stripUndefined(obj) {
+    if (Array.isArray(obj)) return obj.map(stripUndefined);
+    if (obj && typeof obj === 'object' && !obj.sv) {
+        const out = {};
+        for (const k in obj) {
+            const v = obj[k];
+            if (v !== undefined) out[k] = (v && typeof v === 'object') ? stripUndefined(v) : v;
+        }
+        return out;
+    }
+    return obj;
+}
+
 export default class FareScreen extends React.Component {
     constructor(props) {
         super(props);
@@ -350,6 +364,8 @@ export default class FareScreen extends React.Component {
                         customer_first_name: this.state.userDetails.firstName
                     }
 
+                    data = stripUndefined(data);
+                    MyBooking = stripUndefined(MyBooking);
                     if (data) {
                         firebase.database().ref('bookings/').push(data).then((res) => {
                             var bookingKey = res.key;
@@ -466,6 +482,8 @@ export default class FareScreen extends React.Component {
                     customer_first_name: this.state.userDetails.firstName
                 }
 
+                data = stripUndefined(data);
+                MyBooking = stripUndefined(MyBooking);
                 if (data) {
                     firebase.database().ref('bookings/').push(data).then((res) => {
                         var bookingKey = res.key;
