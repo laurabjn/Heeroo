@@ -11,7 +11,8 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "STRIPE_PK_TEST": "pk_test_BeeF7JTRF8kOrTCBdPOTkE6r00u7U7w3dD"
       }
     },
     "preview": {
@@ -23,7 +24,8 @@
         "simulator": false
       },
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "STRIPE_PK_TEST": "pk_test_BeeF7JTRF8kOrTCBdPOTkE6r00u7U7w3dD"
       }
     },
     "production": {
