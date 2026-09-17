@@ -375,7 +375,8 @@ export default class FareScreen extends React.Component {
                                                         if (gottenUser.val().carType == that.state.carType) {
                                                             arr.push(gottenUser.key);
                                                             firebase.database().ref('users/' + gottenUser.key + '/waiting_riders_list/' + bookingKey + '/').set(data);
-                                                            that.sendPushNotification(gottenUser.key, bookingKey, languageJSON.new_booking_request_push_notification)
+                                                            // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                                                            // that.sendPushNotification(gottenUser.key, bookingKey, languageJSON.new_booking_request_push_notification)
                                                         }
                                                     }
                                                 }
@@ -488,7 +489,8 @@ export default class FareScreen extends React.Component {
                                                     if (gottenUser.val().carType == that.state.carType) {
                                                         arr.push(gottenUser.key);
                                                         firebase.database().ref('users/' + gottenUser.key + '/waiting_riders_list/' + bookingKey + '/').set(data); //send request to driver who are available
-                                                        that.sendPushNotification(gottenUser.key, bookingKey, languageJSON.new_booking_request_push_notification)
+                                                        // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                                                        // that.sendPushNotification(gottenUser.key, bookingKey, languageJSON.new_booking_request_push_notification)
                                                     }
                                                 }
                                             }

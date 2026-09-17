@@ -13,6 +13,7 @@ import Geocoder from 'react-native-geocoding';
 import { google_map_key } from './src/common/key';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import AppContainer from './src/navigation/AppNavigator';
+import { startForegroundNotifications } from './src/common/foregroundNotifications';
 
 LogBox.ignoreLogs([
   "[react-native-gesture-handler] Seems like you're using an old API with gesture components, check out new Gestures system!",
@@ -37,6 +38,10 @@ firebase.initializeApp(firebaseConfig);
 Geocoder.init(google_map_key, { language: 'fr' });
 
 export default class App extends React.Component {
+  componentDidMount() {
+    startForegroundNotifications();
+  }
+
   render() {
     return (
       <StripeProvider

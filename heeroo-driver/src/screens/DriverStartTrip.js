@@ -304,7 +304,8 @@ export default class DriverStartTrip extends React.Component {
                         BackgroundGeolocation.removeAllListeners();
                         BackgroundGeolocation.stop()
                         this.props.navigation.navigate('DriverTripComplete', { allDetails: { ...data, ...this.state.rideDetails }, starttime: firebase.database.ServerValue.TIMESTAMP })
-                        this.sendPushNotification(this.state.rideDetails.customer, this.state.rideDetails.bookingId);
+                        // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                        // this.sendPushNotification(this.state.rideDetails.customer, this.state.rideDetails.bookingId);
                     })
                 })
             })

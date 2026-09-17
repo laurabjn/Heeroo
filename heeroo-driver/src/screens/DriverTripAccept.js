@@ -328,7 +328,8 @@ export default class DriverTripAccept extends React.Component {
             })
             this.setState({ currentBId: item.bookingId, ['loading' + index]: false }, () => {
                 this.checking();
-                this.sendPushNotification(item.customer, item.bookingId, languageJSON.accept_booking_request)
+                // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                // this.sendPushNotification(item.customer, item.bookingId, languageJSON.accept_booking_request)
             })
 
         }).catch((error) => {

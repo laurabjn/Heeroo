@@ -110,7 +110,8 @@ export default class DriverTripComplete extends React.Component {
                         this.setState({ loading: false });
                         this.props.navigation.navigate('DriverTripAcceptScreen')
                         if (status != "END") {
-                            this.sendPushNotification(item.customer, item.bookingId);
+                            // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                            // this.sendPushNotification(item.customer, item.bookingId);
                         }
                     })
 

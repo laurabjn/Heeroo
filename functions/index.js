@@ -14,11 +14,14 @@
 //   POST /confirmWaveCheckout { sessionId }                  — chauffeur authentifié
 //   POST /waveWebhook        (appelée par Wave, signature vérifiée)
 //
-// Déclencheur base de données : prélèvement de la commission sur le crédit du
-// chauffeur quand une course passe au statut END.
+// Déclencheurs base de données :
+//   - notifications d'avancement de course (demande, acceptation, départ,
+//     fin, annulation, paiement attendu) envoyées par le serveur, quel que
+//     soit l'état des applications ;
+//   - prélèvement de la commission sur le crédit du chauffeur au statut END.
 
 const functions = require('firebase-functions/v1');
-const { onValueUpdated } = require('firebase-functions/v2/database');
+const { onValueUpdated, onValueCreated } = require('firebase-functions/v2/database');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
@@ -107,7 +110,7 @@ async function sendPush(token, title, body, data) {
     token,
     notification: { title, body },
     data: data || {},
-    android: { priority: 'high', notification: { sound: 'default', channelId: 'default' } },
+    android: { priority: 'high', notification: { sound: 'default' } },
     apns: { payload: { aps: { sound: 'default', badge: 1 } } },
   });
 }
@@ -427,13 +430,6 @@ exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_
     res.json({ received: true });
   });
 
-// ---------------------------------------------------------------------------
-// Commission chauffeur — quand une course passe au statut END, la commission
-// est calculée à partir des tarifs en base (jamais du montant envoyé par
-// l'app) et débitée du crédit du chauffeur. Idempotent : une course n'est
-// débitée qu'une fois (champ commission_charged_at).
-// ---------------------------------------------------------------------------
-
 // Instance et région de la base : déduites du projet au moment du déploiement.
 function databaseTarget() {
   const config = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
@@ -456,6 +452,124 @@ async function commissionRateFor(carType) {
 }
 
 const target = databaseTarget();
+
+// ---------------------------------------------------------------------------
+// Notifications d'avancement de course — envoyées par le serveur.
+// ---------------------------------------------------------------------------
+
+function shortName(booking, key) {
+  const name = booking && booking[key];
+  if (!name) return '';
+  const parts = String(name).trim().split(/\s+/);
+  return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+}
+
+function formatAmount(booking) {
+  const cost = Number(booking.trip_cost);
+  if (!(cost > 0)) return '';
+  const symbol = booking.currency_symbol || (booking.pickup && booking.pickup.country === 'SN' ? 'FCFA' : '€');
+  return `${cost.toFixed(symbol === 'FCFA' ? 0 : 2)} ${symbol}`;
+}
+
+/** Notifie un utilisateur par son uid (lit son pushToken). Silencieux si absent. */
+async function notifyUser(uid, title, body, data) {
+  if (!uid) return false;
+  const token = (await admin.database().ref(`users/${uid}/pushToken`).once('value')).val();
+  if (!token) {
+    logger.info(`Pas de jeton push pour ${uid} — notification « ${title} » non envoyée`);
+    return false;
+  }
+  try {
+    await sendPush(token, title, body, data);
+    return true;
+  } catch (error) {
+    if (isInvalidTokenError(error)) {
+      await admin.database().ref(`users/${uid}/pushToken`).remove();
+      logger.info(`Jeton push périmé retiré pour ${uid}`);
+      return false;
+    }
+    logger.error(`Notification impossible pour ${uid}`, error);
+    return false;
+  }
+}
+
+// Nouvelle demande : l'app passager écrit bookings/{id}/requestedDriver
+// (liste des chauffeurs sollicités) juste après avoir créé la course.
+exports.onBookingRequested = onValueCreated(
+  { ref: '/bookings/{bookingId}/requestedDriver', instance: target.instance, region: target.region },
+  async (event) => {
+    const drivers = event.data.val();
+    const list = Array.isArray(drivers) ? drivers : Object.values(drivers || {});
+    if (list.length === 0) return;
+    const booking = (await admin.database().ref(`bookings/${event.params.bookingId}`).once('value')).val() || {};
+    const pickup = booking.pickup && booking.pickup.add ? ` — départ : ${booking.pickup.add}` : '';
+    await Promise.all(list.map((uid) => notifyUser(
+      uid,
+      'Nouvelle demande de course',
+      `Un passager cherche un chauffeur${pickup}`,
+      { type: 'booking_request', bookingId: event.params.bookingId }
+    )));
+    logger.info(`Course ${event.params.bookingId} : ${list.length} chauffeur(s) notifié(s)`);
+  }
+);
+
+// Changements de statut : ACCEPTED, START, END, CANCELLED, NOT PAID / DUE.
+exports.onBookingStatusChanged = onValueUpdated(
+  { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region },
+  async (event) => {
+    const before = event.data.before.val();
+    const status = event.data.after.val();
+    if (status === before) return;
+    const bookingId = event.params.bookingId;
+    const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
+    if (!booking) return;
+    const data = { type: 'booking_status', bookingId, status: String(status) };
+    const driver = shortName(booking, 'driver_name');
+    const customer = shortName(booking, 'customer_name');
+
+    switch (status) {
+      case 'ACCEPTED':
+        await notifyUser(booking.customer, 'Chauffeur trouvé',
+          `${driver || 'Un chauffeur'} a accepté votre course et se met en route.`, data);
+        break;
+      case 'START':
+        await notifyUser(booking.customer, 'Course démarrée',
+          `Bonne route${driver ? ` avec ${driver}` : ''} ! Vous pouvez suivre le trajet dans l'application.`, data);
+        break;
+      case 'END': {
+        const amount = formatAmount(booking);
+        await notifyUser(booking.customer, 'Course terminée',
+          amount ? `Montant de la course : ${amount}. Merci d'avoir voyagé avec Heeroo.` : "Merci d'avoir voyagé avec Heeroo.", data);
+        break;
+      }
+      case 'NOT PAID':
+      case 'DUE':
+        await notifyUser(booking.customer, 'Règlement attendu',
+          'Votre chauffeur attend le règlement de la course.', data);
+        break;
+      case 'CANCELLED':
+        // L'annulation peut venir du passager (chauffeur à prévenir) ou du chauffeur (passager à prévenir).
+        if (booking.driver && before !== 'NEW') {
+          await notifyUser(booking.driver, 'Course annulée',
+            `${customer || 'Le passager'} a annulé la course.`, data);
+        }
+        await notifyUser(booking.customer, 'Course annulée',
+          booking.driver ? 'Votre course a été annulée.' : "Aucun chauffeur n'a pu prendre votre course.", data);
+        break;
+      default:
+        return;
+    }
+    logger.info(`Course ${bookingId} : ${before} -> ${status}, notifications envoyées`);
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Commission chauffeur — quand une course passe au statut END, la commission
+// est calculée à partir des tarifs en base (jamais du montant envoyé par
+// l'app) et débitée du crédit du chauffeur. Idempotent : une course n'est
+// débitée qu'une fois (champ commission_charged_at).
+// ---------------------------------------------------------------------------
+
 
 exports.onBookingCompleted = onValueUpdated(
   { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region },

@@ -259,7 +259,8 @@ export default class DriverCompleteTrip extends React.Component {
                 userDbRef.update(riderData).then(() => {
                     this.setState({ loadingModal: false })
                     this.props.navigation.navigate('DriverTripAccept', { screen: 'DriverFare', params: { allDetails: item, trip_cost: data.trip_cost, trip_end_time: data.trip_end_time } })
-                    this.sendPushNotification(item.customer, item.bookingId)
+                    // Notification désormais envoyée par le serveur (déclencheur sur le statut de la course)
+                    // this.sendPushNotification(item.customer, item.bookingId)
                 })
             })
         })

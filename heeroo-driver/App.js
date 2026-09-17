@@ -12,6 +12,7 @@ import 'firebase/compat/storage';
 import Geocoder from 'react-native-geocoding';
 import { google_map_key } from './src/common/key';
 import AppContainer from './src/navigation/AppNavigator';
+import { startForegroundNotifications } from './src/common/foregroundNotifications';
 
 LogBox.ignoreLogs(['new NativeEventEmitter']);
 LogBox.ignoreLogs([
@@ -37,6 +38,10 @@ firebase.initializeApp(firebaseConfig);
 Geocoder.init(google_map_key, { language: 'fr' });
 
 export default class App extends React.Component {
+  componentDidMount() {
+    startForegroundNotifications();
+  }
+
   render() {
     return <AppContainer />;
   }

@@ -10,7 +10,6 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
-import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GetPushToken from '../common/GetPushToken';
@@ -78,16 +77,6 @@ export class AuthLoadingScreen extends React.Component {
     });
   };
 
-  componentDidMount() {
-
-    this.unsubscribe = onMessage(getMessaging(), async remoteMessage => {
-      Alert.alert(remoteMessage.notification.title ? remoteMessage.notification.title : 'Titre Notification', remoteMessage.notification.body ? remoteMessage.notification.body : 'Corps Notification')
-    });
-  }
-
-  componentWillUnmount() {
-    this.unsubscribe()
-  }
   // Render any loading content that you like here
   render() {
     return (
