@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.BUTTON_PRIMARY,
+    backgroundColor: colors.SKY,
     borderRadius: 10,
     paddingHorizontal: 25
   },
