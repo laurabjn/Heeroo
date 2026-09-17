@@ -591,6 +591,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     marginBottom: 10
   },
+  buttonContainer: {
+    marginTop: 20,
+    gap: 12,
+  },
   buttonWrapper: {
     //marginBottom: 15,
     height: 50,
@@ -605,6 +609,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.BUTTON_TEXT,
     fontFamily: 'Montserrat-Bold',
+  },
+  buttonWrapper2: {
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.PRIMARY,
+    borderRadius: 10,
+    paddingHorizontal: 25
+  },
+  cardPayBtn: {
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.BUTTON_PRIMARY,
+    borderRadius: 10,
+    paddingHorizontal: 25
   },
   checkboxContainer: {
     backgroundColor: colors.WHITE,
