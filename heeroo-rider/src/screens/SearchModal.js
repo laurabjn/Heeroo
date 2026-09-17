@@ -80,6 +80,7 @@ export default class SearchModal extends Component {
       console.log(`https://maps.googleapis.com/maps/api/directions/json?origin=${startLoc}&destination=${destLoc}&key=${google_map_key}`)
       console.log("respJson")
       console.log(respJson)
+      if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].overview_polyline) { console.log('[Directions] pas de trajet :', respJson.status, respJson.error_message || ''); return; }
       var points = Polyline.decode(respJson.routes[0].overview_polyline.points);
       var coords = points.map((point) => {
         return {

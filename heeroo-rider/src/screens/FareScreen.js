@@ -193,6 +193,7 @@ export default class FareScreen extends React.Component {
 
 
 
+                    if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].overview_polyline) { console.log('[Directions] pas de trajet :', respJson.status, respJson.error_message || ''); return; }
                     var points = Polyline.decode(respJson.routes[0].overview_polyline.points);
                     var coords = points.map((point) => {
                         return {

@@ -29,6 +29,7 @@ import { DrawerToggle, NotificationBtn } from '../components';
 import { getDistance } from 'geolib';
 
 import BackgroundGeolocation from '../common/backgroundGeolocation';
+import { Popup } from 'react-native-map-link';
 import { checkLocationPermission } from '../common/permission';
 
 export default class DriverStartTrip extends React.Component {
@@ -53,7 +54,7 @@ export default class DriverStartTrip extends React.Component {
         }
     }
 
-    UNSAFE_componentWillMount() {
+    componentDidMount() {
         const allDetails = this.props.route.params.allDetails
         const riderData = firebase.database().ref('users/' + allDetails.customer)
 
@@ -88,9 +89,6 @@ export default class DriverStartTrip extends React.Component {
             this.setState({ showMap: false });
         });
 
-    }
-
-    componentDidMount() {
         this.watchCurrentPosition();
     }
 

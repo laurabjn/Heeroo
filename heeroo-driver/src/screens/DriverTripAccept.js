@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, View, StyleSheet, Dimensions, FlatList, Modal, TouchableHighlight, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { Button, Header } from '@rneui/themed';
 import Polyline from '@mapbox/polyline';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Marker, Polyline as MapPolyline } from 'react-native-maps';
 import { colors, mapStyle } from '../common/theme';
 var { width, height } = Dimensions.get('window');
 import messaging from '@react-native-firebase/messaging';
@@ -109,6 +109,7 @@ export default class DriverTripAccept extends React.Component {
         try {
             let resp = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${startLoc}&destination=${destinationLoc}&key=${google_map_key}`)
             let respJson = await resp.json();
+            if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].overview_polyline) { console.log('[Directions] pas de trajet :', respJson.status, respJson.error_message || ''); return; }
             let points = Polyline.decode(respJson.routes[0].overview_polyline.points);
             let coords = points.map((point, index) => {
                 return {
@@ -490,7 +491,7 @@ export default class DriverTripAccept extends React.Component {
                                                 <Pin />
                                             </Marker>
 
-                                            <MapView.Polyline
+                                            <MapPolyline
                                                 coordinates={this.state.coords}
                                                 strokeWidth={4}
                                                 strokeColor={colors.BLUE.default}

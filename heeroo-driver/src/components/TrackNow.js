@@ -5,7 +5,8 @@ import haversine from "haversine";
 import MapView, {
     Marker,
     AnimatedRegion,
-    PROVIDER_GOOGLE
+    PROVIDER_GOOGLE,
+    Polyline as MapPolyline,
 } from "react-native-maps";
 
 import { colors, customMapStyle } from '../common/theme';
@@ -123,6 +124,7 @@ export default class TrackNow extends React.Component {
         try {
             let resp = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${this.state.startLoc}&destination=${this.state.destinationLoc}&key=${google_map_key}`)
             let respJson = await resp.json();
+            if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].overview_polyline) { console.log('[Directions] pas de trajet :', respJson.status, respJson.error_message || ''); return; }
             let points = Polyline.decode(respJson.routes[0].overview_polyline.points);
             let coords = points.map((point, index) => {
                 return {
@@ -160,12 +162,12 @@ export default class TrackNow extends React.Component {
                     loadingEnabled
                     region={this.getMapRegion()}
                 >
-                    <MapView.Polyline
+                    <MapPolyline
                         coordinates={this.state.coords ? this.state.coords : [{ latitude: 0.00, longitude: 0.00 }]}
                         strokeWidth={5}
                         strokeColor={colors.SECONDARY}
                     />
-                    <MapView.Polyline coordinates={this.state.routeCoordinates} strokeWidth={5} />
+                    <MapPolyline coordinates={this.state.routeCoordinates} strokeWidth={5} />
 
                     <Marker.Animated
                         tracksViewChanges={false}

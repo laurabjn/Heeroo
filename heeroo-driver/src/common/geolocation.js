@@ -90,6 +90,14 @@ const Geolocation = {
       delete watchers[id];
     }
   },
+
+  // Ancienne API : arrête tous les suivis de position en cours.
+  stopObserving() {
+    Object.keys(watchers).forEach((id) => {
+      watchers[id].remove();
+      delete watchers[id];
+    });
+  },
 };
 
 export default Geolocation;

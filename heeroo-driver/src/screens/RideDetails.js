@@ -11,7 +11,7 @@ import {
     SafeAreaView
 } from 'react-native';
 import Polyline from '@mapbox/polyline';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Marker, Polyline as MapPolyline } from 'react-native-maps';
 import { Header, Rating, Avatar, Button, Icon } from '@rneui/themed';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -102,6 +102,7 @@ export default class RideDetails extends React.Component {
         try {
             let resp = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${startLoc}&destination=${destinationLoc}&key=${google_map_key}`)
             let respJson = await resp.json();
+            if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].overview_polyline) { console.log('[Directions] pas de trajet :', respJson.status, respJson.error_message || ''); return; }
             let points = Polyline.decode(respJson.routes[0].overview_polyline.points);
             let coords = points.map((point, index) => {
                 return {
@@ -227,7 +228,7 @@ export default class RideDetails extends React.Component {
                                     <Pin width={31} height={38} />
                                 </Marker>
 
-                                <MapView.Polyline
+                                <MapPolyline
                                     coordinates={this.state.coords ? this.state.coords : { latitude: 0.00, longitude: 0.00 }}
                                     strokeWidth={4}
                                     strokeColor={colors.SECONDARY}
