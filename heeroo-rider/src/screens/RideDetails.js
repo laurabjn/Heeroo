@@ -55,6 +55,10 @@ export default class RideDetails extends React.Component {
         }
     };
 
+    componentWillUnmount() {
+        if (this.bookingRef) this.bookingRef.off();
+    }
+
     componentDidMount() {
         let getRideDetails = this.props.route.params.data
         if (getRideDetails) {
@@ -70,6 +74,15 @@ export default class RideDetails extends React.Component {
                 this.getDirections();
                 this.forceUpdate();
             })
+            // Suivi en temps réel : statut et paiement évoluent après l'ouverture de l'écran
+            const bookingId = getRideDetails.bookingId || getRideDetails.bookingKey;
+            if (bookingId) {
+                this.bookingRef = firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/my-booking/' + bookingId);
+                this.bookingRef.on('value', (snapshot) => {
+                    const live = snapshot.val();
+                    if (live) this.setState({ paramData: { ...this.state.paramData, ...live, bookingId } });
+                });
+            }
         }
         this._retrieveSettings();
     }

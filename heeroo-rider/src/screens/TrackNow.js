@@ -56,10 +56,36 @@ export default class TrackNow extends React.Component {
         let keys = this.props.route.params.bId
         const dat = firebase.database().ref('bookings/' + keys);
         dat.on('value', snapshot => {
-            var data = snapshot.val()
+            const data = snapshot.val();
+            if (!data) return;
             if (data.current) {
-                let data = snapshot.val();
                 this.setState({ latitude: data.current.lat, longitude: data.current.lng });
+            }
+            // Fin de course : paiement si elle n'est pas réglée, notation sinon ; annulation : retour carte.
+            if (!this.leftScreen && (data.status == 'END' || data.status == 'CANCELLED')) {
+                this.leftScreen = true;
+                dat.off();
+                if (data.status == 'CANCELLED') {
+                    this.props.navigation.navigate('Map', { screen: 'MapScreen' });
+                    return;
+                }
+                const uid = firebase.auth().currentUser.uid;
+                firebase.database().ref('users/' + uid).once('value').then((profile) => {
+                    const user = profile.val() || {};
+                    const booking = {
+                        ...data,
+                        bookingKey: keys,
+                        firstname: user.firstName,
+                        lastname: user.lastName,
+                        email: user.email,
+                        phonenumber: user.mobile,
+                    };
+                    if (data.payment_status == 'PAID') {
+                        this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: booking } });
+                    } else {
+                        this.props.navigation.navigate('CardDetails', { data: booking });
+                    }
+                });
             }
         })
     }
