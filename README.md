@@ -72,6 +72,7 @@ Le déploiement des fonctions et la création du stockage exigent le plan Blaze 
 - Clé API : `firebase functions:secrets:set WAVE_API_KEY` (créée sur business.wave.com → Développeurs).
 - Webhook à déclarer sur business.wave.com → Développeurs → Webhooks : `https://us-central1-<projet>.cloudfunctions.net/waveWebhook`, événements `checkout.session.completed` et `checkout.session.payment_failed` ; le secret affiché va dans `WAVE_WEBHOOK_SECRET`.
 - Pages de retour après paiement : `heeroo-admin/public/wave/succes.html` et `echec.html`, servies par le Hosting du projet (`firebase deploy --only hosting`).
+- Activation côté app : la carte « crédit / recharger » de l'écran Revenus du chauffeur n'apparaît que si `settings/waveEnabled` vaut `true` en base (à poser une fois la clé Wave configurée et les fonctions déployées ; aucun nouveau build nécessaire). Tant que Wave n'est pas prêt, l'app fonctionne sans.
 - Flux : app chauffeur → `createWaveCheckout` → app Wave → webhook crédite `users/<uid>/walletBalance` (+ `walletHistory`, `walletTopups/<session>`) ; `confirmWaveCheckout` vérifie la session au retour dans l'app si le webhook tarde.
 
 ## Intégration et déploiement continus (GitHub Actions)

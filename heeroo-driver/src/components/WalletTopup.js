@@ -28,10 +28,15 @@ async function callFunction(name, body) {
 }
 
 export default class WalletTopup extends React.Component {
-  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null };
+  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false };
 
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
+    // Le crédit prépayé et sa recharge Wave ne s'affichent que si l'exploitant
+    // les a activés (settings/waveEnabled = true, une fois la clé Wave posée
+    // côté serveur). Activable à distance, sans nouveau build.
+    this.enabledRef = firebase.database().ref('settings/waveEnabled');
+    this.enabledRef.on('value', (snapshot) => this.setState({ enabled: snapshot.val() === true }));
     this.balanceRef = firebase.database().ref('users/' + uid + '/walletBalance');
     this.balanceRef.on('value', (snapshot) => this.setState({ balance: Number(snapshot.val()) || 0 }));
     this.appStateSubscription = AppState.addEventListener('change', (state) => {
@@ -40,6 +45,7 @@ export default class WalletTopup extends React.Component {
   }
 
   componentWillUnmount() {
+    if (this.enabledRef) this.enabledRef.off();
     if (this.balanceRef) this.balanceRef.off();
     if (this.appStateSubscription) this.appStateSubscription.remove();
   }
@@ -80,6 +86,7 @@ export default class WalletTopup extends React.Component {
   };
 
   render() {
+    if (!this.state.enabled) return null;
     return (
       <View style={styles.card}>
         <View style={styles.row}>
