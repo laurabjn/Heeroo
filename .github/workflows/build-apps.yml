@@ -1,0 +1,106 @@
+# Builds des apps mobiles sur EAS (Expo Application Services).
+#
+#  - Manuel (onglet Actions → « Run workflow ») : choix de l'app, de la
+#    plateforme et du profil (development / preview / production).
+#  - Automatique sur un tag « v* » (ex. v1.7.0) : builds Android de production
+#    des deux apps (AAB prêts pour Google Play).
+#
+# Chaque build consomme du temps de build EAS : les déclenchements restent
+# volontaires. Le build tourne sur les serveurs d'Expo ; ce workflow ne fait
+# que le lancer et affiche le lien de suivi.
+#
+# Secret attendu (dépôt) : EXPO_TOKEN — jeton d'accès créé sur expo.dev
+# (compte laurabjn2 → Access tokens), avec accès à l'organisation laurabjns-team.
+
+name: Build des apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Application
+        type: choice
+        required: true
+        default: both
+        options: [both, heeroo-rider, heeroo-driver]
+      platform:
+        description: Plateforme
+        type: choice
+        required: true
+        default: android
+        options: [android, ios, all]
+      profile:
+        description: Profil EAS (eas.json)
+        type: choice
+        required: true
+        default: preview
+        options: [development, preview, production]
+  push:
+    tags: ['v*']
+
+jobs:
+  matrice:
+    name: Préparer la liste des apps
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.set.outputs.apps }}
+    steps:
+      - id: set
+        run: |
+          case "${{ inputs.app || 'both' }}" in
+            both) echo 'apps=["heeroo-rider","heeroo-driver"]' >> "$GITHUB_OUTPUT" ;;
+            *)    echo 'apps=["${{ inputs.app }}"]' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  build:
+    name: ${{ matrix.app }} — ${{ inputs.platform || 'android' }} / ${{ inputs.profile || 'production' }}
+    needs: matrice
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.matrice.outputs.apps) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifications avant build
+        working-directory: .
+        run: |
+          node tools/check-sources.js ${{ matrix.app }}
+          node tools/compile-sources.js ${{ matrix.app }}
+
+      - name: EAS CLI
+        run: npm install --global eas-cli
+
+      - name: Lancer le build EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_NO_TELEMETRY: '1'
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Secret EXPO_TOKEN absent (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          eas build \
+            --platform "${{ inputs.platform || 'android' }}" \
+            --profile "${{ inputs.profile || 'production' }}" \
+            --non-interactive --no-wait --json > build.json
+          node -e "
+            const builds = JSON.parse(require('fs').readFileSync('build.json', 'utf8'));
+            for (const b of [].concat(builds)) {
+              const url = 'https://expo.dev/accounts/laurabjns-team/projects/${{ matrix.app }}/builds/' + b.id;
+              console.log(b.platform, b.status, url);
+              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, '- **${{ matrix.app }}** ' + b.platform + ' (${{ inputs.profile || 'production' }}) : ' + url + '\n');
+            }"

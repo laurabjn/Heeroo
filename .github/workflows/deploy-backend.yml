@@ -1,0 +1,103 @@
+# Déploiement du backend Firebase (fonctions serveur + règles base et stockage).
+#
+#  - Automatique vers l'environnement « dev » à chaque push sur main qui touche
+#    le backend (après réussite de la CI).
+#  - Manuel (onglet Actions → « Run workflow ») vers « dev » ou « prod ».
+#    L'environnement GitHub « prod » peut exiger une validation humaine
+#    (Settings → Environments → prod → Required reviewers).
+#
+# Secret attendu dans chaque environnement GitHub (dev, prod) :
+#   FIREBASE_SERVICE_ACCOUNT — clé JSON d'un compte de service du projet Firebase
+#   correspondant (rôles : Éditeur + Utilisateur du compte de service).
+
+name: Déploiement backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'database.rules.json'
+      - 'storage.rules'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement cible
+        type: choice
+        required: true
+        default: dev
+        options: [dev, prod]
+      only:
+        description: Cibles Firebase à déployer
+        type: choice
+        required: true
+        default: functions,database,storage
+        options:
+          - functions,database,storage
+          - functions
+          - database,storage
+
+concurrency:
+  group: deploy-backend-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Tests des fonctions
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    name: Déployer vers ${{ inputs.environment || 'dev' }}
+    needs: tests
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Installer les dépendances des fonctions
+        working-directory: functions
+        run: npm ci
+
+      - name: Identifiants Firebase (compte de service de l'environnement)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT absent de l'environnement « ${{ inputs.environment || 'dev' }} »."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$RUNNER_TEMP/firebase-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-sa.json" >> "$GITHUB_ENV"
+
+      - name: Déployer
+        run: |
+          npx --yes firebase-tools@latest deploy \
+            --only "${{ inputs.only || 'functions,database,storage' }}" \
+            --project "${{ inputs.environment || 'dev' }}" \
+            --non-interactive --force
+
+      - name: Nettoyage des identifiants
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"

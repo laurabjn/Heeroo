@@ -1,0 +1,135 @@
+# Intégration continue Heeroo : vérifications à chaque push et pull request.
+# Bloquant : apps mobiles (analyse statique, compilation, dépendances, config),
+# fonctions serveur (tests), règles Firebase (JSON valide).
+# Informatif : build du back-office admin (non migré, CRA 3 / Node 16).
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apps:
+    name: App ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [heeroo-rider, heeroo-driver]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Analyse statique (identifiants, styles, textes, navigation, assets)
+        working-directory: .
+        run: node tools/check-sources.js ${{ matrix.app }}
+
+      - name: Compilation Babel de tous les fichiers
+        working-directory: .
+        run: node tools/compile-sources.js ${{ matrix.app }}
+
+      - name: Cohérence des dépendances avec le SDK Expo
+        run: npx expo-doctor
+        env:
+          EXPO_NO_TELEMETRY: '1'
+
+      - name: Configuration Expo — développement
+        run: npx expo config --type public --json > /dev/null
+        env:
+          EXPO_NO_TELEMETRY: '1'
+
+      - name: Configuration Expo — production
+        run: npx expo config --type public --json > /dev/null
+        env:
+          APP_ENV: production
+          EXPO_NO_TELEMETRY: '1'
+
+  functions:
+    name: Fonctions serveur
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Tests unitaires
+        run: npm test
+
+      - name: Chargement du module (toutes les fonctions s'exportent)
+        run: node -e "const m = require('./index.js'); const n = Object.keys(m).length; console.log(n, 'fonctions'); if (n < 15) process.exit(1)"
+        env:
+          GCLOUD_PROJECT: heeroo-dev-49beb
+          FIREBASE_CONFIG: '{"projectId":"heeroo-dev-49beb","databaseURL":"https://heeroo-dev-49beb-default-rtdb.europe-west1.firebasedatabase.app"}'
+
+  rules:
+    name: Règles et configuration Firebase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JSON valides (firebase.json, database.rules.json, .firebaserc)
+        run: |
+          for f in firebase.json database.rules.json .firebaserc; do
+            node -e "JSON.parse(require('fs').readFileSync('$f', 'utf8')); console.log('$f : ok')"
+          done
+
+      - name: Fichiers de règles déclarés dans firebase.json présents
+        run: |
+          node -e "
+            const c = require('./firebase.json');
+            const fs = require('fs');
+            for (const f of [c.database && c.database.rules, c.storage && c.storage.rules]) {
+              if (f && !fs.existsSync(f)) { console.error('fichier de règles manquant :', f); process.exit(1); }
+              if (f) console.log(f, ': présent');
+            }"
+
+  admin:
+    name: Back-office admin (informatif)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: heeroo-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 16
+          cache: npm
+          cache-dependency-path: heeroo-admin/package-lock.json
+      - name: Installer les dépendances
+        run: npm ci --legacy-peer-deps
+      - name: Build
+        run: npm run build
+        env:
+          CI: 'false'
