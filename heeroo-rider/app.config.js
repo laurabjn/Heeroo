@@ -39,6 +39,16 @@ const GOOGLE_SERVICES = {
   production: './google-services.json',
 };
 
+// iOS : GoogleService-Info.plist téléchargé depuis la console Firebase (app iOS
+// de chaque projet). Absent tant que l'app iOS n'est pas déclarée : on ne le
+// référence que s'il existe, pour ne pas bloquer les builds Android.
+const GOOGLE_SERVICES_IOS = {
+  development: './GoogleService-Info.dev.plist',
+  production: './GoogleService-Info.plist',
+};
+const fs = require('fs');
+const path = require('path');
+
 module.exports = ({ config }) => {
   const appEnv = process.env.APP_ENV === 'production' ? 'production' : 'development';
   const isProd = appEnv === 'production';
@@ -49,6 +59,10 @@ module.exports = ({ config }) => {
     android: {
       ...config.android,
       googleServicesFile: GOOGLE_SERVICES[appEnv],
+    },
+    ios: {
+      ...config.ios,
+      ...(fs.existsSync(path.join(__dirname, GOOGLE_SERVICES_IOS[appEnv])) ? { googleServicesFile: GOOGLE_SERVICES_IOS[appEnv] } : {}),
     },
     extra: {
       ...config.extra,

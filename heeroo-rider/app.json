@@ -17,10 +17,16 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo utilise votre position pour suivre votre course en temps réel.",
         "NSCameraUsageDescription": "Heeroo utilise l'appareil photo pour votre photo de profil.",
         "NSPhotoLibraryUsageDescription": "Heeroo accède à vos photos pour votre photo de profil.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       },
       "config": {
         "googleMapsApiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
