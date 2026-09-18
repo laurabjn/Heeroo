@@ -3,6 +3,8 @@ export default {
     credit_balance: 'Mon crédit',
     topup_button: 'Recharger',
     topup_title: 'Recharger mon crédit',
+    credit_insufficient_title: 'Crédit insuffisant',
+    credit_insufficient_msg: 'Votre crédit est de {balance} FCFA. Il faut au moins {min} FCFA pour accepter une course : rechargez-le depuis « Mes revenus ».',
     topup_hint: 'Choisissez un montant, puis payez avec Wave. La commission de chaque course est prélevée sur ce crédit.',
     topup_amount_placeholder: 'Autre montant (FCFA)',
     topup_confirm: 'Payer avec Wave',

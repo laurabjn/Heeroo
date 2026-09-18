@@ -243,6 +243,18 @@ export default class DriverTripAccept extends React.Component {
     }
 
     onPressAccept(item, index) {
+        // Crédit prépayé : si l'exploitant a fixé un crédit minimum
+        // (settings/minDriverBalance, en FCFA ; 0 ou absent = pas de règle),
+        // un chauffeur en dessous ne peut pas accepter de course.
+        const minBalance = Number(this.state.allCurrency && this.state.allCurrency.minDriverBalance) || 0;
+        const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
+        if (minBalance > 0 && balance < minBalance) {
+            Alert.alert(
+                languageJSON.credit_insufficient_title,
+                languageJSON.credit_insufficient_msg.replace('{balance}', balance.toLocaleString('fr-FR')).replace('{min}', minBalance.toLocaleString('fr-FR'))
+            );
+            return;
+        }
         var data = {
             carType: item.carType,
             customer: item.customer,
