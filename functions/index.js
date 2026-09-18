@@ -243,9 +243,21 @@ async function settleCardPayment(stripe, intent) {
     return 'paid';
   }
   if (booking.transaction_id === intent.id) return 'already-paid';
+  if (booking.card_refund_intent === intent.id) return 'refunded'; // rejeu du webhook après remboursement
 
-  const refund = await stripe.refunds.create({ payment_intent: intent.id });
+  let refund;
+  try {
+    refund = await stripe.refunds.create({ payment_intent: intent.id });
+  } catch (error) {
+    // Déjà remboursé chez Stripe (plantage entre le remboursement et l'écriture en base) : rien à refaire.
+    if (error && error.code === 'charge_already_refunded') {
+      await bookingRef.update({ card_refund_intent: intent.id });
+      return 'refunded';
+    }
+    throw error;
+  }
   await bookingRef.update({
+    card_refund_intent: intent.id,
     card_refund_id: refund.id,
     card_refund_amount: intent.amount_received / (ZERO_DECIMAL_CURRENCIES.has(String(intent.currency).toUpperCase()) ? 1 : 100),
     card_refund_reason: `Course déjà réglée (${booking.payment_mode || 'autre moyen'})`,
