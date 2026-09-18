@@ -44,5 +44,21 @@ export async function payBookingWithCard({ bookingId, email, merchantCountryCode
     if (result.error.code === 'Canceled') return { paid: false, canceled: true };
     throw new Error(result.error.message);
   }
-  return { paid: true, paymentIntentId: data.paymentIntentId, amount: data.amount, currency: data.currency };
+
+  // La carte est débitée. C'est le serveur qui marque la course payée, après
+  // avoir relu le paiement chez Stripe ; le webhook Stripe fait la même chose
+  // en filet si cet appel échoue (réseau coupé…), l'app n'écrit rien elle-même.
+  let outcome = 'pending';
+  try {
+    const confirm = await fetch(base_url + 'confirmCardPayment', {
+      method: 'post',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+      body: JSON.stringify({ paymentIntentId: data.paymentIntentId }),
+    });
+    const confirmed = await confirm.json();
+    if (confirm.ok && confirmed.status) outcome = confirmed.status;
+  } catch (e) {
+    console.log('[stripe] confirmation serveur différée au webhook', e);
+  }
+  return { paid: true, outcome, paymentIntentId: data.paymentIntentId, amount: data.amount, currency: data.currency };
 }

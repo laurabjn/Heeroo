@@ -94,7 +94,22 @@ export default class CardDetailsScreen extends React.Component {
 
   componentDidMount() {
     this._retrieveSettings(this.props.route.params.data.pickup.country);
-    //firebase.database().ref('settings/').on()
+    // Si la course est réglée autrement pendant qu'on est ici (le chauffeur a
+    // confirmé les espèces), on passe directement à la notation.
+    const booking = this.props.route.params.data;
+    if (booking && booking.bookingKey) {
+      this.paymentStatusRef = firebase.database().ref('bookings/' + booking.bookingKey + '/payment_status');
+      this.paymentStatusRef.on('value', (snap) => {
+        if (snap.val() === 'PAID' && !this.leftScreen) {
+          this.leftScreen = true;
+          this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: booking } });
+        }
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.paymentStatusRef) this.paymentStatusRef.off();
   }
 
   async UNSAFE_componentWillMount() {
@@ -210,6 +225,7 @@ export default class CardDetailsScreen extends React.Component {
               }
             }
           })
+          this.leftScreen = true;
           this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: paramData } });
         })
 
@@ -222,33 +238,28 @@ export default class CardDetailsScreen extends React.Component {
     const booking = this.state.userData;
     if (!booking || !booking.bookingKey) return;
     this.setState({ loadingModal: true });
+    const uid = firebase.auth().currentUser.uid;
+    const myBooking = firebase.database().ref('users/' + uid + '/my-booking/' + booking.bookingKey + '/');
     try {
+      // Paiement en cours : le veilleur de la carte ne doit pas nous ramener ici entre-temps.
+      await myBooking.update({ paymentstart: true });
       const result = await payBookingWithCard({ bookingId: booking.bookingKey, email: this.state.payDetails.email });
       if (result.canceled) {
+        await myBooking.update({ paymentstart: false });
         this.setState({ loadingModal: false });
         return;
       }
-      // Le webhook Stripe marque la course payée côté serveur ; on reflète
-      // l'état localement pour ne pas faire attendre l'utilisateur.
-      const paid = {
-        payment_status: 'PAID',
-        payment_mode: 'Card',
-        getway: 'stripe',
-        transaction_id: result.paymentIntentId,
-        customer_paid: this.state.payDetails.amount - this.state.payDetails.discount,
-        discount_amount: this.state.payDetails.discount,
-        usedWalletMoney: 0,
-        cardPaymentAmount: this.state.payDetails.payableAmmount,
-      };
-      const uid = firebase.auth().currentUser.uid;
-      await firebase.database().ref('bookings/' + booking.bookingKey + '/').update(paid);
-      await firebase.database().ref('users/' + uid + '/my-booking/' + booking.bookingKey + '/').update(paid);
-      if (booking.driver) {
-        await firebase.database().ref('users/' + booking.driver + '/my_bookings/' + booking.bookingKey + '/').update(paid);
-      }
+      // La course est marquée payée par le serveur (confirmation puis webhook) :
+      // l'app n'écrit rien elle-même pour ne jamais écraser un règlement déjà
+      // enregistré par le chauffeur.
+      this.leftScreen = true;
       this.setState({ loadingModal: false });
+      if (result.outcome === 'refunded') {
+        Alert.alert(languageJSON.payment, 'Cette course avait déjà été réglée : votre paiement par carte est remboursé.');
+      }
       this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: booking } });
     } catch (error) {
+      await myBooking.update({ paymentstart: false }).catch(() => {});
       this.setState({ loadingModal: false });
       Alert.alert(languageJSON.Error, error.message || String(error));
     }

@@ -9,6 +9,7 @@
 //   POST /delete_auth_user   { id }                          — administrateur
 //   POST /push_notifications { list: [{ to, title, body }] } — administrateur
 //   POST /createPaymentIntent { bookingId }                  — utilisateur authentifié
+//   POST /confirmCardPayment { paymentIntentId }          — utilisateur authentifié
 //   POST /stripeWebhook      (appelée par Stripe, signature vérifiée)
 //   POST /createWaveCheckout  { amount }                     — chauffeur authentifié
 //   POST /confirmWaveCheckout { sessionId }                  — chauffeur authentifié
@@ -27,7 +28,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount } = require('./lib/helpers');
+const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -219,6 +220,41 @@ async function markBookingPaid(bookingId, booking, paymentIntent) {
   if (booking.driver) await db.ref(`users/${booking.driver}/my_bookings/${bookingId}`).update(paid);
 }
 
+/**
+ * Règle une course à partir d'un PaymentIntent Stripe réussi. Idempotent :
+ *  - course non payée      → marquée payée par carte ;
+ *  - déjà payée par ce même paiement (relance du webhook, double appel) → rien ;
+ *  - déjà réglée autrement (le chauffeur a confirmé les espèces pendant que le
+ *    passager validait sa carte) → la carte est remboursée, trace sur la course.
+ * Retourne 'paid', 'already-paid', 'refunded' ou 'unknown-booking'.
+ */
+async function settleCardPayment(stripe, intent) {
+  const bookingId = intent.metadata && intent.metadata.bookingId;
+  if (!bookingId) return 'unknown-booking';
+  const bookingRef = admin.database().ref(`bookings/${bookingId}`);
+  const booking = (await bookingRef.once('value')).val();
+  if (!booking) {
+    logger.warn(`Paiement ${intent.id} reçu pour une course inconnue (${bookingId})`);
+    return 'unknown-booking';
+  }
+  if (booking.payment_status !== 'PAID') {
+    await markBookingPaid(bookingId, booking, intent);
+    logger.info(`Course ${bookingId} payée par carte (${intent.id})`);
+    return 'paid';
+  }
+  if (booking.transaction_id === intent.id) return 'already-paid';
+
+  const refund = await stripe.refunds.create({ payment_intent: intent.id });
+  await bookingRef.update({
+    card_refund_id: refund.id,
+    card_refund_amount: intent.amount_received / (ZERO_DECIMAL_CURRENCIES.has(String(intent.currency).toUpperCase()) ? 1 : 100),
+    card_refund_reason: `Course déjà réglée (${booking.payment_mode || 'autre moyen'})`,
+    card_refund_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  logger.warn(`Course ${bookingId} déjà réglée (${booking.payment_mode}) : paiement carte ${intent.id} remboursé (${refund.id})`);
+  return 'refunded';
+}
+
 exports.createPaymentIntent = httpEndpoint(async (req, res) => {
   const user = await requireUser(req);
   const { bookingId } = req.body || {};
@@ -245,6 +281,25 @@ exports.createPaymentIntent = httpEndpoint(async (req, res) => {
   res.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id, amount, currency });
 }, { secrets: [STRIPE_SECRET_KEY] });
 
+// confirmCardPayment — appelée par l'app passager juste après la feuille de
+// paiement. Le serveur relit le PaymentIntent chez Stripe (aucune confiance
+// dans ce que dit l'app) et règle la course ; le webhook reste en filet.
+exports.confirmCardPayment = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { paymentIntentId } = req.body || {};
+  if (!paymentIntentId) throw httpError(400, 'Paramètre paymentIntentId requis');
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (!intent.metadata || intent.metadata.uid !== user.uid) throw httpError(403, 'Ce paiement ne vous appartient pas');
+  if (intent.status !== 'succeeded') {
+    res.json({ status: intent.status });
+    return;
+  }
+  const outcome = await settleCardPayment(stripe, intent);
+  res.json({ status: outcome === 'refunded' ? 'refunded' : 'paid', outcome });
+}, { secrets: [STRIPE_SECRET_KEY] });
+
 exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
     const stripe = new Stripe(STRIPE_SECRET_KEY.value());
@@ -258,15 +313,7 @@ exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECR
     }
 
     if (event.type === 'payment_intent.succeeded') {
-      const intent = event.data.object;
-      const bookingId = intent.metadata && intent.metadata.bookingId;
-      if (bookingId) {
-        const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
-        if (booking && booking.payment_status !== 'PAID') {
-          await markBookingPaid(bookingId, booking, intent);
-          logger.info(`Course ${bookingId} payée par carte (${intent.id})`);
-        }
-      }
+      await settleCardPayment(stripe, event.data.object);
     }
     res.json({ received: true });
   });

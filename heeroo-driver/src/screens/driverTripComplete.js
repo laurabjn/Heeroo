@@ -6,7 +6,8 @@ import {
     FlatList,
     TouchableWithoutFeedback,
     Platform,
-    SafeAreaView
+    SafeAreaView,
+    Alert,
 } from 'react-native';
 import { Button, Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
@@ -84,8 +85,32 @@ export default class DriverTripComplete extends React.Component {
 
     }
 
+    componentDidMount() {
+        // Si le passager règle par carte pendant que cet écran est affiché, la
+        // question « payé en espèces ? » n'a plus de sens : on referme l'écran
+        // pour que le chauffeur ne puisse pas écraser le paiement carte.
+        const bookingId = this.props.route.params.allDetails && this.props.route.params.allDetails.bookingId;
+        if (!bookingId) return;
+        this.paymentRef = firebase.database().ref('bookings/' + bookingId + '/payment_status');
+        this.paymentRef.on('value', (snap) => {
+            if (snap.val() === 'PAID' && !this.state.loading && !this.leftScreen) {
+                this.leftScreen = true;
+                this.paymentRef.off();
+                firebase.database().ref('users/' + this.state.curUid + '/').update({ queue: false });
+                Alert.alert(languageJSON.payment || 'Paiement', 'Le passager a réglé la course par carte.');
+                this.props.navigation.navigate('DriverTripAcceptScreen');
+            }
+        });
+    }
+
+    componentWillUnmount() {
+        if (this.paymentRef) this.paymentRef.off();
+    }
+
     //done button press function
     onPressDone(item, status) {
+        if (this.leftScreen) return;
+        this.leftScreen = true;
         this.setState({ loading: true });
         var data = {
             payment_mode: "Espèces",
