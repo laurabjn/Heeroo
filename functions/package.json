@@ -10,7 +10,8 @@
     "serve": "firebase emulators:start --only functions",
     "deploy:dev": "firebase deploy --only functions --project dev",
     "deploy:prod": "firebase deploy --only functions --project prod",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "node --test"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -27,6 +27,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
+const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -39,15 +40,6 @@ const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const WAVE_API_KEY = defineSecret('WAVE_API_KEY');
 const WAVE_WEBHOOK_SECRET = defineSecret('WAVE_WEBHOOK_SECRET');
-const crypto = require('crypto');
-
-// Devises sans sous-unité chez Stripe (montant envoyé tel quel, pas en centimes).
-const ZERO_DECIMAL_CURRENCIES = new Set(['XOF', 'XAF', 'JPY', 'KRW', 'CLP', 'VND', 'UGX', 'RWF', 'GNF', 'BIF', 'DJF', 'KMF', 'MGA', 'PYG', 'VUV', 'XPF']);
-
-function toStripeAmount(amount, currency) {
-  const value = Number(amount) || 0;
-  return ZERO_DECIMAL_CURRENCIES.has(currency) ? Math.round(value) : Math.round(value * 100);
-}
 
 // ---------------------------------------------------------------------------
 // Utilitaires
@@ -399,16 +391,6 @@ exports.confirmWaveCheckout = httpEndpoint(async (req, res) => {
   }
 }, { secrets: [WAVE_API_KEY] });
 
-/** Vérifie l'en-tête Wave-Signature : t=<timestamp>,v1=<hmac-sha256(secret, timestamp + corps)>. */
-function waveSignatureValid(header, rawBody, secret) {
-  if (!header) return false;
-  const parts = Object.fromEntries(String(header).split(',').map((p) => p.split('=')));
-  if (!parts.t || !parts.v1) return false;
-  const expected = crypto.createHmac('sha256', secret).update(parts.t + rawBody.toString('utf8')).digest('hex');
-  const given = String(parts.v1);
-  return given.length === expected.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-}
-
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
     if (!waveSignatureValid(req.headers['wave-signature'], req.rawBody, WAVE_WEBHOOK_SECRET.value())) {
@@ -430,16 +412,6 @@ exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_
     res.json({ received: true });
   });
 
-// Instance et région de la base : déduites du projet au moment du déploiement.
-function databaseTarget() {
-  const config = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
-  const url = config.databaseURL || '';
-  const host = url.replace(/^https?:\/\//, '');
-  const instance = host.split('.')[0];
-  const regionMatch = host.match(/\.([a-z]+-[a-z]+\d)\.firebasedatabase\.app$/);
-  return { instance, region: regionMatch ? regionMatch[1] : 'us-central1' };
-}
-
 /** Taux de commission (%) pour un type de véhicule, d'après rates/car_type. */
 async function commissionRateFor(carType) {
   const snapshot = await admin.database().ref('rates/car_type').once('value');
@@ -456,20 +428,6 @@ const target = databaseTarget();
 // ---------------------------------------------------------------------------
 // Notifications d'avancement de course — envoyées par le serveur.
 // ---------------------------------------------------------------------------
-
-function shortName(booking, key) {
-  const name = booking && booking[key];
-  if (!name) return '';
-  const parts = String(name).trim().split(/\s+/);
-  return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
-}
-
-function formatAmount(booking) {
-  const cost = Number(booking.trip_cost);
-  if (!(cost > 0)) return '';
-  const symbol = booking.currency_symbol || (booking.pickup && booking.pickup.country === 'SN' ? 'FCFA' : '€');
-  return `${cost.toFixed(symbol === 'FCFA' ? 0 : 2)} ${symbol}`;
-}
 
 /** Notifie un utilisateur par son uid (lit son pushToken). Silencieux si absent. */
 async function notifyUser(uid, title, body, data) {
