@@ -54,7 +54,7 @@ export default class PromoComp extends React.Component {
       if (getpromo.val()) {
         let promoObj = getpromo.val();
         var allPromoData = [];
-        for (key in promoObj) {
+        for (const key in promoObj) {
           promoObj[key].promoKey = key;
           allPromoData.push(promoObj[key]);
         }

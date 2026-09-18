@@ -3,7 +3,6 @@ import NotificationPage from  './NotificationScreen';
 import EmptyNotificationPage from './EmptyScreen';
 import TaskListIgnorePopup from './TaskIgnorePopUp';
 import DriverTripCompleteSreen from './driverTripComplete';
-import LoginScreen from './LoginScreen';
 import ProfileScreen from './ProfileScreen';
 import DriverStartTrip from './DriverStartTrip';
 import DriverCompleteTrip from './CompleteTrip';
@@ -21,7 +20,6 @@ export {
     TaskListIgnorePopup,
     DriverTripCompleteSreen,
     RideListPage,
-    LoginScreen,
     ProfileScreen,
     NotificationPage,
     EmptyNotificationPage,

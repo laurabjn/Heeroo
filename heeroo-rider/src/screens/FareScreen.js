@@ -739,6 +739,24 @@ export default class FareScreen extends React.Component {
 }
 
 const styles = StyleSheet.create({
+  headerTitleStyle: {
+        color: colors.WHITE,
+        fontFamily: 'Montserrat-Bold',
+        fontSize: 18
+    },
+  alertModalInnerContainer: { height: 200, width: (width * 0.85), backgroundColor: colors.WHITE, alignItems: 'center', alignSelf: 'center', borderRadius: 7 },
+  alertContainer: { flex: 2, justifyContent: 'space-between', width: (width - 100) },
+  rideCancelText: { flex: 1, top: 15, color: colors.BLACK, fontFamily: 'Montserrat-Bold', fontSize: 20, alignSelf: 'center' },
+  horizontalLLine: { width: (width - 110), height: 0.5, backgroundColor: colors.BLACK, alignSelf: 'center', },
+  msgContainer: { flex: 2.5, alignItems: 'center', justifyContent: 'center' },
+  cancelMsgText: { color: colors.BLACK, fontFamily: 'Montserrat-Regular', fontSize: 15, alignSelf: 'center', textAlign: 'center' },
+  okButtonContainer: { flex: 1, width: (width * 0.85), flexDirection: 'row', backgroundColor: colors.GREY.iconSecondary, alignSelf: 'center' },
+  signInTextStyle: {
+        fontFamily: 'Montserrat-Bold',
+        color: colors.WHITE
+    },
+  okButtonStyle: { flexDirection: 'row', backgroundColor: colors.GREY.iconSecondary, alignItems: 'center', justifyContent: 'center' },
+  okButtonContainerStyle: { flex: 1, width: (width * 0.85), backgroundColor: colors.GREY.iconSecondary, },
     container: {
         flex: 1,
         justifyContent: 'space-between',

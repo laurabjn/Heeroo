@@ -93,7 +93,7 @@ export default class Registration extends React.Component {
                     if (userData.val()) {
                         let allUsers = userData.val();
                         var flag = false;
-                        for (key in allUsers) {
+                        for (const key in allUsers) {
                             if (allUsers[key].refferalId) {
                                 if (this.state.refferalId.toLowerCase() == allUsers[key].refferalId) {
                                     flag = true;

@@ -125,7 +125,7 @@ export default class ProfileScreen extends React.Component {
     //sign out and clear all async storage
     async signOut() {
         firebase.auth().signOut().then(() => {
-            props.navigation.reset({
+            this.props.navigation.reset({
                 index: 0,
                 routes: [{ name: 'AuthLoading' }],
             })
@@ -256,6 +256,15 @@ export default class ProfileScreen extends React.Component {
 
 //Screen Styling
 const styles = StyleSheet.create({
+    switchAlignStyle: {
+        alignSelf: 'flex-start',
+        marginBottom: 10,
+    },
+    horizontal: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        padding: 10,
+    },
     headerStyle: {
         borderBottomWidth: 0,
         paddingHorizontal: 20

@@ -179,9 +179,6 @@ export default function SideMenu(props) {
         );
     }
 
-    const goWallet = () => {
-        props.navigation.navigate('wallet');
-    }
 
 
     return (
@@ -245,6 +242,11 @@ export default function SideMenu(props) {
 
 //Screen Styling
 const styles = StyleSheet.create({
+    horizontal: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        padding: 10,
+    },
     headerStyle: {
         borderBottomWidth: 0,
         paddingHorizontal: 20

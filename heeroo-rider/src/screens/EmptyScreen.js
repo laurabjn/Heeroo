@@ -6,6 +6,7 @@ import {
     View,
     StatusBar,
     Text,
+    TouchableWithoutFeedback,
 } from 'react-native';
 import { Header } from '@rneui/themed';
 import AsyncStorage from '@react-native-async-storage/async-storage';

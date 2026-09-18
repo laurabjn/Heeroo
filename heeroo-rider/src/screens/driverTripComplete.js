@@ -264,7 +264,6 @@ export default class DriverTripComplete extends React.Component {
                             rating={this.state.starCount}
                             selectedStar={(rating) => this.onStarRatingPress(rating)}
                             buttonStyle={{ padding: 20 }}
-                            containerStyle={styles.contStyle}
                         />
                     </View>
                     <Button
@@ -283,6 +282,10 @@ export default class DriverTripComplete extends React.Component {
     }
 }
 const styles = StyleSheet.create({
+  headerInnerStyle: {
+        marginLeft: 10,
+        marginRight: 10
+    },
     mainViewStyle: {
         flex: 1,
         backgroundColor: colors.WHITE,

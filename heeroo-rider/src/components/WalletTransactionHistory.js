@@ -45,7 +45,7 @@ export default class WTransactionHistory extends React.Component {
             if (walletData.val()) {
                 let wdata = walletData.val()
                 var wallHis = []
-                for (key in wdata) {
+                for (const key in wdata) {
                     wdata[key].walletKey = key
                     let d = wdata[key].date
                     let tDate = new Date(d);

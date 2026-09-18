@@ -1,33 +1,11 @@
 import React from 'react';
-import { 
-    StyleSheet,
-    TouchableOpacity,
-    Platform,
-} from 'react-native';
-import { colors } from '../common/theme';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
 
-
+// Ancienne cloche de notifications du template. L'écran vers lequel elle menait
+// (« Notifications ») était une maquette codée en dur et n'est plus enregistré :
+// le bouton ne s'affiche plus. Le composant est conservé car plusieurs en-têtes
+// l'utilisent encore comme rightComponent.
 export default class NotificationBtn extends React.Component {
   render() {
-    const { style, children, btnClick, buttonStyle } = this.props;
-    return (
-        <TouchableOpacity
-            style={[styles.drawerToggle,style]}
-            onPress={ ()=>{this.props.navigation.navigate("Notifications")}}>
-            <Icon name="bell" size={Platform.OS == "ios" ?22 :20} color={colors.TEXT} />
-        </TouchableOpacity>
-    );
+    return null;
   }
 }
-
-const styles = StyleSheet.create({
-    drawerToggle:{
-        width: Platform.OS == "ios" ? 44:36,
-        height: Platform.OS == "ios" ? 44:36,
-        borderRadius: Platform.OS == "ios" ? 44:36,
-        backgroundColor: colors.ITEM,
-        justifyContent: 'center',
-        alignItems: 'center'
-    }
-});

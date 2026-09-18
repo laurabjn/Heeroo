@@ -446,7 +446,6 @@ export default class BookedCabScreen extends React.Component {
                                             emptyStarColor={"#727e8b"}
                                             halfStarColor={"#fed428"}
                                             rating={parseInt(this.state.starCount)}
-                                            containerStyle={styles.ratingContainerStyle}
                                         />
                                     </View>
                                 </View>
@@ -502,6 +501,10 @@ export default class BookedCabScreen extends React.Component {
 }
 
 const styles = StyleSheet.create({
+  signInTextStyle: {
+        fontFamily: 'Montserrat-Bold',
+        color: colors.WHITE
+    },
     mainContainer: {
         flex: 1,
         justifyContent: 'space-between',

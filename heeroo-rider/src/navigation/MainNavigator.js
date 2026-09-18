@@ -18,7 +18,6 @@ import {
     AboutPage,
     OnlineChat,
     WalletDetails,
-    AddMoneyScreen,
     EmailLoginScreen,
     EmailRegisterScreen,
     EmptyNotificationPage,

@@ -337,7 +337,7 @@ export default class RideDetails extends React.Component {
 
                                 {this.state.paramData && this.state.paramData.discount_amount > 0 && <View style={styles.billItem}>
                                     <View>
-                                        <Text style={[styles.billName, styles.billText]}>{languageJSON.discount}</Text>
+                                        <Text style={styles.billName}>{languageJSON.discount}</Text>
                                         <Text style={styles.taxColor}>{languageJSON.promo_apply}</Text>
                                     </View>
                                     <Text style={styles.discountAmount}>{this.state.paramData && this.state.paramData.discount_amount ? parseFloat(this.state.paramData.discount_amount).toFixed(0) : 0} {this.state.paramData && this.state.paramData.pickup.country ? countryCurrency[this.state.paramData.pickup.country] : ""}</Text>
@@ -398,6 +398,14 @@ export default class RideDetails extends React.Component {
 }
 
 const styles = StyleSheet.create({
+    discountAmount: {
+        fontSize: 14,
+        fontFamily: 'Montserrat-SemiBold',
+        color: colors.TEXT
+    },
+    lastStatus: {
+        borderBottomWidth: 0,
+    },
     headerStyle: {
         position: 'absolute',
         top: 0,

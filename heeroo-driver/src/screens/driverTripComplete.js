@@ -210,6 +210,13 @@ export default class DriverTripComplete extends React.Component {
 
 //Screen Styling
 const styles = StyleSheet.create({
+  drawer: {
+        backgroundColor: colors.ITEM
+    },
+  headerStyle: {
+        backgroundColor: colors.GREY.default,
+        borderBottomWidth: 0
+    },
     dateViewTextStyle: {
         fontSize: 10,
         color: colors.TEXT,

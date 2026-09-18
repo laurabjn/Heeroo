@@ -242,15 +242,6 @@ export default class DriverTripAccept extends React.Component {
         });
     }
 
-    getBookingDetails() {
-        let ref = firebase.database().ref('bookings/' + item.bookingId + '/');
-        ref.on('value', (snapshot) => {
-            this.setState({
-                bookingDetails: snapshot.val()
-            })
-        })
-    }
-
     onPressAccept(item, index) {
         var data = {
             carType: item.carType,

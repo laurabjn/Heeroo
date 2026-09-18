@@ -8,7 +8,6 @@ import {
     TaskListIgnorePopup,
     RideListPage,
     NotificationPage,
-    LoginScreen,
     DriverStartTrip,
     DriverCompleteTrip,
     RideDetails,

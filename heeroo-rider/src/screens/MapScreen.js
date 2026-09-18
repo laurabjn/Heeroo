@@ -656,6 +656,21 @@ export default class MScreen extends React.Component {
 }
 
 const styles = StyleSheet.create({
+    buttonTitleText: {
+        fontFamily: 'Montserrat-Bold',
+        fontSize: 14,
+        color: colors.WHITE,
+    },
+    cancelButtonStyle: {
+        backgroundColor: colors.PRIMARY,
+        borderRadius: 10,
+        height: 48,
+        paddingHorizontal: 30,
+    },
+  buttonContainer: {
+    marginTop: 20,
+    gap: 12,
+  },
     container: {
         flex: 1,
         justifyContent: 'space-between',

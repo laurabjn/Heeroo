@@ -61,7 +61,7 @@ export default class EmailLoginScreen extends Component {
                                     {
                                         text: languageJSON.ok,
                                         onPress: () => {
-                                            this.props.navigation.navigate("Login")
+                                            this.props.navigation.navigate("EmailLogin")
                                         },
                                         style: 'cancel',
                                     }

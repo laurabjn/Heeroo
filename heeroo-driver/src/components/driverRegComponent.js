@@ -253,8 +253,8 @@ export default class DiverReg extends React.Component {
     //imagepicker for license upload
     CapturePhoto = async () => {
         //permission check
-        const { status: cameraStatus } = await Permissions.askAsync(Permissions.CAMERA)
-        const { status: cameraRollStatus } = await Permissions.askAsync(Permissions.CAMERA_ROLL);
+        const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+        const { status: cameraRollStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (cameraStatus === 'granted' && cameraRollStatus === 'granted') {
             let result = await ImagePicker.launchImageLibraryAsync({

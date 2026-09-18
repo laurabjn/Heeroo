@@ -10,7 +10,7 @@ import {
   ScrollView, Dimensions,
 
 } from 'react-native';
-import { Header, Icon } from '@rneui/themed';
+import { Header } from '@rneui/themed';
 import { colors } from '../common/theme';
 var { height } = Dimensions.get('window');
 import firebase from 'firebase/compat/app';
@@ -61,14 +61,6 @@ export default class WalletDetails extends React.Component {
 
 
 
-  doReacharge() {
-    if (this.state.providers) {
-      this.props.navigation.push('addMoney', { allData: this.state.allData, providers: this.state.providers });
-    } else {
-      alert('No Payment Providers Found.')
-    }
-  }
-
   render() {
     const walletBar = height / 4;
     return (
@@ -85,21 +77,10 @@ export default class WalletDetails extends React.Component {
           <View style={{ height: walletBar, marginBottom: 12 }}>
             <View >
               <View style={{ flexDirection: 'row', justifyContent: "space-around", marginTop: 8 }}>
-                <View style={{ height: walletBar - 50, width: '48%', backgroundColor: '#D5D5D5', borderRadius: 8, justifyContent: 'center', flexDirection: 'column' }}>
+                {/* Pas de rechargement du portefeuille passager (paiement à la course) : la tuile occupe toute la largeur. */}
+                <View style={{ height: walletBar - 50, width: '96%', backgroundColor: '#D5D5D5', borderRadius: 8, justifyContent: 'center', flexDirection: 'column' }}>
                   <Text style={{ textAlign: 'center', fontSize: 18 }}>{languageJSON.wallet_ballance}</Text>
                   <Text style={{ textAlign: 'center', fontSize: 25, fontWeight: '500', color: '#1CA84F' }}>{this.state.allData ? parseFloat(this.state.allData.walletBalance).toFixed(0) : ''} {this.state.settings.symbol}</Text>
-                </View>
-                <View style={{ height: walletBar - 50, width: '48%', backgroundColor: '#1CA84F', borderRadius: 8, justifyContent: 'center', flexDirection: 'column' }}>
-                  <Icon
-                    name='add-circle'
-                    type='MaterialIcons'
-                    color='#fff'
-                    size={45}
-                    iconStyle={{ lineHeight: 48 }}
-                    onPress={() => this.doReacharge()}
-                  />
-                  <Text style={{ textAlign: 'center', fontSize: 18, color: '#fff' }}>{languageJSON.add_money}</Text>
-
                 </View>
               </View>
             </View>
