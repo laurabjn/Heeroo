@@ -16,8 +16,9 @@ Backend : Firebase (projet `projet-test-d7cd9` — Realtime Database, Auth, Stor
 ## Lancer les projets
 
 ```bash
-# Back-office
-cd heeroo-admin && npm install && npm start
+# Back-office (Create React App 3 : Node 16 ; production par défaut, REACT_APP_ENV=development pour la base de dev)
+cd heeroo-admin && npm install --legacy-peer-deps
+REACT_APP_ENV=development npm start
 
 # Application Passager (Expo — les projets natifs android/ et ios/ sont générés au build, jamais versionnés)
 cd heeroo-rider && npm install
@@ -75,11 +76,12 @@ Le déploiement des fonctions et la création du stockage exigent le plan Blaze 
 
 ## Intégration et déploiement continus (GitHub Actions)
 
-Trois workflows dans `.github/workflows/` :
+Quatre workflows dans `.github/workflows/` :
 
 | Workflow | Déclenchement | Ce qu'il fait |
 |---|---|---|
-| **CI** (`ci.yml`) | chaque push et pull request | apps : analyse statique, compilation Babel, `expo-doctor`, résolution des configurations dev et prod ; fonctions : tests unitaires et chargement du module ; règles : JSON valides. Le build du back-office admin (CRA 3, non migré) est informatif, il ne bloque pas. |
+| **CI** (`ci.yml`) | chaque push et pull request | apps : analyse statique, compilation Babel, `expo-doctor`, résolution des configurations dev et prod ; fonctions : tests unitaires et chargement du module ; règles : JSON valides. back-office admin : installation et build. |
+| **Déploiement admin** (`deploy-admin.yml`) | push sur `main` touchant `heeroo-admin/` → **dev** ; manuel → **dev** ou **prod** | build du back-office (Node 16, configuration de l'environnement cible) puis `firebase deploy --only hosting`. |
 | **Déploiement backend** (`deploy-backend.yml`) | push sur `main` touchant `functions/`, les règles ou `firebase.json` → **dev** ; manuel (« Run workflow ») → **dev** ou **prod** | tests puis `firebase deploy --only functions,database,storage` sur le projet de l'environnement choisi. |
 | **Build des apps** (`build-apps.yml`) | manuel (app, plateforme, profil) ; tag `v*` → production Android des deux apps | vérifications puis `eas build --no-wait` ; les liens de suivi apparaissent dans le résumé du run. Chaque build consomme du temps EAS : pas de build automatique à chaque push. |
 

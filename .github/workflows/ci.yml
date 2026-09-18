@@ -1,7 +1,7 @@
 # Intégration continue Heeroo : vérifications à chaque push et pull request.
 # Bloquant : apps mobiles (analyse statique, compilation, dépendances, config),
 # fonctions serveur (tests), règles Firebase (JSON valide).
-# Informatif : build du back-office admin (non migré, CRA 3 / Node 16).
+# Back-office admin : installation et build (Create React App 3, Node 16).
 
 name: CI
 
@@ -114,9 +114,8 @@ jobs:
             }"
 
   admin:
-    name: Back-office admin (informatif)
+    name: Back-office admin
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: heeroo-admin
@@ -129,7 +128,8 @@ jobs:
           cache-dependency-path: heeroo-admin/package-lock.json
       - name: Installer les dépendances
         run: npm ci --legacy-peer-deps
-      - name: Build
+      - name: Build (configuration de production)
         run: npm run build
         env:
           CI: 'false'
+          REACT_APP_ENV: production

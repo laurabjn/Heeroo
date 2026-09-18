@@ -1,0 +1,79 @@
+# Déploiement du back-office admin sur Firebase Hosting.
+#
+#  - Automatique vers « dev » à chaque push sur main qui touche heeroo-admin/.
+#  - Manuel (onglet Actions → « Run workflow ») vers « dev » ou « prod ».
+#
+# Le build embarque la configuration Firebase de l'environnement cible
+# (REACT_APP_ENV, voir heeroo-admin/src/config/keys.js). Même secret que le
+# déploiement backend : FIREBASE_SERVICE_ACCOUNT dans l'environnement GitHub.
+
+name: Déploiement admin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'heeroo-admin/**'
+      - 'firebase.json'
+      - '.github/workflows/deploy-admin.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement cible
+        type: choice
+        required: true
+        default: dev
+        options: [dev, prod]
+
+concurrency:
+  group: deploy-admin-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build et déploiement vers ${{ inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Le back-office est une app Create React App 3 : Node 16.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 16
+          cache: npm
+          cache-dependency-path: heeroo-admin/package-lock.json
+
+      - name: Installer les dépendances
+        working-directory: heeroo-admin
+        run: npm ci --legacy-peer-deps
+
+      - name: Build (configuration de l'environnement cible)
+        working-directory: heeroo-admin
+        run: npm run build
+        env:
+          CI: 'false'
+          REACT_APP_ENV: ${{ (inputs.environment || 'dev') == 'prod' && 'production' || 'development' }}
+
+      - name: Identifiants Firebase (compte de service de l'environnement)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT absent de l'environnement « ${{ inputs.environment || 'dev' }} »."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-sa.json" >> "$GITHUB_ENV"
+
+      # Le CLI Firebase tourne sur un Node récent, indépendamment du build.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Déployer sur Firebase Hosting
+        run: npx --yes firebase-tools@latest deploy --only hosting --project "${{ inputs.environment || 'dev' }}" --non-interactive
+
+      - name: Nettoyage des identifiants
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"
