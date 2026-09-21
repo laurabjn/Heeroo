@@ -192,6 +192,28 @@ exports.adminWalletAdjust = httpEndpoint(async (req, res) => {
   res.json({ success: true, balance: newBalance });
 });
 
+// ensureAdminClaim — appelée par le back-office à la connexion : si le compte
+// authentifié est administrateur en base (users/{uid}/isAdmin), pose le badge
+// « admin » sur son jeton s'il manque. Complète le déclencheur onAdminFlagChanged
+// (qui ne couvre que les changements postérieurs à son déploiement) et
+// rend le back-office autonome pour les comptes administrateurs existants.
+exports.ensureAdminClaim = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const isAdmin = (await admin.database().ref(`users/${user.uid}/isAdmin`).once('value')).val() === true;
+  const account = await admin.auth().getUser(user.uid);
+  const hasClaim = !!(account.customClaims && account.customClaims.admin === true);
+  if (isAdmin && !hasClaim) {
+    await admin.auth().setCustomUserClaims(user.uid, { ...(account.customClaims || {}), admin: true });
+    logger.info(`Badge administrateur posé à la connexion pour ${user.uid} (${account.email || '?'})`);
+  } else if (!isAdmin && hasClaim) {
+    const claims = { ...(account.customClaims || {}) };
+    delete claims.admin;
+    await admin.auth().setCustomUserClaims(user.uid, claims);
+    logger.info(`Badge administrateur retiré à la connexion pour ${user.uid}`);
+  }
+  res.json({ admin: isAdmin, updated: isAdmin !== hasClaim });
+});
+
 exports.delete_auth_user = httpEndpoint(async (req, res) => {
   await requireAdmin(req);
   const { id } = req.body || {};

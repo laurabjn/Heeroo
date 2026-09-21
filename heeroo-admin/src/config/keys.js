@@ -39,3 +39,4 @@ export const baseUrl = FUNCTIONS_BASE_URL[ENV];
 export const delete_auth_user_url = baseUrl + "delete_auth_user";
 export const push_notifications_url = baseUrl + "push_notifications";
 export const admin_wallet_adjust_url = baseUrl + "adminWalletAdjust";
+export const ensure_admin_claim_url = baseUrl + "ensureAdminClaim";

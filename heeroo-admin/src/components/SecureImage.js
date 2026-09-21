@@ -26,6 +26,7 @@ const cache = new Map();
 export default function SecureImage({ src, alt, style, ...rest }) {
   const [url, setUrl] = useState(needsSignedUrl(src) ? cache.get(src) || null : src);
   const [failed, setFailed] = useState(false);
+  const [reason, setReason] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -36,14 +37,19 @@ export default function SecureImage({ src, alt, style, ...rest }) {
     storageRef.ref(path).getDownloadURL()
       .then((signed) => { cache.set(src, signed); if (!cancelled) setUrl(signed); })
       .catch((e) => {
-        console.warn('[SecureImage] document refusé', path, e && e.code, e && e.message);
-        if (!cancelled) setFailed(true);
+        const code = (e && e.code) || '';
+        console.warn('[SecureImage] document refusé', path, code, e && e.message);
+        if (cancelled) return;
+        setReason(code === 'storage/unauthorized' ? 'accès refusé (rôle administrateur non actif : déconnectez-vous puis reconnectez-vous)'
+          : code === 'storage/object-not-found' ? 'fichier absent du stockage'
+          : code.replace('storage/', '') || 'erreur réseau');
+        setFailed(true);
       });
     return () => { cancelled = true; };
   }, [src]);
 
   if (failed) {
-    return <span title={alt} style={{ display: 'inline-block', width: 100, fontSize: 11, color: '#999' }}>Document inaccessible</span>;
+    return <span title={reason} style={{ display: 'inline-block', width: 100, fontSize: 11, color: '#b00' }}>Document inaccessible — {reason}</span>;
   }
   if (!url) {
     return <span style={{ display: 'inline-block', width: 100, height: 60, background: '#f0f0f0', borderRadius: 4 }} />;
