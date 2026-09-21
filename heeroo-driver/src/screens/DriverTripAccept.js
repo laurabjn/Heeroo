@@ -243,12 +243,15 @@ export default class DriverTripAccept extends React.Component {
     }
 
     onPressAccept(item, index) {
-        // Crédit prépayé : si l'exploitant a fixé un crédit minimum
-        // (settings/minDriverBalance, en FCFA ; 0 ou absent = pas de règle),
-        // un chauffeur en dessous ne peut pas accepter de course.
+        // Crédit prépayé (modèle Sénégal) : si l'exploitant a fixé un crédit minimum
+        // (settings/minDriverBalance, en FCFA ; 0 ou absent = pas de règle), un
+        // chauffeur en dessous ne peut pas accepter une course au départ du Sénégal.
+        // Les courses ailleurs (France : paiement à la course, pas de commission
+        // sur crédit) ne sont pas concernées.
+        const rideCountry = item.pickup && item.pickup.country;
         const minBalance = Number(this.state.allCurrency && this.state.allCurrency.minDriverBalance) || 0;
         const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
-        if (minBalance > 0 && balance < minBalance) {
+        if (rideCountry === 'SN' && minBalance > 0 && balance < minBalance) {
             Alert.alert(
                 languageJSON.credit_insufficient_title,
                 languageJSON.credit_insufficient_msg.replace('{balance}', balance.toLocaleString('fr-FR')).replace('{min}', minBalance.toLocaleString('fr-FR'))
