@@ -31,7 +31,7 @@ const FUNCTIONS_BASE_URL = {
 
 const STRIPE_PUBLISHABLE_KEY = {
   development: process.env.STRIPE_PK_TEST || 'pk_test_BeeF7JTRF8kOrTCBdPOTkE6r00u7U7w3dD', // pk_test du compte Stripe du client (mode test, publique)
-  production: process.env.STRIPE_PK_LIVE || '',    // pk_live_…
+  production: process.env.STRIPE_PK_LIVE || 'pk_live_ldbemsbzSHIv0SsVM0AvG5Hk00K7nzZ6OB', // pk_live du compte Stripe du client (publique)
 };
 
 const GOOGLE_SERVICES = {
