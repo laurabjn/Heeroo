@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyB8CrpvlyixviduVYmp2iwoSYZwFvQd1Gs</string>
+	<key>GCM_SENDER_ID</key>
+	<string>825776782989</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>org.Terence.HeerooDriver</string>
+	<key>PROJECT_ID</key>
+	<string>heeroo-dev-49beb</string>
+	<key>STORAGE_BUCKET</key>
+	<string>heeroo-dev-49beb.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:825776782989:ios:111b43539636e1af2c6cc4</string>
+	<key>DATABASE_URL</key>
+	<string>https://heeroo-dev-49beb-default-rtdb.europe-west1.firebasedatabase.app</string>
+</dict>
+</plist>
