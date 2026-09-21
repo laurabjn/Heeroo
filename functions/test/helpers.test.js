@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount } = require('../lib/helpers');
+const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate } = require('../lib/helpers');
 
 describe('toStripeAmount', () => {
   test('convertit les euros en centimes', () => {
@@ -86,5 +86,33 @@ describe('formatAmount', () => {
     assert.equal(formatAmount({ trip_cost: 0 }), '');
     assert.equal(formatAmount({ trip_cost: -3 }), '');
     assert.equal(formatAmount({}), '');
+  });
+});
+
+describe('commissionRate', () => {
+  const rates = [
+    { name: 'Berline', country: 'FR', convenience_fees: 0 },
+    { name: 'Scooter', country: 'SN', convenience_fees: 13 },
+    { name: 'Berline', country: 'SN', convenience_fees: 13 },
+    { name: 'Berline', country: 'CM', convenience_fees: '7' },
+    { name: 'Taxi', country: 'FR', convenience_fees: 'abc' },
+  ];
+  test('choisit le tarif du pays de la course, pas le premier du même nom', () => {
+    assert.equal(commissionRate(rates, 'Berline', 'SN'), 13);
+    assert.equal(commissionRate(rates, 'Berline', 'FR'), 0);
+    assert.equal(commissionRate(rates, 'Berline', 'cm'), 7); // casse indifférente, chaîne convertie
+  });
+  test('sans pays connu ou sans entrée pour ce pays : premier tarif de ce nom', () => {
+    assert.equal(commissionRate(rates, 'Scooter', undefined), 13);
+    assert.equal(commissionRate(rates, 'Berline', 'BJ'), 0); // retombe sur Berline FR
+  });
+  test('0 si type inconnu, taux invalide, ou tarifs absents', () => {
+    assert.equal(commissionRate(rates, 'Limousine', 'SN'), 0);
+    assert.equal(commissionRate(rates, 'Taxi', 'FR'), 0);
+    assert.equal(commissionRate(null, 'Berline', 'SN'), 0);
+  });
+  test('accepte la forme objet (clés Firebase) comme la forme tableau', () => {
+    const asObject = Object.fromEntries(rates.map((r, i) => ['k' + i, r]));
+    assert.equal(commissionRate(asObject, 'Berline', 'SN'), 13);
   });
 });

@@ -50,4 +50,18 @@ function formatAmount(booking) {
   return `${cost.toFixed(symbol === 'FCFA' ? 0 : 2)} ${symbol}`;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+/**
+ * Taux de commission (%) applicable à une course, d'après rates/car_type :
+ * le tarif dont le nom ET le pays correspondent ; à défaut de pays connu
+ * ou d'entrée pour ce pays, le premier tarif de ce nom. 0 si rien ne convient.
+ */
+function commissionRate(carTypes, carType, country) {
+  const types = (Array.isArray(carTypes) ? carTypes : Object.values(carTypes || {})).filter((t) => t && t.name === carType);
+  if (types.length === 0) return 0;
+  const byCountry = country ? types.find((t) => String(t.country || '').toUpperCase() === String(country).toUpperCase()) : null;
+  const found = byCountry || types[0];
+  const rate = Number(found.convenience_fees);
+  return Number.isFinite(rate) && rate > 0 ? rate : 0;
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };

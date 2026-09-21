@@ -28,7 +28,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -472,14 +472,9 @@ exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_
   });
 
 /** Taux de commission (%) pour un type de véhicule, d'après rates/car_type. */
-async function commissionRateFor(carType) {
+async function commissionRateFor(carType, country) {
   const snapshot = await admin.database().ref('rates/car_type').once('value');
-  const value = snapshot.val();
-  if (!value) return 0;
-  const types = Array.isArray(value) ? value : Object.values(value);
-  const found = types.find((t) => t && t.name === carType);
-  const rate = found ? Number(found.convenience_fees) : 0;
-  return Number.isFinite(rate) && rate > 0 ? rate : 0;
+  return commissionRate(snapshot.val(), carType, country);
 }
 
 const target = databaseTarget();
@@ -645,7 +640,7 @@ exports.onBookingCompleted = onValueUpdated(
     }
 
     const tripCost = Number(booking.trip_cost) || 0;
-    const rate = await commissionRateFor(booking.carType);
+    const rate = await commissionRateFor(booking.carType, booking.pickup && booking.pickup.country);
     const commission = Math.round(tripCost * rate) / 100; // 2 décimales, en unité de la devise
 
     // Marquage d'abord (idempotence), puis débit atomique du crédit chauffeur.
