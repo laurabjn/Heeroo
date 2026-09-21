@@ -23,6 +23,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { Header } from '@rneui/themed';
 import { BackBtn } from '../components';
 import { colors } from '../common/theme'
+import BrandHeader from '../components/BrandHeader';
 import { checkUserEmail } from "../helpers/user";
 
 
@@ -192,6 +193,7 @@ export default class EmailLoginScreen extends Component {
                     centerComponent={<Text style={styles.headerText}>{languageJSON.login_button}</Text>}
                     containerStyle={styles.headerContainerStyle}
                 />
+                <BrandHeader />
                 <View
                     style={styles.bg}
                 >
@@ -251,7 +253,6 @@ const styles = StyleSheet.create({
         fontFamily: "Montserrat-Bold",
     },
     bg: {
-        flex: 1,
         justifyContent: "flex-end",
         marginBottom: 30,
     },

@@ -23,6 +23,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { Header } from '@rneui/themed';
 import { BackBtn } from '../components';
 import { colors } from '../common/theme'
+import BrandHeader from '../components/BrandHeader';
 
 
 export default class EmailRegisterScreen extends Component {
@@ -144,6 +145,7 @@ export default class EmailRegisterScreen extends Component {
                     centerComponent={<Text style={styles.headerText}>{languageJSON.register_link}</Text>}
                     containerStyle={styles.headerContainerStyle}
                 />
+                <BrandHeader />
                 <View
                     style={styles.bg}>
                     <Text style={styles.title}>{languageJSON.register_email}</Text>
@@ -210,7 +212,6 @@ const styles = StyleSheet.create({
         fontFamily: "Montserrat-Bold",
     },
     bg: {
-        flex: 1,
         justifyContent: "flex-end",
         marginBottom: 30,
     },

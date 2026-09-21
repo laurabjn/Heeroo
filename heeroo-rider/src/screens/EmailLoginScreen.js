@@ -20,6 +20,7 @@ import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import languageJSON from '../common/language';
 import { colors } from '../common/theme';
+import BrandHeader from '../components/BrandHeader';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { Header } from '@rneui/themed';
 import { checkUserEmail } from "../helpers/user";
@@ -194,6 +195,7 @@ export default class EmailLoginScreen extends Component {
                     centerComponent={<Text style={styles.headerText}>{languageJSON.login_button}</Text>}
                     containerStyle={styles.headerContainerStyle}
                 />
+                <BrandHeader />
                 <View style={styles.bg} >
                     <Text style={styles.title}>{languageJSON.email_login}</Text>
 
@@ -254,7 +256,6 @@ const styles = StyleSheet.create({
         fontFamily: "Montserrat-Bold",
     },
     bg: {
-        flex: 1,
         justifyContent: "flex-end",
     },
     backButton: {
