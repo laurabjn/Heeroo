@@ -1,5 +1,5 @@
 import { userRef, singleUserRef, authRef } from "../config/firebase";
-import { delete_auth_user_url } from "../config/keys";
+import { delete_auth_user_url, admin_wallet_adjust_url } from "../config/keys";
 import { 
     FETCH_ALL_USERS,
     FETCH_ALL_USERS_SUCCESS,
@@ -97,3 +97,16 @@ export const fetchUsers = () => dispatch => {
         console.log("error",error)
       });
   }
+
+// Recharge ou correction manuelle du crédit d'un chauffeur (espèces à l'agence,
+// geste commercial). Passe par le serveur : le solde n'est jamais modifié
+// directement depuis le back-office. Résout avec { success, balance } ou { error }.
+export const adjustDriverWallet = async (uid, amount, note) => {
+  const idToken = await authRef.currentUser.getIdToken();
+  const response = await fetch(admin_wallet_adjust_url, {
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+    method: 'post',
+    body: JSON.stringify({ uid, amount, note }),
+  });
+  return response.json();
+};

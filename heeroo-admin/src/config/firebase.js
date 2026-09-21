@@ -1,12 +1,14 @@
 import firebase from 'firebase/app';
 import 'firebase/database';
 import 'firebase/auth';
+import 'firebase/storage';
 
 import { FirebaseConfig } from "./keys";
 firebase.initializeApp(FirebaseConfig);
 
 const databaseRef = firebase.database().ref();
 export const authRef = firebase.auth();
+export const storageRef = firebase.storage();
 
 export const FIREBASE_AUTH_PERSIST = firebase.auth.Auth.Persistence.LOCAL;
 

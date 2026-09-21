@@ -5,7 +5,8 @@ import CircularLoading from "../components/CircularLoading";
 import SecureImage from "../components/SecureImage";
 import languageJson from "../config/language";
 import {
-  editUser, deleteUser
+  editUser, deleteUser,
+  adjustDriverWallet,
 } from "../actions/usersactions";
 import moment from "moment"
 import countryNameFile from './../countryName.json'
@@ -77,6 +78,28 @@ export default function Users() {
           sorting: true,
 
         }}
+        actions={[
+          rowData => ({
+            icon: 'account_balance_wallet',
+            tooltip: languageJson.wallet_adjust_action,
+            hidden: rowData.usertype !== 'driver',
+            onClick: async (event, row) => {
+              const who = (row.firstName || '') + ' ' + (row.lastName || '');
+              const raw = window.prompt(languageJson.wallet_adjust_title + ' — ' + who + String.fromCharCode(10) + languageJson.wallet_adjust_prompt, '');
+              if (raw === null) return;
+              const amount = Number(String(raw).replace(/\s/g, '').replace(',', '.'));
+              if (!Number.isFinite(amount) || amount === 0) { window.alert(languageJson.wallet_adjust_failed + 'montant invalide'); return; }
+              const note = window.prompt(languageJson.wallet_adjust_note, '') || '';
+              try {
+                const result = await adjustDriverWallet(row.id, amount, note);
+                if (result && result.success) window.alert(languageJson.wallet_adjust_done + result.balance.toLocaleString('fr-FR') + ' FCFA');
+                else window.alert(languageJson.wallet_adjust_failed + (result && result.error ? result.error : 'erreur inconnue'));
+              } catch (e) {
+                window.alert(languageJson.wallet_adjust_failed + e.message);
+              }
+            },
+          }),
+        ]}
         editable={{
           onRowUpdate: (newData, oldData) =>
             new Promise(resolve => {

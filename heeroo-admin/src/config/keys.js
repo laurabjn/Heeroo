@@ -38,3 +38,4 @@ export const exchange_access_key = '5df860682e9ae9abe41e0c898de8724b';
 export const baseUrl = FUNCTIONS_BASE_URL[ENV];
 export const delete_auth_user_url = baseUrl + "delete_auth_user";
 export const push_notifications_url = baseUrl + "push_notifications";
+export const admin_wallet_adjust_url = baseUrl + "adminWalletAdjust";

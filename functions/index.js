@@ -162,6 +162,36 @@ exports.check_user_email = httpEndpoint(async (req, res) => {
 // delete_auth_user — suppression d'un compte par le back-office (le profil en
 // base est supprimé par le back-office lui-même).
 // ---------------------------------------------------------------------------
+// adminWalletAdjust — recharge (ou correction) manuelle du crédit d'un chauffeur
+// par un administrateur : espèces déposées à l'agence, geste commercial,
+// régularisation. Seul le serveur touche walletBalance ; chaque opération est
+// tracée dans walletHistory avec l'administrateur qui l'a faite.
+exports.adminWalletAdjust = httpEndpoint(async (req, res) => {
+  const operator = await requireAdmin(req);
+  const { uid, amount, note } = req.body || {};
+  const value = Number(amount);
+  if (!uid) throw httpError(400, 'Paramètre uid requis');
+  if (!Number.isFinite(value) || value === 0 || Math.abs(value) > 1000000) throw httpError(400, 'Montant invalide');
+
+  const driverRef = admin.database().ref(`users/${uid}`);
+  const driver = (await driverRef.once('value')).val();
+  if (!driver) throw httpError(404, 'Utilisateur introuvable');
+  if (driver.usertype !== 'driver') throw httpError(400, "Le crédit ne concerne que les chauffeurs");
+
+  const result = await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + value);
+  const newBalance = Number(result.snapshot.val()) || 0;
+  await driverRef.child('walletHistory').push({
+    type: value > 0 ? 'Credit' : 'Debit',
+    reason: value > 0 ? 'admin_topup' : 'admin_adjustment',
+    amount: Math.abs(value),
+    date: admin.database.ServerValue.TIMESTAMP,
+    by: operator.uid,
+    note: typeof note === 'string' ? note.slice(0, 200) : null,
+  });
+  logger.info(`Crédit chauffeur ${uid} : ${value > 0 ? '+' : ''}${value} par l'administrateur ${operator.uid} → solde ${newBalance}`);
+  res.json({ success: true, balance: newBalance });
+});
+
 exports.delete_auth_user = httpEndpoint(async (req, res) => {
   await requireAdmin(req);
   const { id } = req.body || {};
