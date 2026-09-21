@@ -26,15 +26,22 @@ service firebase.storage {
       return request.resource.size < 10 * 1024 * 1024;
     }
 
+    // Les administrateurs (badge « admin » dans le jeton, posé par la fonction
+    // onAdminFlagChanged depuis users/{uid}/isAdmin) lisent tous les documents
+    // pour les valider dans le back-office.
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     match /users/{object} {
-      allow read: if signedIn() && ownsObject(object);
+      allow read: if isAdmin() || (signedIn() && ownsObject(object));
       allow write: if signedIn() && ownsObject(object)
                    && (request.resource == null || acceptableUpload());
     }
 
     match /users/driver_licenses/{uploadId}/{rest=**} {
       allow write: if signedIn() && (request.resource == null || acceptableUpload());
-      allow read: if false;
+      allow read: if isAdmin();
     }
 
     match /{allPaths=**} {

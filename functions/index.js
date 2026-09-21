@@ -19,10 +19,11 @@
 //   - notifications d'avancement de course (demande, acceptation, départ,
 //     fin, annulation, paiement attendu) envoyées par le serveur, quel que
 //     soit l'état des applications ;
-//   - prélèvement de la commission sur le crédit du chauffeur au statut END.
+//   - prélèvement de la commission sur le crédit du chauffeur au statut END ;
+//   - badge administrateur (custom claim) recopié depuis users/{uid}/isAdmin.
 
 const functions = require('firebase-functions/v1');
-const { onValueUpdated, onValueCreated } = require('firebase-functions/v2/database');
+const { onValueUpdated, onValueCreated, onValueWritten } = require('firebase-functions/v2/database');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
@@ -613,6 +614,34 @@ exports.onBookingStatusChanged = onValueUpdated(
         return;
     }
     logger.info(`Course ${bookingId} : ${before} -> ${status}, notifications envoyées`);
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Badge administrateur dans le jeton d'authentification.
+// Les règles de stockage ne peuvent pas lire la base : elles vérifient
+// request.auth.token.admin. Ce déclencheur recopie users/{uid}/isAdmin dans
+// les « custom claims » du compte ; l'utilisateur récupère le badge à son
+// prochain rafraîchissement de jeton (le back-office le force à la connexion).
+// ---------------------------------------------------------------------------
+exports.onAdminFlagChanged = onValueWritten(
+  { ref: '/users/{uid}/isAdmin', instance: target.instance, region: target.region },
+  async (event) => {
+    const uid = event.params.uid;
+    const isAdmin = event.data.after.val() === true;
+    try {
+      const user = await admin.auth().getUser(uid);
+      const claims = { ...(user.customClaims || {}), admin: isAdmin };
+      if (!isAdmin) delete claims.admin;
+      await admin.auth().setCustomUserClaims(uid, claims);
+      logger.info(`Badge administrateur ${isAdmin ? 'accordé à' : 'retiré de'} ${uid}`);
+    } catch (error) {
+      if (error && error.code === 'auth/user-not-found') {
+        logger.warn(`isAdmin écrit pour un compte inexistant : ${uid}`);
+        return;
+      }
+      throw error;
+    }
   }
 );
 

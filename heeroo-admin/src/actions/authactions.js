@@ -16,6 +16,9 @@ export const fetchUser = () => dispatch => {
   });
   authRef.onAuthStateChanged(user => {
     if (user) {
+      // Le badge administrateur (custom claim) est posé côté serveur : on
+      // force un jeton frais pour que le stockage le voie dès la connexion.
+      user.getIdToken(true).catch(() => {});
 
       singleUserRef(user.uid).once("value", snapshot => {
 
