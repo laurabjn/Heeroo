@@ -28,7 +28,6 @@ export default function SideMenu(props) {
 
     const [profile_image, setprofile_image] = useState(null)
     const [loader, setloader] = useState(null)
-    const [currentUser, setcurrentUser] = useState({})
     const [userData, setuserData] = useState({})
     const [tempAddress, settempAddress] = useState({})
     const [settings, setsettings] = useState({
@@ -118,13 +117,13 @@ export default function SideMenu(props) {
         try {
             const response = await fetch(uri);
             const blob = await response.blob();
-            const imageRef = firebase.storage().ref().child(`users/${currentUser.uid}`);
+            const imageRef = firebase.storage().ref().child(`users/${firebase.auth().currentUser.uid}`);
             await imageRef.put(blob);
             const url = await imageRef.getDownloadURL();
-            await firebase.database().ref('/users/' + currentUser.uid + '/').update({ profile_image: url });
+            await firebase.database().ref('/users/' + firebase.auth().currentUser.uid + '/').update({ profile_image: url });
             setprofile_image(url);
         } catch (error) {
-            console.log('[ProfileScreen] upload photo échoué', error);
+            console.log('[ProfileScreen] upload photo échoué', error && error.code, error && error.message);
             Alert.alert(languageJSON.Error || 'Erreur', "L'envoi de la photo a échoué. Réessayez.");
         }
     }
@@ -167,7 +166,7 @@ export default function SideMenu(props) {
                 },
                 {
                     text: languageJSON.yes, onPress: () => {
-                        var ref = firebase.database().ref('users/' + currentUser.uid + '/')
+                        var ref = firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/')
                         ref.remove().then(() => {
                             signOut()
                             firebase.auth().currentUser.delete()

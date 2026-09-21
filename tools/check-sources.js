@@ -12,7 +12,9 @@
 //   - couleur `colors.X` absente du thème ;
 //   - texte `languageJSON.X` absent du fichier de langue ;
 //   - import relatif ou `require()` d'asset vers un fichier inexistant ;
-//   - `navigate('Écran')` vers un écran qu'aucun navigateur ne déclare.
+//   - `navigate('Écran')` vers un écran qu'aucun navigateur ne déclare ;
+//   - état `useState` dont la valeur est lue mais dont le setter n'est jamais
+//     appelé (la valeur reste à l'initial pour toujours).
 //
 // Usage : node tools/check-sources.js heeroo-rider heeroo-driver
 
@@ -174,6 +176,24 @@ function checkApp(app) {
     });
 
     const isPlugin = file.includes(path.sep + 'plugins' + path.sep);
+
+    // useState lu mais jamais alimenté : const [x, setX] = useState(...) sans appel à setX.
+    babel.traverse(ast, {
+      VariableDeclarator(p) {
+        const { id, init } = p.node;
+        if (!init || init.type !== 'CallExpression' || init.callee.type !== 'Identifier' || init.callee.name !== 'useState') return;
+        if (id.type !== 'ArrayPattern' || id.elements.length < 2 || !id.elements[0] || !id.elements[1]) return;
+        const value = id.elements[0].name;
+        const setter = id.elements[1].name;
+        const setterBinding = p.scope.getBinding(setter);
+        const valueBinding = p.scope.getBinding(value);
+        if (!setterBinding || !valueBinding) return;
+        if (setterBinding.referenced) return;
+        const memberReads = valueBinding.referencePaths.filter((r) => r.parentPath.isMemberExpression() && r.parentPath.node.object === r.node);
+        if (memberReads.length === 0) return;
+        report(file, id, 'état', `« ${value} » est lu (${memberReads.length} accès) mais ${setter} n'est jamais appelé : la valeur reste à son initial`);
+      },
+    });
 
     babel.traverse(ast, {
       // Identifiants référencés sans déclaration.
