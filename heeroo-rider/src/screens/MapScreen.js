@@ -103,7 +103,6 @@ export default class MScreen extends React.Component {
     }
     tripSatusCheck() {
         var curuser = firebase.auth().currentUser;
-        console.log('testr')
         const propsForOn = this.props
         const userData = null
 
@@ -111,6 +110,27 @@ export default class MScreen extends React.Component {
         userRoot.once('value', userData => {
             if (userData.val()) {
                 userData = userData.val()
+
+                // Règlement en attente d'une course terminée avant la fermeture de
+                // l'app : le veilleur ci-dessous ne réagit qu'aux changements en
+                // direct, on vérifie donc aussi à l'ouverture.
+                const pendingRef = firebase.database().ref('users/' + curuser.uid + '/my-booking');
+                pendingRef.once('value', (snapshot) => {
+                    const all = snapshot.val() || {};
+                    for (const key of Object.keys(all)) {
+                        const booking = all[key];
+                        if (booking && booking.payment_status == 'IN_PROGRESS' && booking.status == 'END'
+                            && booking.skip != true && booking.paymentstart != true) {
+                            booking.firstname = userData.firstName;
+                            booking.lastname = userData.lastName;
+                            booking.email = userData.email;
+                            booking.phonenumber = userData.mobile;
+                            booking.bookingKey = key;
+                            propsForOn.navigation.navigate('CardDetails', { data: booking });
+                            return;
+                        }
+                    }
+                });
 
                 const bookingData = firebase.database().ref('users/' + curuser.uid + '/my-booking');
                 bookingData.on('child_changed', function (childSnapshot, prevChildKey) {

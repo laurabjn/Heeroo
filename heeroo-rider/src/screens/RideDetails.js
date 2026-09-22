@@ -159,7 +159,9 @@ export default class RideDetails extends React.Component {
                     bDataref.once('value', bookingdetails => {
                         if (bookingdetails.val()) {
                             let bookingData = bookingdetails.val()
-                            if (bookingData.payment_status == "WAITING") {
+                            // Toute course terminée mais non réglée peut être payée ici :
+                            // c'est le seul chemin si le passager a fermé l'app avant de payer.
+                            if (['WAITING', 'IN_PROGRESS', 'DUE', 'NOT PAID'].includes(bookingData.payment_status)) {
                                 bookingData.bookingKey = data.bookingId;
                                 bookingData.firstname = udata.firstName;
                                 bookingData.lastname = udata.lastName;
@@ -383,7 +385,7 @@ export default class RideDetails extends React.Component {
                         </View>
                     }
 
-                    {this.state.paramData && this.state.paramData.payment_status == 'WAITING' &&
+                    {this.state.paramData && ['WAITING', 'IN_PROGRESS', 'DUE', 'NOT PAID'].includes(this.state.paramData.payment_status) &&
                         <Button
                             title={languageJSON.paynow_button}
                             titleStyle={styles.btnText}
