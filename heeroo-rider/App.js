@@ -48,10 +48,12 @@ export default class App extends React.Component {
   }
 
   render() {
+    // Apple Pay n'est pas activé sur le compte Apple du client (capacité et
+    // identifiant marchand absents) : la feuille de paiement Stripe fonctionne
+    // par saisie de carte, et par Google Pay sur Android.
     return (
       <StripeProvider
         publishableKey={Constants.expoConfig.extra.stripePublishableKey || 'pk_test_placeholder'}
-        merchantIdentifier="merchant.org.Terence.HeerooRider"
         urlScheme="heeroo"
       >
         <AppContainer />

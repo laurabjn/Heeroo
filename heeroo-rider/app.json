@@ -95,7 +95,6 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.org.Terence.HeerooRider",
           "enableGooglePay": true
         }
       ],
