@@ -90,8 +90,13 @@ export default class DriverCompleteTrip extends React.Component {
         Data.once('value', rates => {
             if (rates.val()) {
                 var carTypeWiseRate = rates.val();
+                // Un même nom de véhicule existe pour plusieurs pays (Berline FR,
+                // Berline SN…) : sans le pays de la course, c'est le dernier tarif
+                // trouvé qui l'emportait, donc le mauvais barème.
+                const rideCountry = (allDetails.pickup && allDetails.pickup.country) || '';
                 for (var i = 0; i < carTypeWiseRate.car_type.length; i++) {
-                    if (carTypeWiseRate.car_type[i].name == allDetails.carType) {
+                    if (carTypeWiseRate.car_type[i].name == allDetails.carType
+                        && (!rideCountry || carTypeWiseRate.car_type[i].country == rideCountry)) {
                         var rates = carTypeWiseRate.car_type[i];
                         this.setState({
                             rateDetails: rates
