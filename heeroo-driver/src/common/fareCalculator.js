@@ -40,6 +40,9 @@ export async function farehelper(distance, time, rateDetails, country) {
 
     const computed = estimateRateForKM + estimateRateForHour;
     const total = computed > minFare ? computed : minFare;
+
+    // La commission est prelevee sur la part du chauffeur : elle ne s'ajoute pas
+    // au prix paye par le passager, qui regle le prix de la course.
     const convenienceFee = total * num(rates.convenience_fees) / 100;
 
     return {
@@ -49,7 +52,8 @@ export async function farehelper(distance, time, rateDetails, country) {
         distaceRate: estimateRateForKM.toFixed(0),
         timeRate: estimateRateForHour.toFixed(0),
         totalCost: total,
-        grandTotal: total + convenienceFee,
+        grandTotal: total,
         convenience_fees: convenienceFee,
+        driverShare: total - convenienceFee,
     };
 }

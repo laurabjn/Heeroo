@@ -640,10 +640,6 @@ export default class FareScreen extends React.Component {
                             <Text style={styles.captionText}>{languageJSON.base_fare}</Text>
                             <Text style={styles.priceText}>{this.state.settings.symbol} {this.state.fareCost} </Text>
                         </View>
-                        <View style={styles.priceItem}>
-                            <Text style={styles.captionText}>{languageJSON.convenience_free}</Text>
-                            <Text style={styles.priceText}>{this.state.settings.symbol} {this.state.convenience_fees ? this.state.convenience_fees : 0} </Text>
-                        </View>
                         <View style={styles.totalPriceItem}>
                             <View>
                                 <Text style={styles.totalPriceCaption}>{languageJSON.total_fare}</Text>
@@ -716,10 +712,7 @@ export default class FareScreen extends React.Component {
                             <Text style={[styles.priceText, { color: colors.TEXT }]}>{this.state.fareCost ? ' ' + this.state.fareCost : ' '}{this.state.settings.symbol}</Text>
                         </View>
 
-                        <View style={styles.priceItem}>
-                            <Text style={styles.priceText}>{languageJSON.convenience_free}</Text>
-                            <Text style={[styles.priceText, { color: colors.TEXT }]}>{this.state.convenience_fees ? ' ' + this.state.convenience_fees : ' '}{this.state.settings.symbol}</Text>
-                        </View>
+                        
 
                         <View style={styles.priceItem}>
                             <Text style={styles.priceText}>{languageJSON.Commissionprovisoire}</Text>
