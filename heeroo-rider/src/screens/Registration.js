@@ -3,6 +3,7 @@ import { Registration } from '../components';
 import { StyleSheet, View, Alert } from 'react-native';
 import languageJSON from '../common/language';
 import firebase from 'firebase/compat/app';
+import { getAuth, updateProfile as setDisplayName } from 'firebase/auth';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
@@ -74,7 +75,11 @@ export default class RegistrationPage extends React.Component {
   }
 
   updateProfile(data) {
-    firebase.auth().currentUser.updateProfile({
+    // updateProfile n'existe pas sur l'utilisateur renvoyé par l'API moderne :
+    // on passe par la fonction dédiée, et l'échec du nom affiché ne bloque pas
+    // la création du compte (le profil en base fait foi).
+    const currentUser = getAuth().currentUser || firebase.auth().currentUser;
+    setDisplayName(currentUser, {
       displayName: data.firstName + ' ' + data.lastName,
     }).then(() => {
       return firebase.database().ref('users/').child(firebase.auth().currentUser.uid).set(data);

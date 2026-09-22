@@ -10,6 +10,7 @@ import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import 'firebase/compat/storage';
+import { getAuth, updateProfile } from 'firebase/auth';
 import languageJSON from '../common/language';
 import { google_map_key } from '../common/key';
 import { checkLocationPermission, checkCameraPermission } from "../common/permission";
@@ -139,7 +140,15 @@ export default class DriverRegistrationPage extends React.Component {
 
       const user = firebase.auth().currentUser;
       if (!user) throw new Error("session expirée, reconnectez-vous avant de finaliser l'inscription");
-      await user.updateProfile({ displayName: regData.firstName + ' ' + regData.lastName });
+      // Le nom affiché est accessoire (le profil en base fait foi) : son échec
+      // ne doit pas empêcher l'enregistrement du compte. L'authentification est
+      // initialisée avec l'API moderne, d'où l'appel via updateProfile(user, …)
+      // et non user.updateProfile(…), qui n'existe pas sur cet objet.
+      try {
+        await updateProfile(getAuth().currentUser || user, { displayName: regData.firstName + ' ' + regData.lastName });
+      } catch (nameError) {
+        console.log('[Inscription chauffeur] nom affiché non enregistré', nameError && nameError.message);
+      }
       await firebase.database().ref('users/').child(user.uid).set(regData);
       await firebase.auth().signOut();
 
