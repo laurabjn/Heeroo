@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAP_PROVIDER } from '../common/mapProvider';
 import {
     StyleSheet,
     View,
@@ -681,7 +682,7 @@ export default class FareScreen extends React.Component {
                     customMapStyle={customMapStyle}
                     ref={map => { this.map = map }}
                     style={styles.map}
-                    provider={PROVIDER_GOOGLE}
+                    provider={MAP_PROVIDER}
                     initialRegion={{
                         latitude: (this.state.region.wherelatitude ? this.state.region.wherelatitude : 46),
                         longitude: (this.state.region.wherelongitude ? this.state.region.wherelongitude : 2),

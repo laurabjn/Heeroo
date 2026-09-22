@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAP_PROVIDER } from '../common/mapProvider';
 import {
     StyleSheet,
     View,
@@ -202,7 +203,7 @@ export default class RideDetails extends React.Component {
                                 ref={ref => this.mapRef = ref}
                                 customMapStyle={customMapStyle}
                                 style={styles.map}
-                                provider={PROVIDER_GOOGLE}
+                                provider={MAP_PROVIDER}
                                 region={{
                                     latitude: (this.state.intialregion.latitude ? this.state.intialregion.latitude : 46),
                                     longitude: (this.state.intialregion.longitude ? this.state.intialregion.longitude : 2),

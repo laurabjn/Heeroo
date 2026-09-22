@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { MAP_PROVIDER } from '../common/mapProvider';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import { Image } from 'react-native';
 import { customMapStyle, colors } from '../common/theme';
@@ -17,7 +18,7 @@ export default class MapComponent extends Component {
             <MapView
                 ref={mapRef}
                 customMapStyle={customMapStyle}
-                provider={PROVIDER_GOOGLE}
+                provider={MAP_PROVIDER}
                 showsUserLocation={false}
                 showsMyLocationButton={false}
                 //mapPadding={{ top: 0, right: 0, bottom: 220, left: 0 }} 

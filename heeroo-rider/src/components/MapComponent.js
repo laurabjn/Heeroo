@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { MAP_PROVIDER } from '../common/mapProvider';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from 'react-native-maps';
 import { customMapStyle, colors } from '../common/theme';
 import { Car, Pin } from '../icons';
@@ -20,7 +21,7 @@ export default class MapComponent extends Component {
             <MapView
                 //ref={setMapRef}
                 customMapStyle={customMapStyle}
-                provider={PROVIDER_GOOGLE}
+                provider={MAP_PROVIDER}
                 showsUserLocation={false}
                 showsMyLocationButton={true}
                 loadingEnabled={false}

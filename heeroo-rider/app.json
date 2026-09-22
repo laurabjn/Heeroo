@@ -22,9 +22,6 @@
           "remote-notification"
         ]
       },
-      "config": {
-        "googleMapsApiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
-      },
       "entitlements": {
         "aps-environment": "production"
       }

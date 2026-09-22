@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAP_PROVIDER } from '../common/mapProvider';
 import { Text, View, StyleSheet, Dimensions, FlatList, Modal, TouchableHighlight, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { Button, Header } from '@rneui/themed';
 import Polyline from '@mapbox/polyline';
@@ -480,8 +481,7 @@ export default class DriverTripAccept extends React.Component {
                                     <View style={styles.mapcontainer}>
                                         <MapView
                                             style={styles.map}
-                                            provide
-                                            r={PROVIDER_GOOGLE}
+                                            provider={MAP_PROVIDER}
                                             initialRegion={{
                                                 latitude: item.pickup.lat,
                                                 longitude: item.pickup.lng,
