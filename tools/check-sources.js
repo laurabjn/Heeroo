@@ -86,20 +86,35 @@ function parse(code, babel) {
   });
 }
 
-/** Clés d'un objet littéral exporté sous un nom donné (ex. `export const colors = {...}`). */
+/**
+ * Clés d'un objet littéral exporté : soit nommé (`export const colors = {...}`),
+ * soit export par défaut (`export default {...}`, forme du fichier de langue).
+ * Renvoie un Set vide si le fichier n'expose pas d'objet littéral — les
+ * vérifications qui en dépendent sont alors impossibles, et checkApp le signale.
+ */
 function exportedObjectKeys(file, exportName, babel) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parse(code, babel);
   const keys = new Set();
+  const collect = (object) => {
+    for (const prop of object.properties) {
+      if (prop.type === 'ObjectProperty') {
+        if (prop.key.type === 'Identifier') keys.add(prop.key.name);
+        else if (prop.key.type === 'StringLiteral') keys.add(prop.key.value);
+      }
+    }
+  };
   babel.traverse(ast, {
     VariableDeclarator(p) {
-      if (p.node.id.type === 'Identifier' && p.node.id.name === exportName && p.node.init && p.node.init.type === 'ObjectExpression') {
-        for (const prop of p.node.init.properties) {
-          if (prop.type === 'ObjectProperty') {
-            if (prop.key.type === 'Identifier') keys.add(prop.key.name);
-            else if (prop.key.type === 'StringLiteral') keys.add(prop.key.value);
-          }
-        }
+      if (p.node.id.type === 'Identifier' && p.node.id.name === exportName && p.node.init && p.node.init.type === 'ObjectExpression') collect(p.node.init);
+    },
+    ExportDefaultDeclaration(p) {
+      const d = p.node.declaration;
+      if (d.type === 'ObjectExpression') collect(d);
+      else if (d.type === 'Identifier') {
+        const binding = p.scope.getBinding(d.name);
+        const init = binding && binding.path.node.init;
+        if (init && init.type === 'ObjectExpression') collect(init);
       }
     },
   });
@@ -138,6 +153,9 @@ function checkApp(app) {
   const themeKeys = exportedObjectKeys(path.join(appDir, 'src', 'common', 'theme.js'), 'colors', babel);
   const langKeys = exportedObjectKeys(path.join(appDir, 'src', 'common', 'language.js'), 'language', babel);
   const screens = screenNames(files.filter((f) => f.includes(path.sep + 'navigation' + path.sep)), babel);
+  for (const [label, set] of [['thème (colors)', themeKeys], ['langue (languageJSON)', langKeys], ['écrans', screens]]) {
+    if (set.size === 0) console.warn(`  !! référentiel ${label} vide pour ${app} : les vérifications correspondantes sont inactives`);
+  }
 
   const findings = [];
   const report = (file, node, kind, message) => {

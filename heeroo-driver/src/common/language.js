@@ -1,4 +1,8 @@
 export default {
+    error: "Erreur",
+    alert: "Information",
+    payment: "Paiement",
+    valid_identityfront_check: "Ce document est obligatoire",
     // Crédit chauffeur (recharge Wave)
     credit_balance: 'Mon crédit',
     topup_button: 'Recharger',
@@ -223,14 +227,14 @@ export default {
     file_identity_front: "Pièce d’identité recto",
     file_identity_back: "Pièce d’identité verso",
     carteGrise: "Carte grise",
-    permis: "Permis",
+    permis: "Permis de conduire",
     carteVTC: "Carte VTC",
     rir: "Relevé d'information restreint (RIR)",
-    attestation: "Attestatin à titre onéreux",
-    carteVerte: "Carte Verte",
+    attestation: "Attestation à titre onéreux",
+    carteVerte: "Carte verte",
     assuranceRC: "Assurance Responsabilité Civile",
-    photoAvantVehicule: "Photo avant vehicule",
-    photoChauffeur: "Photo Chauffeur",
+    photoAvantVehicule: "Photo avant du véhicule",
+    photoChauffeur: "Photo du chauffeur",
     emailExistInPhoneAccountTitle: "Erreur",
     emailExistInPhoneAccount: "Merci d'utiliser la connexion via N° de téléphone, utilisée lors de l'inscription",
     resetEmailExistInPhoneAccount: "Cet email est utilisé pour un compte inscrit via N° de téléphone. Vous ne pouvez pas réinitialiser votre mot de passe"

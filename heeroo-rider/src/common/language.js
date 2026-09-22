@@ -1,4 +1,9 @@
 export default {
+    notification_title: "Information",
+    no_notification: "Aucune notification",
+    forgot_password_link: "Mot de passe oublié",
+    my_rides: "Mes réservations",
+    notification: "Notifications",
     location_error: 'Impossible de déterminer votre position. Vérifiez que la localisation est activée et autorisée pour Heeroo.',
     email_placeholder: "E-mail",
     Error: "Erreur",
