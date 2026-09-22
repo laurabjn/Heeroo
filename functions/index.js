@@ -829,12 +829,23 @@ exports.onBookingCompleted = onValueUpdated(
       ? Math.round(billed * 100) / 100
       : Math.round(tripCost * rate) / 100;
 
+    // Course réglée par carte : l'argent est encaissé par la plateforme, qui
+    // retient déjà sa part — débiter le crédit du chauffeur prélèverait la
+    // commission une seconde fois. On enregistre le montant sans le débiter.
+    const paidByCard = booking.payment_mode === 'Card' || !!booking.payment_intent_id;
+
     // Marquage d'abord (idempotence), puis débit atomique du crédit chauffeur.
     await bookingRef.update({
       commission_rate: rate,
       commission,
+      commission_retained: paidByCard,
       commission_charged_at: admin.database.ServerValue.TIMESTAMP,
     });
+
+    if (paidByCard) {
+      logger.info(`Course ${bookingId} : commission ${commission} retenue sur le paiement par carte, crédit chauffeur inchangé`);
+      return;
+    }
 
     if (commission <= 0) {
       logger.info(`Course ${bookingId} : commission nulle (taux ${rate} %)`);
