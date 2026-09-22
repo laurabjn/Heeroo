@@ -226,7 +226,8 @@ export default class OnlineChat extends Component {
 
   render() {
     return (
-      <View style={styles.container}>
+      // Sans KeyboardAvoidingView, le clavier recouvrait la zone de saisie.
+      <KeyboardAvoidingView behavior="padding" style={styles.container}>
         <Header
           backgroundColor={colors.TRANSPARENT}
           leftComponent={<BackBtn {...this.props} />}
@@ -255,7 +256,7 @@ export default class OnlineChat extends Component {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
