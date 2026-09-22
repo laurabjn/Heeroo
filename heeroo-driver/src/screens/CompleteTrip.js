@@ -175,9 +175,9 @@ export default class DriverCompleteTrip extends React.Component {
         await Geolocation.getCurrentPosition(
             async (location) => {
 
-                var diff = ((this.state.rideDetails.trip_start_time) - (new Date().getTime())) / 1000;
-                diff /= (60 * 1);
-                var totalTimeTaken = Math.abs(Math.round(diff));
+                // Durée de la course en secondes : c'est l'unité attendue par le
+                // calcul du tarif (il divise par 3600 pour obtenir des heures).
+                var totalTimeTaken = Math.abs(Math.round((this.state.rideDetails.trip_start_time - new Date().getTime()) / 1000));
                 var pos = {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
@@ -190,20 +190,28 @@ export default class DriverCompleteTrip extends React.Component {
                     .then((respJson) => {
                         if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].legs) {
                             console.log('[Directions] pas de trajet pour le calcul du prix :', respJson.status, respJson.error_message || '');
+                            this.setState({ loadingModal: false });
                             Alert.alert(languageJSON.Error || 'Erreur', 'Impossible de calculer la distance de la course. Réessayez.');
                             return;
                         }
-                        farehelper(respJson.routes[0].legs[0].distance.value, totalTimeTaken, this.state.rateDetails ? this.state.rateDetails : 1, "FR").then(
+                        const rideCountry = (this.state.rideDetails.pickup && this.state.rideDetails.pickup.country) || 'FR';
+                        farehelper(respJson.routes[0].legs[0].distance.value, totalTimeTaken, this.state.rateDetails ? this.state.rateDetails : 1, rideCountry).then(
                             (fareCalculation) => {
                                 this.finalCostStore(item, fareCalculation.grandTotal, pos, respJson.routes[0].legs[0].distance.value, fareCalculation.convenience_fees)
                             }
                         )
                     }
                     )
+                    .catch((error) => {
+                        console.log('[Fin de course] calcul du prix impossible', error);
+                        this.setState({ loadingModal: false });
+                        Alert.alert(languageJSON.Error || 'Erreur', 'Impossible de calculer le prix de la course. Vérifiez votre connexion et réessayez.');
+                    })
             },
             error => {
-                console.log('error from current pos from drivertripaccpet')
-                console.log(error)
+                console.log('[Fin de course] position indisponible', error);
+                this.setState({ loadingModal: false });
+                Alert.alert(languageJSON.Error || 'Erreur', 'Position introuvable : impossible de terminer la course. Réessayez.');
             },
             { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
         )

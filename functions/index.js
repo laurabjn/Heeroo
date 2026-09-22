@@ -724,7 +724,13 @@ exports.onBookingCompleted = onValueUpdated(
 
     const tripCost = Number(booking.trip_cost) || 0;
     const rate = await commissionRateFor(booking.carType, booking.pickup && booking.pickup.country);
-    const commission = Math.round(tripCost * rate) / 100; // 2 décimales, en unité de la devise
+    // Le prix payé par le passager inclut déjà la commission (convenience_fees,
+    // calculée à la commande) : on prélève exactement ce montant-là. Sans lui,
+    // on appliquerait le taux au prix commission comprise, donc un peu trop.
+    const billed = Number(booking.convenience_fees);
+    const commission = Number.isFinite(billed) && billed > 0
+      ? Math.round(billed * 100) / 100
+      : Math.round(tripCost * rate) / 100;
 
     // Marquage d'abord (idempotence), puis débit atomique du crédit chauffeur.
     await bookingRef.update({
