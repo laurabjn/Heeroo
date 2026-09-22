@@ -90,21 +90,6 @@ export default class DriverRegistrationPage extends React.Component {
 
   }
 
-  updateProfile(data) {
-
-    firebase.auth().currentUser.updateProfile({
-      displayName: data.firstName + ' ' + data.lastName,
-    }).then(() => {
-      firebase.database().ref('users/').child(firebase.auth().currentUser.uid).set(data).then(() => {
-        firebase.auth().signOut();
-        this.props.navigation.goBack();
-        Alert.alert(languageJSON.error, languageJSON.account_successful_done);
-      }).catch((error) => {
-        console.log("error", error);
-      })
-    });
-
-  }
 
   //register button click after all validation
   // Retour depuis l'inscription = abandon : déconnexion, l'écouteur
@@ -116,48 +101,55 @@ export default class DriverRegistrationPage extends React.Component {
   clickRegister = async (fname, lname, mobile, email, vehicleNum, vehicleName, image, companyName, companyAddress, file_identity_front,
     file_identity_back, carteGrise, permis, carteVTC, rir, attestation, carteVerte, assuranceRC, photoAvantVehicule, photoChauffeur
   ) => {
+    // Chaque échec était silencieux (paramètres absents, session expirée,
+    // écriture refusée) : le bouton « S'inscrire » paraissait sans effet.
+    try {
+      this.setState({ loading: true });
+      const snapshot = await firebase.database().ref('settings/').once('value');
+      if (!snapshot.exists()) throw new Error("paramètres de l'application indisponibles");
 
-    let result
-    let regData
+      const regData = {
+        firstName: fname,
+        lastName: lname,
+        mobile: mobile,
+        email: email,
+        vehicleNumber: vehicleNum,
+        vehicleModel: vehicleName,
+        licenseImage: image,
+        usertype: 'driver',
+        approved: false,
+        queue: false,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        companyAddress,
+        companyName,
+        file_identity_front,
+        file_identity_back,
+        carteGrise,
+        permis,
+        carteVTC,
+        rir,
+        attestation,
+        carteVerte,
+        assuranceRC,
+        photoAvantVehicule,
+        photoChauffeur,
+        country: this.checkIfCountryAvailable(snapshot.val()),
+      };
 
-    firebase.database().ref('settings/').once('value').then((snapshot) => {
-      // test si le check du pays passe avant la creation de l'objet regdata
+      const user = firebase.auth().currentUser;
+      if (!user) throw new Error("session expirée, reconnectez-vous avant de finaliser l'inscription");
+      await user.updateProfile({ displayName: regData.firstName + ' ' + regData.lastName });
+      await firebase.database().ref('users/').child(user.uid).set(regData);
+      await firebase.auth().signOut();
 
-      if (snapshot.exists()) {
-        result = this.checkIfCountryAvailable(snapshot.val())
-
-        regData = {
-          firstName: fname,
-          lastName: lname,
-          mobile: mobile,
-          email: email,
-          vehicleNumber: vehicleNum,
-          vehicleModel: vehicleName,
-          licenseImage: image,
-          usertype: 'driver',
-          approved: false,
-          queue: false,
-          createdAt: firebase.database.ServerValue.TIMESTAMP,
-          companyAddress,
-          companyName,
-          file_identity_front,
-          file_identity_back,
-          carteGrise,
-          permis,
-          carteVTC,
-          rir,
-          attestation,
-          carteVerte,
-          assuranceRC,
-          photoAvantVehicule,
-          photoChauffeur,
-          country: result,
-        }
-
-        this.updateProfile(regData)
-      }
-
-    });
+      this.setState({ loading: false });
+      this.props.navigation.goBack();
+      Alert.alert(languageJSON.register_link || 'Inscription', languageJSON.account_successful_done);
+    } catch (error) {
+      console.log('[Inscription chauffeur] échec', error && error.code, error && error.message);
+      this.setState({ loading: false });
+      Alert.alert(languageJSON.error || 'Erreur', "L'inscription n'a pas pu être enregistrée : " + ((error && error.message) || 'erreur inconnue'));
+    }
   }
 
   //upload of picture
