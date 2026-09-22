@@ -1,9 +1,21 @@
-import React from 'react';
-import { View, Image, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Image, Text, StyleSheet, Keyboard } from 'react-native';
 import { colors } from '../common/theme';
 
 // Logo et nom de l'app en tête des écrans de connexion et d'inscription.
+// Masqué pendant la saisie : sur les petits écrans, le clavier ne laisse pas
+// assez de place et le bloc débordait sur le titre de l'écran.
 export default function BrandHeader() {
+    const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+    useEffect(() => {
+        const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+        const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+        return () => { show.remove(); hide.remove(); };
+    }, []);
+
+    if (keyboardOpen) return null;
+
     return (
         <View style={styles.wrap}>
             <Image source={require('../../assets/images/appIcon.png')} style={styles.logo} />
@@ -13,8 +25,6 @@ export default function BrandHeader() {
 }
 
 const styles = StyleSheet.create({
-    // Occupe l'espace libre au-dessus du formulaire, mais se réduit (flexShrink)
-    // plutôt que de comprimer les champs quand le clavier est ouvert.
     wrap: {
         alignItems: 'center',
         justifyContent: 'center',
