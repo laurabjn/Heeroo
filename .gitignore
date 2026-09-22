@@ -43,6 +43,10 @@
 
 # Fichiers de configuration d'environnement
 **/.env
+# Clés Apple (App Store Connect API, notifications APNs) : jamais dans le dépôt
+**/*.p8
+**/AuthKey_*
+
 **/*.keystore
 **/*.jks
 **/*.p12
