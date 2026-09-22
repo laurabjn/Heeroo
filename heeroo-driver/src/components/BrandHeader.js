@@ -3,23 +3,25 @@ import { View, Image, Text, StyleSheet, Keyboard } from 'react-native';
 import { colors } from '../common/theme';
 
 // Logo et nom de l'app en tête des écrans de connexion et d'inscription.
-// Masqué pendant la saisie : sur les petits écrans, le clavier ne laisse pas
-// assez de place et le bloc débordait sur le titre de l'écran.
+// Pendant la saisie, le bloc passe en version réduite (petit logo, sans le nom) :
+// il reste visible sans recouvrir le titre de l'écran, y compris sur les petits
+// écrans où le clavier occupe la moitié de la hauteur.
 export default function BrandHeader() {
-    const [keyboardOpen, setKeyboardOpen] = useState(false);
+    const [compact, setCompact] = useState(false);
 
     useEffect(() => {
-        const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
-        const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+        const show = Keyboard.addListener('keyboardDidShow', () => setCompact(true));
+        const hide = Keyboard.addListener('keyboardDidHide', () => setCompact(false));
         return () => { show.remove(); hide.remove(); };
     }, []);
 
-    if (keyboardOpen) return null;
-
     return (
-        <View style={styles.wrap}>
-            <Image source={require('../../assets/images/appIcon.png')} style={styles.logo} />
-            <Text style={styles.name}>Heeroo Driver</Text>
+        <View style={[styles.wrap, compact && styles.wrapCompact]}>
+            <Image
+                source={require('../../assets/images/appIcon.png')}
+                style={compact ? styles.logoCompact : styles.logo}
+            />
+            {!compact && <Text style={styles.name}>Heeroo Driver</Text>}
         </View>
     );
 }
@@ -33,10 +35,19 @@ const styles = StyleSheet.create({
         minHeight: 0,
         paddingVertical: 24,
     },
+    wrapCompact: {
+        flexGrow: 0,
+        paddingVertical: 8,
+    },
     logo: {
         width: 96,
         height: 96,
         borderRadius: 24,
+    },
+    logoCompact: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
     },
     name: {
         marginTop: 14,
