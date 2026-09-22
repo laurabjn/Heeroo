@@ -14,7 +14,9 @@
 //   - import relatif ou `require()` d'asset vers un fichier inexistant ;
 //   - `navigate('Écran')` vers un écran qu'aucun navigateur ne déclare ;
 //   - état `useState` dont la valeur est lue mais dont le setter n'est jamais
-//     appelé (la valeur reste à l'initial pour toujours).
+//     appelé (la valeur reste à l'initial pour toujours) ;
+//   - service Firebase utilisé (firebase.storage(), firebase.auth()…) sans que
+//     le module correspondant soit importé : l'appel échoue à l'exécution.
 //
 // Usage : node tools/check-sources.js heeroo-rider heeroo-driver
 
@@ -194,6 +196,17 @@ function checkApp(app) {
     });
 
     const isPlugin = file.includes(path.sep + 'plugins' + path.sep);
+
+    // Services Firebase compat : firebase.storage() ne fonctionne que si
+    // 'firebase/compat/storage' est importé dans le même fichier.
+    const firebaseServices = ['storage', 'auth', 'database', 'firestore', 'functions', 'messaging'];
+    for (const service of firebaseServices) {
+      if (!code.includes(`firebase.${service}(`)) continue;
+      if (code.includes(`firebase/compat/${service}`)) continue;
+      const line = code.slice(0, code.indexOf(`firebase.${service}(`)).split(String.fromCharCode(10)).length;
+      report(file, { loc: { start: { line, column: 0 } } }, 'firebase',
+        `firebase.${service}() est utilisé sans importer 'firebase/compat/${service}'`);
+    }
 
     // useState lu mais jamais alimenté : const [x, setX] = useState(...) sans appel à setX.
     babel.traverse(ast, {

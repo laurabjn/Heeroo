@@ -22,7 +22,8 @@ import { checkCameraPermission } from '../common/permission';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
-import 'firebase/compat/database';;
+import 'firebase/compat/database';
+import 'firebase/compat/storage';;
 import languageJSON from '../common/language';
 import { DrawerToggle } from '../components';
 
