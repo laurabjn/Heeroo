@@ -78,9 +78,20 @@ export default class EmailLoginScreen extends Component {
                             )
                         }
                     } else {
+                        // Chaque cause a son message : « mot de passe incorrect » était
+                        // affiché pour toute erreur, y compris un blocage temporaire
+                        // après plusieurs essais ou une simple coupure réseau.
+                        const code = error.code || '';
+                        const message =
+                            code === 'auth/too-many-requests' ? languageJSON.login_too_many
+                                : code === 'auth/network-request-failed' ? languageJSON.login_network
+                                    : code === 'auth/user-disabled' ? languageJSON.login_disabled
+                                        : (code === 'auth/wrong-password' || code === 'auth/invalid-credential') ? languageJSON.password_uncorrect
+                                            : languageJSON.login_failed + ' ' + (error.message || code);
+                        console.log('[Connexion] échec', code, error.message);
                         Alert.alert(
                             "",
-                            languageJSON.password_uncorrect,
+                            message,
                             [
                                 { text: languageJSON.ok, onPress: () => { }, style: 'cancel', }
                             ]
