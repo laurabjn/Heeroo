@@ -579,11 +579,13 @@ exports.onBookingRequested = onValueCreated(
 );
 
 // Message de chat : notifie le destinataire (l'autre partie de la course).
+// Les apps écrivent chaque message sous chat/{course}/message/{passager,chauffeur}/{message} :
+// le fil est regroupé par couple d'identifiants, le message est un niveau plus bas.
 exports.onChatMessage = onValueCreated(
-  { ref: '/chat/{bookingId}/message/{messageId}', instance: target.instance, region: target.region },
+  { ref: '/chat/{bookingId}/message/{threadId}/{messageId}', instance: target.instance, region: target.region },
   async (event) => {
     const message = event.data.val();
-    if (!message || message.type === 'notification') return;
+    if (!message || typeof message !== 'object' || !message.message || message.type === 'notification') return;
     const booking = (await admin.database().ref(`bookings/${event.params.bookingId}`).once('value')).val();
     if (!booking || !booking.customer || !booking.driver) return;
 
