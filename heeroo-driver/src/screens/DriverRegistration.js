@@ -149,7 +149,8 @@ export default class DriverRegistrationPage extends React.Component {
     } catch (error) {
       console.log('[Inscription chauffeur] échec', error && error.code, error && error.message);
       this.setState({ loading: false });
-      Alert.alert(languageJSON.error || 'Erreur', "L'inscription n'a pas pu être enregistrée : " + ((error && error.message) || 'erreur inconnue'));
+      const where = ((error && error.stack) || '').split(String.fromCharCode(10)).slice(0, 3).join(' | ');
+      Alert.alert(languageJSON.error || 'Erreur', "L'inscription n'a pas pu être enregistrée : " + ((error && error.message) || 'erreur inconnue') + String.fromCharCode(10) + String.fromCharCode(10) + where);
     }
   }
 
