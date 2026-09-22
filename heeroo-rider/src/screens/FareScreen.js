@@ -67,7 +67,9 @@ export default class FareScreen extends React.Component {
             modalVisible: false,
             country: this.props.route.params.country,
             promodalVisible: false,
-            paymentMode: 'Cash',   // moyen choisi à la réservation : 'Cash' ou 'Card'
+            // Moyen choisi à la réservation : 'Cash', 'Card', ou null tant que le
+            // passager n'a pas choisi (si la carte n'est pas proposée, c'est espèces).
+            paymentMode: isCardPaymentAvailable() ? null : 'Cash',
             settings: {
                 code: "",
                 symbol: '',
@@ -309,6 +311,10 @@ export default class FareScreen extends React.Component {
         // course n'est proposée aux chauffeurs que si elle est acceptée ; le
         // débit réel intervient à la fin de la course.
         this.authorizedIntentId = null;
+        if (!this.state.paymentMode) {
+            Alert.alert(languageJSON.choose_payment, languageJSON.choose_payment_prompt);
+            return;
+        }
         if (this.state.paymentMode === 'Card') {
             try {
                 this.setState({ loading: true });
@@ -720,7 +726,11 @@ export default class FareScreen extends React.Component {
                         </View>
                         <View style={styles.priceItem}>
                             <Text style={[styles.priceText]}>{languageJSON.payment}</Text>
-                            <Text style={[styles.priceText, { color: colors.TEXT_DARK }]}>{languageJSON.paymentCash}</Text>
+                            <Text style={[styles.priceText, { color: colors.TEXT_DARK }]}>
+                                {this.state.paymentMode === 'Card' ? languageJSON.payment_by_card
+                                    : this.state.paymentMode === 'Cash' ? languageJSON.paymentCash
+                                        : languageJSON.payment_to_choose}
+                            </Text>
                         </View>
 
                     </View>
@@ -746,6 +756,9 @@ export default class FareScreen extends React.Component {
                         />
                         <Text style={[styles.cancelButtonText]}>{languageJSON.Annulerlacourse}</Text>
                     </TouchableOpacity>
+                    {isCardPaymentAvailable() &&
+                        <Text style={styles.payChoiceTitle}>{languageJSON.choose_payment}</Text>
+                    }
                     {isCardPaymentAvailable() &&
                         <View style={styles.payChoiceRow}>
                             {[{ key: 'Cash', label: languageJSON.pay_cash }, { key: 'Card', label: languageJSON.payWithCard }].map((option) => (
@@ -788,6 +801,13 @@ export default class FareScreen extends React.Component {
 }
 
 const styles = StyleSheet.create({
+    payChoiceTitle: {
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 13,
+        color: colors.TEXT,
+        marginHorizontal: 15,
+        marginBottom: 6,
+    },
     payChoiceRow: {
         flexDirection: 'row',
         gap: 10,
