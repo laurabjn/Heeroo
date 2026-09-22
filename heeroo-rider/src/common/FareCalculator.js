@@ -1,73 +1,55 @@
 import countryCurrency from './../constants/countryCurrency.json'
-import { exchange_access_key } from "./key";
+
+// Calcul du prix d'une course à partir des tarifs de rates/car_type.
+//
+// Les tarifs sont saisis en euros dans le back-office et convertis dans la
+// monnaie du pays de départ. Le franc CFA étant arrimé à l'euro à une parité
+// fixe et légale, aucune conversion en ligne n'est nécessaire pour les pays
+// desservis (France, Sénégal, Bénin, Cameroun).
+//
+// L'implémentation précédente interrogeait une API de change externe en HTTP
+// non chiffré : dès qu'elle échouait (quota, panne, blocage du texte clair par
+// Android), le taux valait `undefined` et tous les prix devenaient NaN.
+const FIXED_RATES = {
+    EUR: 1,
+    XOF: 655.957,   // franc CFA UEMOA (Sénégal, Bénin) — parité fixe
+    XAF: 655.957,   // franc CFA CEMAC (Cameroun) — parité fixe
+};
+
+/** Nombre utilisable, ou 0 : évite qu'un tarif absent ne propage un NaN. */
+function num(value) {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : 0;
+}
 
 export async function farehelper(distance, time, rateDetails, country) {
+    const currency = countryCurrency[country] || 'EUR';
+    const currencyRate = FIXED_RATES[currency] || 1;
+    if (!FIXED_RATES[currency]) {
+        console.log('[Tarif] monnaie inconnue', currency, 'pour le pays', country, '— tarifs appliqués tels quels');
+    }
 
-    console.log("distance", distance)
-    console.log("time", time)
-    console.log("rateDetails", rateDetails)
-    console.log("country", country)
+    const rates = rateDetails && typeof rateDetails === 'object' ? rateDetails : {};
+    const ratePerKm = num(rates.rate_per_kilometer) * currencyRate;
+    const ratePerHour = num(rates.rate_per_hour) * currencyRate;
+    const minFare = num(rates.min_fare) * currencyRate;
 
-    let result
-    let currency = countryCurrency[country]
-    await fetch(`http://api.exchangeratesapi.io/v1/latest?access_key=${exchange_access_key}&base=EUR`, {
-        type: 'GET'
-    }).catch()
-        .then(data => data.json())
-        .then(res => {
+    const distanceInKM = num(distance) / 1000;
+    const estimateRateForKM = distanceInKM * ratePerKm;
+    const estimateRateForHour = (num(time) / 3600) * ratePerHour;
 
-            if (res.error) {
-                //throw new Error(res.error)
-                console.log('error in farencal due to api exchange 1')
-                console.log(res)
-                result = res.error
-            } else {
-                let currencyRate = res.rates[currency]
-                if (currencyRate == undefined) {
-                    console.log('Error in currencyRate -> currencyRate=unedfined  -> country = ""')
-                    console.log('country = ', country)
-                    console.log('currency = ', currency)
-                    console.log('res = ', res)
+    const computed = estimateRateForKM + estimateRateForHour;
+    const total = computed > minFare ? computed : minFare;
+    const convenienceFee = total * num(rates.convenience_fees) / 100;
 
-                }
-                let ratePerKm = rateDetails.rate_per_kilometer;
-                let ratePerHour = rateDetails.rate_per_hour;
-
-
-                ratePerHour *= currencyRate
-                ratePerKm *= currencyRate
-
-                ratePerHour = ratePerHour.toFixed(0)
-                ratePerKm = ratePerKm.toFixed(0)
-
-                let ratePerSecond = ratePerHour / 3600;
-                let minFare = rateDetails.min_fare;
-                let DistanceInKM = parseFloat(distance / 1000).toFixed(0);
-                let estimateRateForKM = parseFloat(DistanceInKM * ratePerKm).toFixed(0) * 1;
-                let estimateRateForhour = parseFloat(time * ratePerSecond).toFixed(0);
-                let total = (parseFloat(estimateRateForKM) + parseFloat(estimateRateForhour)) > minFare ? (parseFloat(estimateRateForKM) + parseFloat(estimateRateForhour)) : minFare;
-
-                let convenienceFee = (total * rateDetails.convenience_fees / 100);
-                let grandtotal = parseFloat(total) + parseFloat(convenienceFee);
-                let calculateData = {
-                    currencyRate: currencyRate,
-                    time: time,
-                    DistanceInKM: DistanceInKM,
-                    distaceRate: estimateRateForKM,
-                    timeRate: estimateRateForhour,
-                    totalCost: total, grandTotal: grandtotal,
-                    convenience_fees: convenienceFee
-                }
-                result = calculateData
-            }
-        })
-        .catch(err => {
-            //throw new Error(err)
-            console.log('error in farencal due to api exchange 2')
-            console.log(err)
-            result = err
-
-        })
-    return result
-
+    return {
+        currencyRate,
+        time,
+        DistanceInKM: distanceInKM.toFixed(0),
+        distaceRate: estimateRateForKM.toFixed(0),
+        timeRate: estimateRateForHour.toFixed(0),
+        totalCost: total,
+        grandTotal: total + convenienceFee,
+        convenience_fees: convenienceFee,
+    };
 }
