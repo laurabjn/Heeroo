@@ -9,6 +9,7 @@
 //   POST /delete_auth_user   { id }                          — administrateur
 //   POST /push_notifications { list: [{ to, title, body }] } — administrateur
 //   POST /createPaymentIntent { bookingId }                  — utilisateur authentifié
+//   POST /authorizeRideCard  { estimate, currency, carType } — utilisateur authentifié (empreinte à la réservation)
 //   POST /confirmCardPayment { paymentIntentId }          — utilisateur authentifié
 //   POST /stripeWebhook      (appelée par Stripe, signature vérifiée)
 //   POST /createWaveCheckout  { amount }                     — chauffeur authentifié
@@ -365,6 +366,98 @@ exports.confirmCardPayment = httpEndpoint(async (req, res) => {
   res.json({ status: outcome === 'refunded' ? 'refunded' : 'paid', outcome });
 }, { secrets: [STRIPE_SECRET_KEY] });
 
+// authorizeRideCard — empreinte bancaire à la réservation.
+// Crée un paiement en capture différée (« manual ») : la somme est bloquée sur
+// la carte du passager sans être débitée. Le débit réel intervient à la fin de
+// la course (captureRideCard), plafonné à ce montant ; une annulation libère
+// l'empreinte. Une marge couvre les écarts entre estimation et prix réel.
+const AUTHORIZATION_MARGIN = 1.3;
+
+exports.authorizeRideCard = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { estimate, currency: rawCurrency, carType } = req.body || {};
+  const estimated = Number(estimate);
+  if (!Number.isFinite(estimated) || estimated <= 0) throw httpError(400, 'Estimation de course invalide');
+
+  const currency = String(rawCurrency || 'EUR').trim().toUpperCase();
+  const authorized = toStripeAmount(estimated * AUTHORIZATION_MARGIN, currency);
+  if (authorized <= 0) throw httpError(400, 'Montant à bloquer invalide');
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const intent = await stripe.paymentIntents.create({
+    amount: authorized,
+    currency: currency.toLowerCase(),
+    capture_method: 'manual',
+    automatic_payment_methods: { enabled: true },
+    description: `Empreinte course Heeroo (${carType || 'course'})`,
+    receipt_email: user.email || undefined,
+    metadata: { uid: user.uid, kind: 'ride_authorization', estimate: String(estimated) },
+  });
+  res.json({
+    clientSecret: intent.client_secret,
+    paymentIntentId: intent.id,
+    authorizedAmount: authorized,
+    currency,
+  });
+}, { secrets: [STRIPE_SECRET_KEY] });
+
+/**
+ * Débite la carte à la fin de la course : capture du prix réel, plafonné au
+ * montant bloqué à la réservation. Idempotent. Si le prix dépasse l'empreinte,
+ * on capture le maximum autorisé et le reliquat est tracé sur la course.
+ */
+async function captureRideCard(bookingId, booking) {
+  const intentId = booking.payment_intent_id;
+  if (!intentId) return 'no-authorization';
+  if (booking.payment_status === 'PAID' && booking.transaction_id === intentId) return 'already-captured';
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const intent = await stripe.paymentIntents.retrieve(intentId);
+  if (intent.status === 'succeeded') {
+    await markBookingPaid(bookingId, booking, intent);
+    return 'already-captured';
+  }
+  if (intent.status !== 'requires_capture') {
+    logger.warn(`Course ${bookingId} : empreinte ${intentId} inutilisable (${intent.status})`);
+    await admin.database().ref(`bookings/${bookingId}`).update({ card_capture_error: intent.status });
+    return 'unusable';
+  }
+
+  const currency = String(intent.currency).toUpperCase();
+  const due = toStripeAmount(Number(booking.trip_cost) || 0, currency);
+  if (due <= 0) {
+    await stripe.paymentIntents.cancel(intentId);
+    logger.info(`Course ${bookingId} : prix nul, empreinte ${intentId} libérée`);
+    return 'released';
+  }
+  const captured = Math.min(due, intent.amount);
+  const result = await stripe.paymentIntents.capture(intentId, { amount_to_capture: captured });
+  await markBookingPaid(bookingId, booking, result);
+  if (due > intent.amount) {
+    const shortfall = (due - intent.amount) / (ZERO_DECIMAL_CURRENCIES.has(currency) ? 1 : 100);
+    await admin.database().ref(`bookings/${bookingId}`).update({ card_shortfall: shortfall });
+    logger.warn(`Course ${bookingId} : prix supérieur à l'empreinte, reliquat de ${shortfall} ${currency} non débité`);
+  }
+  logger.info(`Course ${bookingId} : ${captured} ${currency} débités sur l'empreinte ${intentId}`);
+  return 'captured';
+}
+
+/** Libère l'empreinte d'une course annulée. Sans effet si elle est déjà débitée. */
+async function releaseRideCard(bookingId, booking) {
+  const intentId = booking.payment_intent_id;
+  if (!intentId || booking.payment_status === 'PAID') return;
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  try {
+    const intent = await stripe.paymentIntents.retrieve(intentId);
+    if (intent.status === 'requires_capture' || intent.status.startsWith('requires_')) {
+      await stripe.paymentIntents.cancel(intentId);
+      logger.info(`Course ${bookingId} annulée : empreinte ${intentId} libérée`);
+    }
+  } catch (error) {
+    logger.error(`Course ${bookingId} : libération de l'empreinte impossible`, error);
+  }
+}
+
 exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
     const stripe = new Stripe(STRIPE_SECRET_KEY.value());
@@ -616,7 +709,7 @@ exports.onDriverNear = onValueCreated(
 
 // Changements de statut : ACCEPTED, START, END, CANCELLED, NOT PAID / DUE.
 exports.onBookingStatusChanged = onValueUpdated(
-  { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region },
+  { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region, secrets: [STRIPE_SECRET_KEY] },
   async (event) => {
     const before = event.data.before.val();
     const status = event.data.after.val();
@@ -649,6 +742,10 @@ exports.onBookingStatusChanged = onValueUpdated(
           'Votre chauffeur attend le règlement de la course.', data);
         break;
       case 'CANCELLED':
+        // Course payée par carte : l'empreinte prise à la réservation est libérée.
+        if (booking.payment_intent_id) {
+          await releaseRideCard(bookingId, booking);
+        }
         // Celui qui annule n'est pas notifié ; l'autre partie reçoit le message adapté.
         if (booking.cancelledBy === 'rider') {
           if (booking.driver) {
@@ -708,7 +805,7 @@ exports.onAdminFlagChanged = onValueWritten(
 
 
 exports.onBookingCompleted = onValueUpdated(
-  { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region },
+  { ref: '/bookings/{bookingId}/status', instance: target.instance, region: target.region, secrets: [STRIPE_SECRET_KEY] },
   async (event) => {
     const status = event.data.after.val();
     if (status !== COMPLETED_STATUS) return;

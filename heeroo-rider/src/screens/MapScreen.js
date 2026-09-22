@@ -119,8 +119,11 @@ export default class MScreen extends React.Component {
                     const all = snapshot.val() || {};
                     for (const key of Object.keys(all)) {
                         const booking = all[key];
+                        // Course sous empreinte bancaire : le serveur débite tout seul,
+                        // on ne demande rien au passager (sauf si la capture a échoué).
                         if (booking && booking.payment_status == 'IN_PROGRESS' && booking.status == 'END'
-                            && booking.skip != true && booking.paymentstart != true) {
+                            && booking.skip != true && booking.paymentstart != true
+                            && !(booking.payment_intent_id && !booking.card_capture_error)) {
                             booking.firstname = userData.firstName;
                             booking.lastname = userData.lastName;
                             booking.email = userData.email;
@@ -139,7 +142,8 @@ export default class MScreen extends React.Component {
                         let bookingData = childSnapshot.val()
 
                         if (bookingData.payment_status) {
-                            if (bookingData.payment_status == "IN_PROGRESS" && bookingData.status == 'END' && bookingData.skip != true && bookingData.paymentstart != true) {
+                            if (bookingData.payment_status == "IN_PROGRESS" && bookingData.status == 'END' && bookingData.skip != true && bookingData.paymentstart != true
+                                && !(bookingData.payment_intent_id && !bookingData.card_capture_error)) {
                                 bookingData.firstname = userData.firstName;
                                 bookingData.lastname = userData.lastName;
                                 bookingData.email = userData.email;

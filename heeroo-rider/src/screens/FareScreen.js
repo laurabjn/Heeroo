@@ -25,6 +25,8 @@ import Geocoder from 'react-native-geocoding';
 import { getDistance } from 'geolib';
 
 import { farehelper } from '../common/FareCalculator';
+import { isCardPaymentAvailable, authorizeRideWithCard } from '../common/stripePayment';
+import countryCurrency from '../constants/countryCurrency.json';
 import { PromoComp } from "../components";
 import { RequestPushMsg } from '../common/RequestPushMsg';
 import { google_map_key } from '../common/key';
@@ -65,6 +67,7 @@ export default class FareScreen extends React.Component {
             modalVisible: false,
             country: this.props.route.params.country,
             promodalVisible: false,
+            paymentMode: 'Cash',   // moyen choisi à la réservation : 'Cash' ou 'Card'
             settings: {
                 code: "",
                 symbol: '',
@@ -301,7 +304,31 @@ export default class FareScreen extends React.Component {
     }
 
     //CONFRIM BOOKING
-    bookNow = () => {
+    bookNow = async () => {
+        // Paiement par carte : on prend une empreinte bancaire maintenant. La
+        // course n'est proposée aux chauffeurs que si elle est acceptée ; le
+        // débit réel intervient à la fin de la course.
+        this.authorizedIntentId = null;
+        if (this.state.paymentMode === 'Card') {
+            try {
+                this.setState({ loading: true });
+                const result = await authorizeRideWithCard({
+                    estimate: parseFloat(this.state.estimateFare) || 0,
+                    currency: countryCurrency[this.state.country] || 'EUR',
+                    carType: this.state.carType,
+                    email: this.state.userDetails && this.state.userDetails.email,
+                });
+                if (result.canceled) {
+                    this.setState({ loading: false });
+                    return;
+                }
+                this.authorizedIntentId = result.paymentIntentId;
+            } catch (error) {
+                this.setState({ loading: false });
+                Alert.alert(languageJSON.Error || 'Erreur', error.message || String(error));
+                return;
+            }
+        }
         var curuser = firebase.auth().currentUser.uid;
         const userData = firebase.database().ref('users/' + curuser + '/my-booking');
         userData.once('value', userBooking => {
@@ -332,6 +359,8 @@ export default class FareScreen extends React.Component {
                         estimateDistance: this.state.distance,
                         serviceType: 'pickUp',
                         status: "NEW",
+                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_intent_id: this.authorizedIntentId || null,
                         total_trip_time: 0,
                         trip_cost: 0,
                         trip_end_time: firebase.database.ServerValue.TIMESTAMP,
@@ -353,6 +382,8 @@ export default class FareScreen extends React.Component {
                         estimateDistance: this.state.distance,
                         serviceType: 'pickUp',
                         status: "NEW",
+                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_intent_id: this.authorizedIntentId || null,
                         total_trip_time: 0,
                         trip_cost: 0,
                         trip_end_time: firebase.database.ServerValue.TIMESTAMP,
@@ -450,6 +481,8 @@ export default class FareScreen extends React.Component {
                     estimateDistance: this.state.distance,
                     serviceType: 'pickUp',
                     status: "NEW",
+                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_intent_id: this.authorizedIntentId || null,
                     total_trip_time: 0,
                     trip_cost: 0,
                     trip_end_time: firebase.database.ServerValue.TIMESTAMP,
@@ -471,6 +504,8 @@ export default class FareScreen extends React.Component {
                     estimateDistance: this.state.distance,
                     serviceType: 'pickUp',
                     status: "NEW",
+                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_intent_id: this.authorizedIntentId || null,
                     total_trip_time: 0,
                     trip_cost: 0,
                     trip_end_time: firebase.database.ServerValue.TIMESTAMP,
@@ -711,6 +746,20 @@ export default class FareScreen extends React.Component {
                         />
                         <Text style={[styles.cancelButtonText]}>{languageJSON.Annulerlacourse}</Text>
                     </TouchableOpacity>
+                    {isCardPaymentAvailable() &&
+                        <View style={styles.payChoiceRow}>
+                            {[{ key: 'Cash', label: languageJSON.pay_cash }, { key: 'Card', label: languageJSON.payWithCard }].map((option) => (
+                                <TouchableOpacity
+                                    key={option.key}
+                                    onPress={() => this.setState({ paymentMode: option.key })}
+                                    style={[styles.payChoice, this.state.paymentMode === option.key && styles.payChoiceActive]}>
+                                    <Text style={[styles.payChoiceText, this.state.paymentMode === option.key && styles.payChoiceTextActive]}>
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    }
                     <Button
                         title={languageJSON.confrim_booking}
                         titleStyle={styles.buttonText}
@@ -739,6 +788,32 @@ export default class FareScreen extends React.Component {
 }
 
 const styles = StyleSheet.create({
+    payChoiceRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginHorizontal: 15,
+        marginBottom: 12,
+    },
+    payChoice: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: colors.SEPARATOR_LIGHT || '#d6d6d6',
+        alignItems: 'center',
+    },
+    payChoiceActive: {
+        borderColor: colors.PRIMARY,
+        backgroundColor: colors.PRIMARY,
+    },
+    payChoiceText: {
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 13,
+        color: colors.TEXT,
+    },
+    payChoiceTextActive: {
+        color: colors.WHITE,
+    },
   headerTitleStyle: {
         color: colors.WHITE,
         fontFamily: 'Montserrat-Bold',

@@ -110,6 +110,12 @@ export default class DriverTripComplete extends React.Component {
     //done button press function
     onPressDone(item, status) {
         if (this.leftScreen) return;
+        // Course réglée par carte : le serveur débite l'empreinte, le chauffeur
+        // n'a pas à déclarer d'encaissement.
+        if (item && item.payment_mode === 'Card' && item.payment_intent_id) {
+            Alert.alert(languageJSON.payment || 'Paiement', 'Cette course est réglée par carte : le paiement est automatique.');
+            return;
+        }
         this.leftScreen = true;
         this.setState({ loading: true });
         var data = {

@@ -62,3 +62,42 @@ export async function payBookingWithCard({ bookingId, email, merchantCountryCode
   }
   return { paid: true, outcome, paymentIntentId: data.paymentIntentId, amount: data.amount, currency: data.currency };
 }
+
+/**
+ * Empreinte bancaire à la réservation : la somme estimée (majorée d'une marge
+ * côté serveur) est bloquée sur la carte sans être débitée. Le débit réel a
+ * lieu à la fin de la course, et une annulation libère le blocage.
+ *
+ * Résout avec { authorized: true, paymentIntentId } si le passager a validé,
+ * { authorized: false, canceled: true } s'il a renoncé, et rejette en cas
+ * d'échec (carte refusée, réseau…).
+ */
+export async function authorizeRideWithCard({ estimate, currency = 'EUR', carType, email, merchantCountryCode = 'FR' }) {
+  const idToken = await firebase.auth().currentUser.getIdToken();
+  const response = await fetch(base_url + 'authorizeRideCard', {
+    method: 'post',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+    body: JSON.stringify({ estimate, currency, carType }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.clientSecret) {
+    throw new Error(data.error || "Impossible de préparer l'empreinte bancaire");
+  }
+
+  const init = await initPaymentSheet({
+    merchantDisplayName: 'Heeroo',
+    paymentIntentClientSecret: data.clientSecret,
+    defaultBillingDetails: email ? { email } : undefined,
+    googlePay: { merchantCountryCode, testEnv: Constants.expoConfig.extra.appEnv !== 'production' },
+    applePay: { merchantCountryCode },
+    returnURL: 'heeroo://stripe-redirect',
+  });
+  if (init.error) throw new Error(init.error.message);
+
+  const result = await presentPaymentSheet();
+  if (result.error) {
+    if (result.error.code === 'Canceled') return { authorized: false, canceled: true };
+    throw new Error(result.error.message);
+  }
+  return { authorized: true, paymentIntentId: data.paymentIntentId, authorizedAmount: data.authorizedAmount };
+}
