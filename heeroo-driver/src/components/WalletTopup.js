@@ -15,6 +15,11 @@ import { base_url } from '../common/key';
 const PRESETS = [1000, 2500, 5000, 10000];
 const MIN_TOPUP = 1000;
 
+// Wave n'opere qu'au Senegal et ne regle qu'en francs CFA : la carte de credit
+// reste invisible ailleurs, ou elle annoncerait un solde dans une monnaie que
+// le chauffeur n'utilise pas.
+const WAVE_COUNTRY = 'SN';
+
 async function callFunction(name, body) {
   const idToken = await firebase.auth().currentUser.getIdToken();
   const response = await fetch(base_url + name, {
@@ -28,10 +33,12 @@ async function callFunction(name, body) {
 }
 
 export default class WalletTopup extends React.Component {
-  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false };
+  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null };
 
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
+    this.countryRef = firebase.database().ref('users/' + uid + '/country');
+    this.countryRef.on('value', (snapshot) => this.setState({ country: snapshot.val() }));
     // Le crédit prépayé et sa recharge Wave ne s'affichent que si l'exploitant
     // les a activés (credit_settings/waveEnabled = true, une fois la clé Wave
     // posée côté serveur). Activable à distance, sans nouveau build.
@@ -49,6 +56,7 @@ export default class WalletTopup extends React.Component {
   }
 
   componentWillUnmount() {
+    if (this.countryRef) this.countryRef.off();
     if (this.enabledRef) this.enabledRef.off();
     if (this.balanceRef) this.balanceRef.off();
     if (this.appStateSubscription) this.appStateSubscription.remove();
@@ -90,7 +98,7 @@ export default class WalletTopup extends React.Component {
   };
 
   render() {
-    if (!this.state.enabled) return null;
+    if (!this.state.enabled || this.state.country !== WAVE_COUNTRY) return null;
     return (
       <View style={styles.card}>
         <View style={styles.row}>
