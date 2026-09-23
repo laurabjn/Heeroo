@@ -36,6 +36,7 @@ import { google_map_key } from '../common/key';
 import languageJSON from '../common/language';
 import { TrackNow, DrawerToggle, NotificationBtn } from '../components';
 import { Car, Pin } from '../icons';
+import { fitMapToPoints } from '../common/mapFit';
 const size = height / 812;
 
 export default class BookedCabScreen extends React.Component {
@@ -367,11 +368,18 @@ export default class BookedCabScreen extends React.Component {
                         style={styles.map}
                         provider={MAP_PROVIDER}
                         onLayout={() => this.setState({ mapReady: true })}
+                        onMapReady={() => fitMapToPoints(this.map, [
+                            { latitude: this.state.region.wherelatitude, longitude: this.state.region.wherelongitude },
+                            { latitude: this.state.region.droplatitude, longitude: this.state.region.droplongitude },
+                        ])}
                         initialRegion={{
                             latitude: this.state.region.wherelatitude ? this.state.region.wherelatitude : 46,
                             longitude: this.state.region.wherelongitude ? this.state.region.wherelongitude : 2,
-                            latitudeDelta: 0.9922,
-                            longitudeDelta: 1.9421
+                            // Depart connu : ouverture a l'echelle du quartier, puis cadrage sur
+                            // depart et arrivee. L'ancienne valeur affichait toute une region
+                            // pendant l'attente du chauffeur, sans qu'on y voie rien.
+                            latitudeDelta: this.state.region.wherelatitude ? 0.04 : 9,
+                            longitudeDelta: this.state.region.wherelongitude ? 0.04 : 9,
                         }}>
 
                         {this.state.mapReady && this.state.region.wherelatitude &&
