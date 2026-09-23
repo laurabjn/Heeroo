@@ -134,9 +134,10 @@ export default class DriverStartTrip extends React.Component {
                     }
                     if (this.mapRef) {
                         fitMapToPoints(this.mapRef, [{ latitude: location.latitude, longitude: location.longitude }, { latitude: this.state.rideDetails.pickup.lat, longitude: this.state.rideDetails.pickup.lng }], {
-                            edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 1, left: 40 },
+                            edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 2.5, left: 40 },
                             animated: true,
-                        }, { ready: this.mapReady })
+                            ready: this.mapReady,
+                        })
                     }
                 })
                 .catch((error) => {

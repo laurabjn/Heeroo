@@ -226,9 +226,10 @@ export default class FareScreen extends React.Component {
                     this.setState({ coords: coords }, () => {
                         if (this.map && this.state.region.wherelatitude && this.state.region.droplatitude) {
                             fitMapToPoints(this.map, [{ latitude: this.state.region.wherelatitude, longitude: this.state.region.wherelongitude }, { latitude: this.state.region.droplatitude, longitude: this.state.region.droplongitude }], {
-                                edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 1, left: 40 },
+                                edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 2.5, left: 40 },
                                 animated: true,
-                            }, { ready: this.mapReady })
+                                ready: this.mapReady,
+                            })
                         }
                     })
                     return coords

@@ -91,7 +91,7 @@ export default class SearchModal extends Component {
       setState({ coords: coords })
       if (mapRef) {
         mapRef.fitToCoordinates([{ latitude: wherelatitude, longitude: wherelongitude }, { latitude: lat, longitude: lng }], {
-          edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 1, left: 40 },
+          edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 2.5, left: 40 },
           animated: true,
         })
       }

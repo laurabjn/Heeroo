@@ -139,7 +139,8 @@ export default class TrackNow extends React.Component {
                 fitMapToPoints(this.map, [{ latitude: this.state.allData.pickup.lat, longitude: this.state.allData.pickup.lng }, { latitude: this.state.allData.drop.lat, longitude: this.state.allData.drop.lng }], {
                     edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 3 : height / 2, left: 40 },
                     animated: true,
-                }, { ready: this.mapReady })
+                    ready: this.mapReady,
+                })
                 //}, 1500);
 
             })

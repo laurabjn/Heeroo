@@ -28,6 +28,35 @@ import { formatDateTime } from '../common/dateFormat';
 
 
 /**
+ * Cadrage de l'apercu d'une demande de course.
+ *
+ * L'apercu s'ouvrait sur une region d'une cinquantaine de kilometres : le
+ * chauffeur voyait un departement entier et rien du trajet propose. La vue est
+ * calculee a partir du depart et de l'arrivee, avec une marge, et reste a
+ * l'echelle du quartier pour une course courte. Pas de fitToCoordinates ici :
+ * cadrer une carte de cette taille depuis le code natif a deja ferme
+ * l'application.
+ */
+function regionForTrip(pickup, drop) {
+    const fromLat = Number(pickup && pickup.lat);
+    const fromLng = Number(pickup && pickup.lng);
+    if (!Number.isFinite(fromLat) || !Number.isFinite(fromLng)) {
+        return { latitude: 46, longitude: 2, latitudeDelta: 9, longitudeDelta: 9 };
+    }
+    const toLat = Number(drop && drop.lat);
+    const toLng = Number(drop && drop.lng);
+    if (!Number.isFinite(toLat) || !Number.isFinite(toLng)) {
+        return { latitude: fromLat, longitude: fromLng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+    }
+    return {
+        latitude: (fromLat + toLat) / 2,
+        longitude: (fromLng + toLng) / 2,
+        latitudeDelta: Math.max(Math.abs(fromLat - toLat) * 2.4, 0.02),
+        longitudeDelta: Math.max(Math.abs(fromLng - toLng) * 2.4, 0.02),
+    };
+}
+
+/**
  * Copie d'un objet sans ses cles absentes.
  *
  * Firebase refuse une valeur `undefined` et leve l'erreur immediatement, avant
@@ -520,12 +549,7 @@ export default class DriverTripAccept extends React.Component {
                                         <MapView
                                             style={styles.map}
                                             provider={MAP_PROVIDER}
-                                            initialRegion={{
-                                                latitude: item.pickup.lat,
-                                                longitude: item.pickup.lng,
-                                                latitudeDelta: 0.5022,
-                                                longitudeDelta: 0.1821
-                                            }}
+                                            initialRegion={regionForTrip(item.pickup, item.drop)}
                                             customMapStyle={mapStyle}
                                         >
                                             <Marker
