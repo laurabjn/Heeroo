@@ -26,6 +26,22 @@ import Geolocation from '../common/geolocation';
 import { setRideAlert, stopRideAlert } from '../common/rideAlert';
 
 
+/**
+ * Copie d'un objet sans ses cles absentes.
+ *
+ * Firebase refuse une valeur `undefined` et leve l'erreur immediatement, avant
+ * de rendre la moindre promesse : aucun `.catch` ne la rattrape et l'application
+ * se ferme. Une course a laquelle il manque un champ (une ancienne reservation,
+ * une ecriture interrompue) suffisait donc a faire planter l'acceptation.
+ */
+function withoutUndefined(source) {
+    const result = {};
+    for (const key of Object.keys(source)) {
+        if (source[key] !== undefined) result[key] = source[key];
+    }
+    return result;
+}
+
 export default class DriverTripAccept extends React.Component {
 
     setModalVisible(visible, data) {
@@ -266,7 +282,7 @@ export default class DriverTripAccept extends React.Component {
             );
             return;
         }
-        var data = {
+        var data = withoutUndefined({
             carType: item.carType,
             customer: item.customer,
             customer_name: item.customer_name,
@@ -293,9 +309,9 @@ export default class DriverTripAccept extends React.Component {
             trip_end_time: item.trip_end_time,
             trip_start_time: item.trip_start_time,
             tripdate: item.tripdate,
-        }
+        })
 
-        var riderData = {
+        var riderData = withoutUndefined({
             carType: item.carType,
             distance: item.distance,
             driver: this.state.curUid,
@@ -319,11 +335,12 @@ export default class DriverTripAccept extends React.Component {
             trip_end_time: item.trip_end_time,
             trip_start_time: item.trip_start_time,
             tripdate: item.tripdate,
-        }
+        })
 
         item = { ...item, ...data };
 
         this.setState({ ['loading' + index]: true });
+        try {
         let dbRef = firebase.database().ref('users/' + this.state.curUid + '/my_bookings/' + item.bookingId + '/');
         dbRef.update(data).then(() => {
             firebase.database().ref('bookings/' + item.bookingId + '/').update(data).then(() => {
@@ -359,6 +376,13 @@ export default class DriverTripAccept extends React.Component {
         }).then(res => {
             this.setState({ loading: false });
         })
+        } catch (error) {
+            // Filet de securite : accepter une course ne doit jamais fermer
+            // l'application, le chauffeur est au volant.
+            this.setState({ ['loading' + index]: false, loading: false });
+            console.log('[Acceptation]', error && error.message);
+            Alert.alert(languageJSON.error, languageJSON.accept_failed);
+        }
     }
 
     //ignore button press function

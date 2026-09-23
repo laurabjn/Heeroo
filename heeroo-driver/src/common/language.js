@@ -1,5 +1,6 @@
 export default {
     error: "Erreur",
+    accept_failed: "La course n'a pas pu être acceptée. Réessayez ou attendez la demande suivante.",
     alert: "Information",
     payment: "Paiement",
     valid_identityfront_check: "Ce document est obligatoire",
