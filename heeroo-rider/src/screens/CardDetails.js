@@ -518,7 +518,10 @@ export default class CardDetailsScreen extends React.Component {
                   <Text style={styles.buttonTitle}>{languageJSON.pay_cash}</Text>
                 </TouchableOpacity>
                 : null}
-              {isCardPaymentAvailable() ?
+              {/* Le paiement par carte est engagé à la réservation (empreinte) et
+                  débité automatiquement en fin de course : ce bouton ne sert
+                  qu'au rattrapage, si le débit automatique a échoué. */}
+              {isCardPaymentAvailable() && this.state.userData && this.state.userData.card_capture_error ?
                 <TouchableOpacity
                   style={styles.cardPayBtn}
                   onPress={() => {
