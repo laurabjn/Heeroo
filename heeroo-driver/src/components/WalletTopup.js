@@ -33,9 +33,13 @@ export default class WalletTopup extends React.Component {
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
     // Le crédit prépayé et sa recharge Wave ne s'affichent que si l'exploitant
-    // les a activés (settings/waveEnabled = true, une fois la clé Wave posée
-    // côté serveur). Activable à distance, sans nouveau build.
-    this.enabledRef = firebase.database().ref('settings/waveEnabled');
+    // les a activés (credit_settings/waveEnabled = true, une fois la clé Wave
+    // posée côté serveur). Activable à distance, sans nouveau build.
+    //
+    // Sous credit_settings et non sous settings : ce dernier est un tableau de
+    // pays, et y ajouter une clé nommée le convertirait en objet, ce qui casse
+    // les parcours de liste dans les écrans.
+    this.enabledRef = firebase.database().ref('credit_settings/waveEnabled');
     this.enabledRef.on('value', (snapshot) => this.setState({ enabled: snapshot.val() === true }));
     this.balanceRef = firebase.database().ref('users/' + uid + '/walletBalance');
     this.balanceRef.on('value', (snapshot) => this.setState({ balance: Number(snapshot.val()) || 0 }));
