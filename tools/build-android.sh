@@ -31,6 +31,10 @@ APK="$ROOT/$APP/android/app/build/outputs/apk/release/app-release.apk"
 ls -la "$APK" | awk '{printf "APK : %.1f Mo\n", $5/1048576}'
 
 # Contrôle : le bundle embarqué pointe-t-il sur le bon projet Firebase ?
-PROJECT=$(unzip -p "$APK" assets/index.android.bundle 2>/dev/null | grep -o 'heeroo-dev-49beb\|projet-test-d7cd9' | sort -u | tr '\n' ' ')
-echo "Projet Firebase embarqué : ${PROJECT:-(indéterminé)}"
+unzip -p "$APK" assets/app.config 2>/dev/null | node -e '
+  let raw = ""; process.stdin.on("data", (c) => { raw += c; });
+  process.stdin.on("end", () => {
+    const extra = (JSON.parse(raw).extra) || {};
+    console.log("Configuration embarquée :", extra.appEnv, "| Firebase", (extra.firebase || {}).projectId);
+  });'
 echo "$APK"
