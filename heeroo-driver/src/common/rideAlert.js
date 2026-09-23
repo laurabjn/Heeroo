@@ -10,7 +10,9 @@
 // n'empile pas les sonneries.
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-const RINGTONE = require('../../assets/sounds/nouvelle-course.wav');
+// Sonnerie retenue parmi les trois produites par tools/make-alert-sound.js
+// (nouvelle-course, sirene, carillon) : changer ce chemin suffit.
+const RINGTONE = require('../../assets/sounds/carillon.wav');
 
 // Garde-fou : si le chauffeur ne répond pas (téléphone dans une poche, course
 // déjà prise par un autre), la sonnerie s'arrête d'elle-même plutôt que de
