@@ -23,6 +23,7 @@ import { Pin, Car } from '../icons'
 import countryCurrency from './../constants/countryCurrency.json'
 import { checkLocationPermission } from '../common/permission';
 import Geolocation from '../common/geolocation';
+import { setRideAlert, stopRideAlert } from '../common/rideAlert';
 
 
 export default class DriverTripAccept extends React.Component {
@@ -100,6 +101,7 @@ export default class DriverTripAccept extends React.Component {
 
 
     componentWillUnmount() {
+        stopRideAlert();
         // Remove the event listener
         Geolocation.stopObserving();
         Geolocation.clearWatch(this.state.watchID)
@@ -217,6 +219,7 @@ export default class DriverTripAccept extends React.Component {
         ref.on('value', (snapshot) => {
             this.setState({ driverDetails: snapshot.val() })
             var jobs = [];
+            var waiting = 0;
             let waiting_riderData = snapshot.val().waiting_riders_list;
             for (let key in waiting_riderData) {
                 const request = waiting_riderData[key];
@@ -228,6 +231,7 @@ export default class DriverTripAccept extends React.Component {
                 }
                 request.bookingId = key;
                 jobs.push(request);
+                waiting++;
             }
             let my_bookingsData = snapshot.val().my_bookings;
             for (let key in my_bookingsData) {
@@ -240,6 +244,9 @@ export default class DriverTripAccept extends React.Component {
 
             this.setState({ tasklist: jobs.reverse() });
             this.jobs = jobs;
+            // La sonnerie ne concerne que les demandes en attente de réponse :
+            // une course déjà démarrée figure aussi dans la liste, sans sonner.
+            setRideAlert(waiting > 0);
         });
     }
 

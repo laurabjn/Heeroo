@@ -101,12 +101,28 @@ async function requireAdmin(req) {
 
 /** Envoie une notification à un appareil (FCM HTTP v1). */
 async function sendPush(token, title, body, data) {
+  // Une demande de course est urgente et périssable : le chauffeur conduit, et
+  // une demande vieille d'une minute a déjà trouvé preneur. On la sort donc du
+  // lot avec la priorité maximale, la sonnerie longue d'Android, le niveau
+  // « sensible au temps » d'iOS (qui passe outre les modes de concentration) et
+  // une durée de vie courte, pour ne pas la voir arriver après coup.
+  const urgent = data && data.type === 'booking_request';
   return admin.messaging().send({
     token,
     notification: { title, body },
     data: data || {},
-    android: { priority: 'high', notification: { sound: 'default' } },
-    apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+    android: {
+      priority: 'high',
+      ...(urgent ? { ttl: 60000 } : {}),
+      notification: {
+        sound: 'default',
+        ...(urgent ? { notificationPriority: 'PRIORITY_MAX', defaultVibrateTimings: true } : {}),
+      },
+    },
+    apns: {
+      ...(urgent ? { headers: { 'apns-priority': '10', 'apns-expiration': String(Math.floor(Date.now() / 1000) + 60) } } : {}),
+      payload: { aps: { sound: 'default', badge: 1, ...(urgent ? { 'interruption-level': 'time-sensitive' } : {}) } },
+    },
   });
 }
 
