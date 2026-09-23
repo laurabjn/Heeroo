@@ -625,20 +625,20 @@ const styles = StyleSheet.create({
         fontFamily: 'Montserrat-Bold',
         fontSize: 20
     },
+    // Hauteur explicite, sans flex : une carte de taille nulle fait planter
+    // l'application dès qu'elle est prête (moveToRegion sur une carte 0 × 0).
     mapcontainer: {
-        flex: 1,
+        width: '100%',
         height: 150,
-        justifyContent: 'center',
-        alignItems: 'center',
+        overflow: 'hidden',
     },
     mapDetails: {
         flex: 1,
         padding: 10
     },
     map: {
-
-        ...StyleSheet.absoluteFill,
-        overflow: 'hidden'
+        width: '100%',
+        height: '100%',
     },
     triangle: {
         width: 0,
