@@ -128,7 +128,10 @@ exports.sendMessage = httpEndpoint(async (req, res) => {
     const id = await sendPush(token, title || 'Heeroo', msg);
     res.json({ success: true, id });
   } catch (error) {
-    if (isInvalidTokenError(error)) {
+    // Jeton émis par un autre projet Firebase (app installée avec une
+    // configuration différente) : inutilisable, on le retire comme un jeton périmé.
+    if (isInvalidTokenError(error) || (error && error.errorInfo && error.errorInfo.code === 'messaging/mismatched-credential')
+        || String(error && error.message).includes('SenderId mismatch')) {
       // Jeton périmé : on répond proprement, l'appareil se ré-enregistrera au prochain lancement.
       res.json({ success: false, reason: 'token-invalid' });
       return;
