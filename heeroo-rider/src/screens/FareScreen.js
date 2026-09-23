@@ -708,10 +708,6 @@ export default class FareScreen extends React.Component {
                 <View style={[styles.carsView, , Platform.OS != "ios" && { backgroundColor: "rgba(255, 255, 255, .95)" }]}>
                     <View style={styles.priceView} >
 
-                        <View style={styles.priceItem}>
-                            <Text style={styles.priceText}>{languageJSON.base_fare}</Text>
-                            <Text style={[styles.priceText, { color: colors.TEXT }]}>{this.state.fareCost ? ' ' + this.state.fareCost : ' '}{this.state.settings.symbol}</Text>
-                        </View>
 
                         
 
