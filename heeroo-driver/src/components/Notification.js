@@ -29,10 +29,6 @@ export default class Notifications extends React.Component {
             ],
         } 
       }
-      onPressButton(){ 
-         alert("hello");
-      }
-
      newData = ({item}) =>{
         return(
         <View style={styles.item}>

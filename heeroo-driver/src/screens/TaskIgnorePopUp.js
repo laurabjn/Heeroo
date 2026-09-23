@@ -19,9 +19,7 @@ export default class TaskListIgnorePopup extends React.Component{
                 animationType="slide"
                 transparent={false}
                 visible={this.state.modalVisible}
-                onRequestClose={() => {
-                    Alert.alert('Modal has been closed.');
-                }}>
+                onRequestClose={() => this.setModalVisible(false)}>
                     <View style={styles.modalMain}>
                         <View style={styles.modalContainer}>
                             <View style={styles.modalHeading}>

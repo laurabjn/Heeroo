@@ -128,10 +128,7 @@ export default class SearchModal extends Component {
         animationType="slide"
         transparent={true}
         visible={this.props.modalVisible}
-        onRequestClose={() => {
-          console.log("onRequestClose")
-          Alert.alert("Modal has been closed.");
-        }}
+        onRequestClose={() => setState({ searchModalVisible: false })}
         statusBarTranslucent={true}
 
       >

@@ -65,10 +65,6 @@ export default class WTransactionHistory extends React.Component {
         this._retrieveSettings();
     }
 
-    onPressButton() {
-        alert("hello");
-    }
-
     newData = ({ item }) => {
         return (
             <View style={styles.container}>

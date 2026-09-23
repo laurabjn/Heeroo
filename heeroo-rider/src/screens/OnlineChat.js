@@ -11,6 +11,7 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   StatusBar,
+  Alert,
     Platform,
 } from "react-native";
 import { colors } from "../common/theme";
@@ -116,7 +117,7 @@ export default class OnlineChat extends Component {
     this.setState({ id: totalId })
 
     if (inputmessage == '' || inputmessage == undefined || inputmessage == null) {
-      alert("Please write something...");
+      Alert.alert(languageJSON.alert, languageJSON.chat_empty_message);
     } else {
       let chat = firebase.database().ref('chat')
       // if(chat){
