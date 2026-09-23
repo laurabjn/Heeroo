@@ -62,9 +62,10 @@ export default class CardDetailsScreen extends React.Component {
 
         let symbol = " €"
         let code = " EUR"
-        let data = value
+        const data = Array.isArray(value) ? value : Object.values(value || {});
 
-        data.forEach(element => {
+        const dataList = Array.isArray(data) ? data : Object.values(data || {});
+        dataList.forEach(element => {
 
           if (countryCode == element.country) {
             symbol = " " + element.symbol

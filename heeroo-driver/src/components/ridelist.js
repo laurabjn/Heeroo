@@ -45,7 +45,8 @@ export default class RideList extends React.Component {
         const settings = this.props.settings
         let result = ''
 
-        settings.forEach(element => {
+        const settingsList = Array.isArray(settings) ? settings : Object.values(settings || {});
+        settingsList.forEach(element => {
             if (country == element.country) {
                 result = '' + element.symbol
 

@@ -41,7 +41,8 @@ export default class DriverIncomePage extends React.Component {
                     let code = " EUR"
                     let data = value
 
-                    data.forEach(element => {
+                    const dataList = Array.isArray(data) ? data : Object.values(data || {});
+                    dataList.forEach(element => {
 
                         if (userData.val().country == element.country) {
                             symbol = " " + element.symbol

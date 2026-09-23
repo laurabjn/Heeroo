@@ -88,7 +88,8 @@ export default class FareScreen extends React.Component {
                 let code = " EUR"
                 let data = value
 
-                data.forEach(element => {
+                const dataList = Array.isArray(data) ? data : Object.values(data || {});
+                dataList.forEach(element => {
 
                     if (countryCode == element.country) {
                         symbol = " " + element.symbol

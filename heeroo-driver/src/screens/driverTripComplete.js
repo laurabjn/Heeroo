@@ -44,7 +44,8 @@ export default class DriverTripComplete extends React.Component {
                 let code = " EUR"
                 let data = value
 
-                data.forEach(element => {
+                const dataList = Array.isArray(data) ? data : Object.values(data || {});
+                dataList.forEach(element => {
 
                     if (this.state.rideDetails.pickup.country == element.country) {
                         symbol = " " + element.symbol

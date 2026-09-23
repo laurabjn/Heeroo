@@ -250,7 +250,7 @@ export default class DriverTripAccept extends React.Component {
         // Les courses ailleurs (France : paiement à la course, pas de commission
         // sur crédit) ne sont pas concernées.
         const rideCountry = item.pickup && item.pickup.country;
-        const minBalance = Number(this.state.allCurrency && this.state.allCurrency.minDriverBalance) || 0;
+        const minBalance = Number(this.state.creditSettings && this.state.creditSettings.minDriverBalance) || 0;
         const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
         if (rideCountry === 'SN' && minBalance > 0 && balance < minBalance) {
             Alert.alert(
@@ -419,7 +419,8 @@ export default class DriverTripAccept extends React.Component {
         const data = this.state.allCurrency
         let result = ''
 
-        data.forEach(element => {
+        const dataList = Array.isArray(data) ? data : Object.values(data || {});
+        dataList.forEach(element => {
             if (country == element.country) {
                 result = '' + element.symbol
 
@@ -429,6 +430,11 @@ export default class DriverTripAccept extends React.Component {
         return result
     }
     getAllCurencySymbol() {
+        // Réglages du crédit prépayé : nœud distinct, pour ne pas ajouter de clé
+        // nommée dans settings/ — que toutes les apps parcourent comme une liste.
+        firebase.database().ref('credit_settings/').once('value', (snap) => {
+            this.setState({ creditSettings: snap.val() || {} });
+        });
         firebase.database().ref('settings/').once('value', value => {
             if (value.val()) {
                 this.setState({

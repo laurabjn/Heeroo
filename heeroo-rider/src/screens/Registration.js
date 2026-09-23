@@ -51,9 +51,12 @@ export default class RegistrationPage extends React.Component {
   checkIfCountryAvailable(value) {
 
     let result = null
-    let data = value
+    // Les paramètres peuvent revenir sous forme de liste ou d'objet selon les
+    // clés présentes : on normalise avant de parcourir.
+    const data = Array.isArray(value) ? value : Object.values(value || {});
 
-    data.forEach(element => {
+    const dataList = Array.isArray(data) ? data : Object.values(data || {});
+    dataList.forEach(element => {
 
 
       if (this.state.country == element.country) {
