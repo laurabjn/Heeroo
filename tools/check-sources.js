@@ -16,7 +16,9 @@
 //   - état `useState` dont la valeur est lue mais dont le setter n'est jamais
 //     appelé (la valeur reste à l'initial pour toujours) ;
 //   - service Firebase utilisé (firebase.storage(), firebase.auth()…) sans que
-//     le module correspondant soit importé : l'appel échoue à l'exécution.
+//     le module correspondant soit importé : l'appel échoue à l'exécution ;
+//   - chemin de base de données lu sans qu'aucune règle de database.rules.json
+//     ne l'autorise : la lecture est refusée sans erreur visible.
 //
 // Usage : node tools/check-sources.js heeroo-rider heeroo-driver
 
@@ -145,6 +147,46 @@ function screenNames(files, babel) {
   return names;
 }
 
+// Règles d'accès de la base. Une lecture non autorisée n'appelle simplement
+// jamais son rappel : l'écran reste sur sa valeur par défaut sans rien signaler.
+// C'est ainsi que le contrôle de crédit minimum est resté sans effet.
+const DATABASE_RULES = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, 'database.rules.json'), 'utf8')).rules;
+  } catch (e) {
+    console.warn(`  !! database.rules.json illisible (${e.message}) : vérification des chemins inactive`);
+    return null;
+  }
+})();
+
+/** Un `.read` accordé sur un ancêtre couvre tout son sous-arbre. */
+function pathIsReadable(segments) {
+  let node = DATABASE_RULES;
+  const granted = (n) => n && n['.read'] !== undefined && n['.read'] !== false;
+  if (granted(node)) return true;
+  for (const segment of segments) {
+    if (!node || typeof node !== 'object') return false;
+    let next = node[segment];
+    if (next === undefined) {
+      const wildcard = Object.keys(node).find((key) => key.startsWith('$'));
+      if (!wildcard) return false;
+      next = node[wildcard];
+    }
+    node = next;
+    if (granted(node)) return true;
+  }
+  return false;
+}
+
+/** Début littéral d'un chemin, qu'il soit écrit d'un bloc, concaténé ou en gabarit. */
+function leadingLiteral(node) {
+  if (!node) return null;
+  if (node.type === 'StringLiteral') return node.value;
+  if (node.type === 'TemplateLiteral') return node.quasis.length ? node.quasis[0].value.cooked : null;
+  if (node.type === 'BinaryExpression' && node.operator === '+') return leadingLiteral(node.left);
+  return null;
+}
+
 function checkApp(app) {
   const appDir = path.join(ROOT, app);
   const babel = {
@@ -225,6 +267,22 @@ function checkApp(app) {
         report(file, id, 'état', `« ${value} » est lu (${memberReads.length} accès) mais ${setter} n'est jamais appelé : la valeur reste à son initial`);
       },
     });
+
+    // Chemin de base lu sans règle d'accès correspondante.
+    if (DATABASE_RULES) {
+      babel.traverse(ast, {
+        CallExpression(p) {
+          const callee = p.node.callee;
+          if (callee.type !== 'MemberExpression' || callee.property.name !== 'ref') return;
+          const literal = leadingLiteral(p.node.arguments[0]);
+          if (literal === null) return;
+          const segments = literal.split('/').filter(Boolean);
+          if (segments.length === 0 || pathIsReadable(segments)) return;
+          report(file, p.node, 'règles',
+            `« ${segments.join('/')} » n'est autorisé en lecture par aucune règle de database.rules.json : la lecture échouera en silence`);
+        },
+      });
+    }
 
     babel.traverse(ast, {
       // Identifiants référencés sans déclaration.
