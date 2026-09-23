@@ -24,6 +24,7 @@ var { height } = Dimensions.get('window');
 import { RequestPushMsg } from '../common/RequestPushMsg';
 import { BackBtn } from '../components'
 import moment from 'moment'
+import { formatDateTime } from '../common/dateFormat';
 export default class OnlineChat extends Component {
   getParamData;
   constructor(props) {
@@ -202,12 +203,12 @@ export default class OnlineChat extends Component {
       item.source == "rider" ?
         <View style={styles.drivermsgStyle}>
           <Text style={styles.msgTextStyle}>{item ? item.message : languageJSON.chat_not_found}</Text>
-          <Text style={styles.msgTimeStyle}>{item ? new Date(item.msgTime).toLocaleString() : null}</Text>
+          <Text style={styles.msgTimeStyle}>{item ? formatDateTime(item.msgTime) : null}</Text>
         </View>
         :
         <View style={styles.riderMsgStyle}>
           <Text style={styles.riderMsgText}>{item ? item.message : languageJSON.chat_not_found}</Text>
-          <Text style={styles.riderMsgTime}>{item ? new Date(item.msgTime).toLocaleString() : null}</Text>
+          <Text style={styles.riderMsgTime}>{item ? formatDateTime(item.msgTime) : null}</Text>
         </View>
 
     );

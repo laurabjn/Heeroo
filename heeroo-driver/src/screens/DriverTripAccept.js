@@ -24,6 +24,7 @@ import countryCurrency from './../constants/countryCurrency.json'
 import { checkLocationPermission } from '../common/permission';
 import Geolocation from '../common/geolocation';
 import { setRideAlert, stopRideAlert } from '../common/rideAlert';
+import { formatDateTime } from '../common/dateFormat';
 
 
 /**
@@ -497,7 +498,7 @@ export default class DriverTripAccept extends React.Component {
                             return (
                                 <TouchableOpacity style={styles.tripProgressView} onPress={() => this.onPressProgressTrip(item, index)}>
                                     <View style={[styles.bookHeader]} >
-                                        <Text style={[styles.dateStyle]}>{new Date(item.tripdate).toLocaleString()}</Text>
+                                        <Text style={[styles.dateStyle]}>{formatDateTime(item.tripdate)}</Text>
                                         <View style={[styles.locationStatus, { backgroundColor: "#fdd42c" }]} />
                                     </View>
                                     <View flexDirection="row">

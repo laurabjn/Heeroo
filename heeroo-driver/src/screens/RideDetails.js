@@ -26,6 +26,7 @@ import languageJSON from '../common/language';
 import { BackBtn, Path } from '../components';
 import Car from '../icons/Car';
 import Pin from '../icons/Pin';
+import { formatDateTime } from '../common/dateFormat';
 var { width } = Dimensions.get('window');
 
 export default class RideDetails extends React.Component {
@@ -273,10 +274,10 @@ export default class RideDetails extends React.Component {
                         <View style={styles.leftViewContainerStyle} >
                             <Path border={4} />
                             <View flex={1} justifyContent="space-between" >
-                                {condition && <Text style={[styles.holderText]}>{this.state.paramData ? new Date(this.state.paramData.trip_start_time).toLocaleString() : ""}</Text>}
+                                {condition && <Text style={[styles.holderText]}>{this.state.paramData ? formatDateTime(this.state.paramData.trip_start_time) : ""}</Text>}
                                 <Text style={[styles.placeStyle]} numberOfLines={1}>{this.state.paramData ? this.state.paramData.pickup.add : ""}</Text>
                                 <View style={styles.separator} />
-                                {condition && <Text style={[styles.holderText]}>{this.state.paramData ? new Date(this.state.paramData.trip_end_time).toLocaleString() : ""}</Text>}
+                                {condition && <Text style={[styles.holderText]}>{this.state.paramData ? formatDateTime(this.state.paramData.trip_end_time) : ""}</Text>}
                                 <Text style={[styles.placeStyle]} numberOfLines={1}>{this.state.paramData ? this.state.paramData.drop.add : ""}</Text>
                             </View>
                         </View>

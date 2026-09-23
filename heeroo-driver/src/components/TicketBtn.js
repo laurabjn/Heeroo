@@ -12,6 +12,7 @@ import { displayName } from '../../app.json'
 import { colors } from '../common/theme';
 import Icon from 'react-native-vector-icons/AntDesign';
 import language from '../common/language';
+import { formatDateTime } from '../common/dateFormat';
 
 export default class TicketBtn extends React.Component {
 
@@ -41,9 +42,9 @@ export default class TicketBtn extends React.Component {
                             <Text style={[styles.text, { marginBottom: 15 }]} >{data.driver_contact ? data.driver_contact : " - "}</Text>
                             <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_driver + " : "}</Text>{data.driver_name}</Text>
                             <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_rider + " : "}</Text>{data.customer_name + " " + data.customer_contact}</Text>
-                            <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_ride_date + " : "}</Text>{new Date(data.tripdate).toLocaleString()}</Text>
+                            <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_ride_date + " : "}</Text>{formatDateTime(data.tripdate)}</Text>
 
-                            <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_ride_deal_date + " : "}</Text>{data.trip_start_time ? new Date(data.trip_start_time).toLocaleString() : " - "}</Text>
+                            <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_ride_deal_date + " : "}</Text>{data.trip_start_time ? formatDateTime(data.trip_start_time) : " - "}</Text>
 
                             <Text style={[styles.text, { marginBottom: 15 }]} ><Text style={{ fontFamily: "Montserrat-Bold" }} >{language.ticket_ride_start_address + " : "}</Text>{data.pickup.add ? data.pickup.add : " - "}</Text>
 

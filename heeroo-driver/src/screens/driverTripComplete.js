@@ -20,6 +20,7 @@ import 'firebase/compat/database';
 import { RequestPushMsg } from '../common/RequestPushMsg';
 import countryCurrency from './../constants/countryCurrency.json'
 import { DrawerToggle, Path } from '../components'
+import { formatDateTime } from '../common/dateFormat';
 
 export default class DriverTripComplete extends React.Component {
     constructor(props) {
@@ -186,7 +187,7 @@ export default class DriverTripComplete extends React.Component {
                         <Text style={styles.rateViewTextStyle}>{this.state.trip_cost ? parseFloat(this.state.trip_cost).toFixed(0) + " " + this.state.currency.symbol : 0 + " " + this.state.currency.symbol}</Text>
                     </View>
                     <View style={styles.tripContainer}>
-                        <Text style={styles.dateViewTextStyle}>{this.state.rideDetails.tripdate ? new Date(this.state.rideDetails.tripdate).toLocaleString() : ""}</Text>
+                        <Text style={styles.dateViewTextStyle}>{this.state.rideDetails.tripdate ? formatDateTime(this.state.rideDetails.tripdate) : ""}</Text>
                         <View style={[styles.leftViewContainerStyle]} >
                             <Path border={4} />
                             <View style={[styles.rightViewStyle]} >

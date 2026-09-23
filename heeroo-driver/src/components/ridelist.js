@@ -5,6 +5,7 @@ import { colors } from '../common/theme';
 import { Path } from '../components';
 import languageJSON from '../common/language';
 import countryCurrency from './../constants/countryCurrency.json'
+import { formatDateTime } from '../common/dateFormat';
 
 
 // Statut lisible d'une course : libellé, couleur, et si elle est terminée (passée).
@@ -69,7 +70,7 @@ export default class RideList extends React.Component {
         return (
             <TouchableOpacity style={styles.itemStyle} onPress={() => this.onPressButton(item, index)}>
                 <View style={[styles.bookHeader]} >
-                    <Text style={[styles.dateStyle]}>{item.tripdate ? new Date(item.tripdate).toLocaleString() : ""}</Text>
+                    <Text style={[styles.dateStyle]}>{item.tripdate ? formatDateTime(item.tripdate) : ""}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: status.color }]}><Text style={styles.statusText}>{status.label}</Text></View>
                 </View>
                 <View style={[styles.bookHeader]} >

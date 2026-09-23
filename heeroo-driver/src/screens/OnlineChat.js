@@ -23,6 +23,7 @@ import { RequestPushMsg } from '../common/RequestPushMsg';
 var { height } = Dimensions.get('window');
 import languageJSON from '../common/language';
 import { BackBtn } from '../components'
+import { formatDateTime } from '../common/dateFormat';
 
 export default class OnlineChat extends Component {
   getParamData;
@@ -203,12 +204,12 @@ export default class OnlineChat extends Component {
       item.source == "driver" ?
         <View style={styles.drivermsgStyle}>
           <Text style={styles.msgTextStyle}>{item ? item.message : languageJSON.chat_history_not_found}</Text>
-          <Text style={styles.msgTimeStyle}>{item ? new Date(item.msgTime).toLocaleString() : ""}</Text>
+          <Text style={styles.msgTimeStyle}>{item ? formatDateTime(item.msgTime) : ""}</Text>
         </View>
         :
         <View style={styles.riderMsgStyle}>
           <Text style={styles.riderMsgText}>{item ? item.message : languageJSON.chat_history_not_found}</Text>
-          <Text style={styles.riderMsgTime}>{item ? new Date(item.msgTime).toLocaleString() : ""}</Text>
+          <Text style={styles.riderMsgTime}>{item ? formatDateTime(item.msgTime) : ""}</Text>
         </View>
 
     );
