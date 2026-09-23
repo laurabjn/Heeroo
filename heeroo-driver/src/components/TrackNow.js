@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { fitMapToPoints } from '../common/mapFit';
 import { MAP_PROVIDER } from '../common/mapProvider';
 import { StyleSheet, View, Image, Dimensions, Platform } from 'react-native';
 import haversine from "haversine";
@@ -135,10 +136,10 @@ export default class TrackNow extends React.Component {
             })
             this.setState({ coords: coords }, () => {
                 //setTimeout(() => {
-                this.map.fitToCoordinates([{ latitude: this.state.allData.pickup.lat, longitude: this.state.allData.pickup.lng }, { latitude: this.state.allData.drop.lat, longitude: this.state.allData.drop.lng }], {
+                fitMapToPoints(this.map, [{ latitude: this.state.allData.pickup.lat, longitude: this.state.allData.pickup.lng }, { latitude: this.state.allData.drop.lat, longitude: this.state.allData.drop.lng }], {
                     edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 3 : height / 2, left: 40 },
                     animated: true,
-                })
+                }, { ready: this.mapReady })
                 //}, 1500);
 
             })
@@ -156,6 +157,7 @@ export default class TrackNow extends React.Component {
                 <MapView
                     customMapStyle={customMapStyle}
                     ref={map => { this.map = map }}
+                    onMapReady={() => { this.mapReady = true; }}
                     style={styles.map}
                     provider={MAP_PROVIDER}
                     showUserLocation

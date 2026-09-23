@@ -13,10 +13,11 @@ export default class MapComponent extends Component {
     }
 
     render() {
-        const { mapRegion, markerCord, mapStyle, currentPosition, mapRef } = this.props;
+        const { mapRegion, markerCord, mapStyle, currentPosition, mapRef, onMapReady } = this.props;
         return (
             <MapView
                 ref={mapRef}
+                onMapReady={onMapReady}
                 customMapStyle={customMapStyle}
                 provider={MAP_PROVIDER}
                 showsUserLocation={false}

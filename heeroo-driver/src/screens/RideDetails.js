@@ -1,4 +1,5 @@
 import React from 'react';
+import { fitMapToPoints } from '../common/mapFit';
 import { MAP_PROVIDER } from '../common/mapProvider';
 import {
     StyleSheet,
@@ -113,10 +114,10 @@ export default class RideDetails extends React.Component {
                 }
             })
             this.setState({ coords: coords });
-            this.mapRef.fitToCoordinates([{ latitude: this.state.paramData.pickup.lat, longitude: this.state.paramData.pickup.lng }, { latitude: this.state.paramData.drop.lat, longitude: this.state.paramData.drop.lng }], {
+            fitMapToPoints(this.mapRef, [{ latitude: this.state.paramData.pickup.lat, longitude: this.state.paramData.pickup.lng }, { latitude: this.state.paramData.drop.lat, longitude: this.state.paramData.drop.lng }], {
                 edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
                 animated: true,
-            })
+            }, { ready: this.mapReady })
             return coords
         }
         catch (error) {
@@ -202,6 +203,7 @@ export default class RideDetails extends React.Component {
                         <View style={styles.mapcontainer}>
                             <MapView
                                 ref={ref => this.mapRef = ref}
+                    onMapReady={() => { this.mapReady = true; }}
                                 customMapStyle={customMapStyle}
                                 style={styles.map}
                                 provider={MAP_PROVIDER}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { fitMapToPoints } from '../common/mapFit';
 import {
     StyleSheet,
     View,
@@ -132,10 +133,10 @@ export default class DriverStartTrip extends React.Component {
                         this.setState({ nearNotifSend: true });
                     }
                     if (this.mapRef) {
-                        this.mapRef.fitToCoordinates([{ latitude: location.latitude, longitude: location.longitude }, { latitude: this.state.rideDetails.pickup.lat, longitude: this.state.rideDetails.pickup.lng }], {
+                        fitMapToPoints(this.mapRef, [{ latitude: location.latitude, longitude: location.longitude }, { latitude: this.state.rideDetails.pickup.lat, longitude: this.state.rideDetails.pickup.lng }], {
                             edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 1, left: 40 },
                             animated: true,
-                        })
+                        }, { ready: this.mapReady })
                     }
                 })
                 .catch((error) => {
@@ -373,6 +374,7 @@ export default class DriverStartTrip extends React.Component {
                 {this.state.showMap &&
                     <MapComponent
                         mapRef={ref => this.mapRef = ref}
+                        onMapReady={() => { this.mapReady = true; }}
                         mapStyle={styles.map} mapRegion={this.state.region} currentPosition={this.state.prevPosition} markerCord={this.state.region} />}
 
                 <View style={[styles.segment]}>

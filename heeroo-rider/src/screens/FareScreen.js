@@ -1,4 +1,5 @@
 import React from 'react';
+import { fitMapToPoints } from '../common/mapFit';
 import { MAP_PROVIDER } from '../common/mapProvider';
 import {
     StyleSheet,
@@ -224,10 +225,10 @@ export default class FareScreen extends React.Component {
                     })
                     this.setState({ coords: coords }, () => {
                         if (this.map && this.state.region.wherelatitude && this.state.region.droplatitude) {
-                            this.map.fitToCoordinates([{ latitude: this.state.region.wherelatitude, longitude: this.state.region.wherelongitude }, { latitude: this.state.region.droplatitude, longitude: this.state.region.droplongitude }], {
+                            fitMapToPoints(this.map, [{ latitude: this.state.region.wherelatitude, longitude: this.state.region.wherelongitude }, { latitude: this.state.region.droplatitude, longitude: this.state.region.droplongitude }], {
                                 edgePadding: { top: Platform.OS == "ios" ? 100 : 200, right: 40, bottom: Platform.OS == "ios" ? height / 2 : height / 1, left: 40 },
                                 animated: true,
-                            })
+                            }, { ready: this.mapReady })
                         }
                     })
                     return coords
@@ -678,6 +679,7 @@ export default class FareScreen extends React.Component {
                 <MapView
                     customMapStyle={customMapStyle}
                     ref={map => { this.map = map }}
+                    onMapReady={() => { this.mapReady = true; }}
                     style={styles.map}
                     provider={MAP_PROVIDER}
                     initialRegion={{

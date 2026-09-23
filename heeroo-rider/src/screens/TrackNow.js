@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { fitMapToPoints } from '../common/mapFit';
 import { MAP_PROVIDER } from '../common/mapProvider';
 import {
     StyleSheet,
@@ -168,10 +169,10 @@ export default class TrackNow extends React.Component {
             this.setState({ coords: coords }, () => {
                 setTimeout(() => {
                     if (this.map && this.state.allData.pickup.lat && this.state.allData.drop.lat) {
-                        this.map.fitToCoordinates([{ latitude: this.state.allData.pickup.lat, longitude: this.state.allData.pickup.lng }, { latitude: this.state.allData.drop.lat, longitude: this.state.allData.drop.lng }], {
+                        fitMapToPoints(this.map, [{ latitude: this.state.allData.pickup.lat, longitude: this.state.allData.pickup.lng }, { latitude: this.state.allData.drop.lat, longitude: this.state.allData.drop.lng }], {
                             edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
                             animated: true,
-                        })
+                        }, { ready: this.mapReady })
                     }
                 }, 2500);
 
@@ -196,6 +197,7 @@ export default class TrackNow extends React.Component {
                 <MapView
                     customMapStyle={customMapStyle}
                     ref={map => { this.map = map }}
+                    onMapReady={() => { this.mapReady = true; }}
                     style={styles.map}
                     provider={MAP_PROVIDER}
                     showUserLocation
