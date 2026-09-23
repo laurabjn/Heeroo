@@ -5,6 +5,7 @@
 // webhook n'a pas encore crédité le solde.
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, Alert, Linking, AppState, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
@@ -114,7 +115,10 @@ export default class WalletTopup extends React.Component {
 
         <Modal animationType="slide" transparent visible={this.state.modalVisible} onRequestClose={() => this.setState({ modalVisible: false })}>
           <View style={styles.backdrop}>
-            <View style={styles.sheet}>
+            {/* La marge basse suit la barre de navigation du telephone : avec une
+                valeur fixe, le bouton d'annulation passait dessous et devenait
+                inatteignable. */}
+            <SafeAreaView edges={['bottom']} style={styles.sheet}>
               <Text style={styles.sheetTitle}>{languageJSON.topup_title}</Text>
               <Text style={styles.sheetHint}>{languageJSON.topup_hint}</Text>
               <View style={styles.presets}>
@@ -138,7 +142,7 @@ export default class WalletTopup extends React.Component {
               <TouchableOpacity style={styles.cancel} onPress={() => this.setState({ modalVisible: false })}>
                 <Text style={styles.cancelText}>{languageJSON.cancel}</Text>
               </TouchableOpacity>
-            </View>
+            </SafeAreaView>
           </View>
         </Modal>
       </View>
