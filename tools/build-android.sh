@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Build Android local (APK de production), sans EAS ni quota.
 #
-#   tools/build-android.sh heeroo-rider            # production (par défaut)
-#   tools/build-android.sh heeroo-driver development
+#   tools/build-android.sh heeroo-rider                      # APK de production
+#   tools/build-android.sh heeroo-driver development         # APK de développement
+#   tools/build-android.sh heeroo-rider production aab       # bundle signé pour Google Play
+#
+# Le troisième argument « aab » produit un Android App Bundle signé avec la clé
+# de dépôt, seul format accepté par Google Play. Les APK, eux, restent signés
+# par la clé de débogage : c'est suffisant pour installer à la main, et Play
+# les refuserait de toute façon.
 #
 # À lancer depuis la copie de build à chemin court (C:\heeroo) : Windows limite
 # la longueur des chemins des fichiers intermédiaires C++, et le dossier de
@@ -15,6 +21,11 @@ set -euo pipefail
 
 APP="${1:-heeroo-rider}"
 export APP_ENV="${2:-production}"
+FORMAT="${3:-apk}"
+
+# Clé de dépôt Google Play : hors du dépôt Git, jamais versionnée. La perdre
+# interdit toute mise à jour ultérieure des applications déjà publiées.
+CREDENTIALS="${HEEROO_CREDENTIALS:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/heeroo-credentials}"
 
 export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Eclipse Adoptium/jdk-17.0.20.101-hotspot}"
 export ANDROID_HOME="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
@@ -25,6 +36,22 @@ cd "$ROOT/$APP"
 
 echo "== $APP ($APP_ENV) =="
 npx expo prebuild --platform android --no-install >/dev/null
+
+if [ "$FORMAT" = "aab" ]; then
+  ENV_FILE="$CREDENTIALS/cle-de-signature.env"
+  [ -f "$ENV_FILE" ] || { echo "Clé de dépôt introuvable : $ENV_FILE" >&2; exit 1; }
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  # Signature injectée à la ligne de commande : le fichier build.gradle est
+  # régénéré à chaque prebuild, on ne peut donc pas y inscrire la clé.
+  (cd android && ./gradlew bundleRelease --no-daemon --console=plain -q     -Pandroid.injected.signing.store.file="$CREDENTIALS/heeroo-upload.keystore"     -Pandroid.injected.signing.store.password="$HEEROO_UPLOAD_STORE_PASSWORD"     -Pandroid.injected.signing.key.alias="$HEEROO_UPLOAD_KEY_ALIAS"     -Pandroid.injected.signing.key.password="$HEEROO_UPLOAD_KEY_PASSWORD")
+  BUNDLE="$ROOT/$APP/android/app/build/outputs/bundle/release/app-release.aab"
+  ls -la "$BUNDLE" | awk '{printf "Bundle : %.1f Mo
+", $5/1048576}'
+  echo "$BUNDLE"
+  exit 0
+fi
+
 (cd android && ./gradlew assembleRelease --no-daemon --console=plain -q)
 
 APK="$ROOT/$APP/android/app/build/outputs/apk/release/app-release.apk"
