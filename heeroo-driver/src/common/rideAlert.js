@@ -1,23 +1,24 @@
 // Sonnerie de nouvelle demande de course.
 //
 // Le chauffeur conduit : une notification silencieuse ne sert à rien. La
-// sonnerie tourne en boucle tant qu'une demande attend une réponse, au volume
-// maximum, et continue même si le téléphone est en mode silencieux ou vibreur
-// (playsInSilentMode) — c'est le comportement attendu d'une application de
-// service, comparable à une alarme.
+// sonnerie retentit une fois, au volume maximum, et s'entend même si le
+// téléphone est en mode silencieux ou vibreur (playsInSilentMode).
 //
-// Un seul lecteur pour toute l'application : appeler plusieurs fois setRideAlert
-// n'empile pas les sonneries.
+// Une seule fois et non en boucle : le chauffeur regarde son téléphone dès le
+// premier son, et une alarme qui insiste pendant qu'il conduit dérange plus
+// qu'elle n'aide.
+//
+// Un seul lecteur pour toute l'application : appeler plusieurs fois
+// setRideAlert n'empile pas les sonneries.
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // Sonnerie retenue parmi les trois produites par tools/make-alert-sound.js
 // (nouvelle-course, sirene, carillon) : changer ce chemin suffit.
 const RINGTONE = require('../../assets/sounds/carillon.wav');
 
-// Garde-fou : si le chauffeur ne répond pas (téléphone dans une poche, course
-// déjà prise par un autre), la sonnerie s'arrête d'elle-même plutôt que de
-// sonner indéfiniment.
-const MAX_RING_MS = 45000;
+// Durée du carillon, un peu arrondie : passé ce délai le son s'est tu de
+// lui-même et une nouvelle demande pourra sonner à son tour.
+const RING_MS = 3200;
 
 let player = null;
 let ringing = false;
@@ -31,7 +32,7 @@ function getPlayer() {
         interruptionMode: 'doNotMix',
     }).catch((error) => console.log('[Sonnerie] mode audio refusé', error && error.message));
     player = createAudioPlayer(RINGTONE);
-    player.loop = true;
+    player.loop = false;
     player.volume = 1;
     return player;
 }
@@ -44,7 +45,7 @@ export function setRideAlert(active) {
             current.seekTo(0);
             current.play();
             ringing = true;
-            stopTimer = setTimeout(() => setRideAlert(false), MAX_RING_MS);
+            stopTimer = setTimeout(() => { ringing = false; stopTimer = null; }, RING_MS);
         } else if (!active && ringing) {
             if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
             player.pause();
