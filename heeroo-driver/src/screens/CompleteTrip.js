@@ -10,6 +10,7 @@ import {
     Image,
     Modal,
     SafeAreaView, Linking,
+    TouchableOpacity,
     ActivityIndicator,
     Alert,
 } from 'react-native';
@@ -18,7 +19,7 @@ import { DrawerToggle, } from '../components';
 import TicketBtn from '../components/TicketBtn';
 
 import { TrackNow } from '../components';
-import { Button, Header } from '@rneui/themed';
+import { Button, Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
 import { checkLocationPermission } from '../common/permission';
 import firebase from 'firebase/compat/app';
@@ -354,6 +355,26 @@ export default class DriverCompleteTrip extends React.Component {
                     containerStyle={styles.headerStyle}
                 />
                 <View style={styles.footer} >
+                    {/* Pendant la course, l'ecran ne montrait que les deux boutons :
+                        le chauffeur perdait le nom de son passager et tout moyen de
+                        le joindre, alors qu'il les avait a l'ecran precedent. */}
+                    <View style={styles.riderBar}>
+                        <Text style={styles.riderBarName} numberOfLines={1}>
+                            {this.state.rideDetails.customer_name || ''}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.riderBarAction}
+                            onPress={() => this.props.navigation.navigate('Chat', { passData: this.state.rideDetails })}>
+                            <Icon name="message-square" type="feather" color={colors.SECONDARY} size={20} />
+                        </TouchableOpacity>
+                        {this.state.rideDetails.customer_contact ? (
+                            <TouchableOpacity
+                                style={styles.riderBarAction}
+                                onPress={() => Linking.openURL('tel:' + String(this.state.rideDetails.customer_contact).replace(/\s/g, ''))}>
+                                <Icon name="phone" type="feather" color={colors.SECONDARY} size={20} />
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
                     <Button
                         title={languageJSON.get_direction}
                         onPress={() => this.handleGetDirections(this.state.rideDetails)}
@@ -473,6 +494,37 @@ const styles = StyleSheet.create({
     gradient: {
         ...StyleSheet.absoluteFill,
         height: 100
+    },
+    riderBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.WHITE,
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginBottom: 10,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.14,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 3 },
+    },
+    riderBarName: {
+        flex: 1,
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 15,
+        color: colors.PRIMARY,
+        paddingRight: 10,
+    },
+    riderBarAction: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginLeft: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.SECONDARY,
     },
     footer: {
         position: 'absolute',
