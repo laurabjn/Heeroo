@@ -21,7 +21,7 @@ import { google_map_key } from '../common/key';
 import language from '../common/language';
 import { Car, Pin } from '../icons'
 import Geolocation from '../common/geolocation';
-import { checkCameraPermission, checkLocationPermission } from '../common/permission';
+import { checkLocationPermission } from '../common/permission';
 
 const LATITUDE_DELTA = 0.04;
 const LONGITUDE_DELTA = 0.04;
@@ -61,7 +61,9 @@ export default class TrackNow extends React.Component {
     async componentDidMount() {
         const { coordinate } = this.state;
 
-        checkCameraPermission()
+        // Pas de demande d'appareil photo ici : ce composant suit une course, il
+        // ne prend aucune photo. L'appel herite du modele d'origine reclamait
+        // l'acces a la camera au demarrage de chaque course, sans explication.
         this.watchID = Geolocation.watchPosition(
             position => {
                 console.log('depuis tracknow')
