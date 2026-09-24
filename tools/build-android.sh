@@ -25,6 +25,10 @@ FORMAT="${3:-apk}"
 
 # Clé de dépôt Google Play : hors du dépôt Git, jamais versionnée. La perdre
 # interdit toute mise à jour ultérieure des applications déjà publiées.
+#
+# Le chemin par défaut suppose le dossier voisin du dépôt ; depuis la copie de
+# build à chemin court, il faut donc passer HEEROO_CREDENTIALS explicitement :
+#   HEEROO_CREDENTIALS=/c/Users/.../heeroo-credentials tools/build-android.sh … aab
 CREDENTIALS="${HEEROO_CREDENTIALS:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/heeroo-credentials}"
 
 export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Eclipse Adoptium/jdk-17.0.20.101-hotspot}"
