@@ -58,6 +58,12 @@ export default class AboutPage extends React.Component {
                         <Text style={styles.contacttype2}>{languageJSON.email_placeholder} :</Text>
                         <Text style={styles.contacttype1}> {this.state.email ? this.state.email : null}</Text>
                     </TouchableOpacity>
+                    {this.state.phone ? (
+                        <TouchableOpacity onPress={() => Linking.openURL('tel:' + String(this.state.phone).replace(/\s/g, ''))} style={styles.row}>
+                            <Text style={styles.contacttype2}>{languageJSON.phone} :</Text>
+                            <Text style={styles.contacttype1}> {this.state.phone}</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </ScrollView>
             </View>
 
