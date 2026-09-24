@@ -5,6 +5,10 @@ export default {
     payment: "Paiement",
     valid_identityfront_check: "Ce document est obligatoire",
     // Crédit chauffeur (recharge Wave)
+    background_location_title: 'Suivi de votre position pendant les courses',
+    background_location_message: "Heeroo Driver relève votre position même lorsque l'application est en arrière-plan ou fermée, et uniquement pendant une course. Cela permet à votre passager de suivre votre approche et au trajet d'être calculé. Le relèvement s'arrête dès la fin de la course.",
+    background_location_accept: 'Continuer',
+    background_location_refuse: 'Plus tard',
     credit_balance: 'Mon crédit',
     credit_commission_note: 'La commission de chaque course réglée en espèces est prélevée sur ce crédit.',
     topup_button: 'Recharger',

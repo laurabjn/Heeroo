@@ -6,8 +6,10 @@
 //   service de premier plan Android (notification persistante), qui continue
 //   quand l'app n'est plus à l'écran.
 // - Sinon : suivi classique au premier plan uniquement.
+import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
+import languageJSON from './language';
 
 const TASK_NAME = 'heeroo-driver-location';
 
@@ -15,6 +17,30 @@ const listeners = {};
 let config = {};
 let foregroundWatch = null;
 let running = false;
+
+/**
+ * Information prealable a la demande de position en arriere-plan.
+ *
+ * Google l'exige avant la fenetre du systeme : elle doit dire quelle donnee est
+ * relevee, a quoi elle sert, et que le relevement continue application fermee,
+ * puis recueillir un accord explicite. Une application qui demande la
+ * permission sans cette etape est refusee a la publication.
+ *
+ * Un refus n'est pas bloquant : le suivi se poursuit au premier plan.
+ */
+function askBackgroundConsent() {
+  return new Promise((resolve) => {
+    Alert.alert(
+      languageJSON.background_location_title,
+      languageJSON.background_location_message,
+      [
+        { text: languageJSON.background_location_refuse, style: 'cancel', onPress: () => resolve(false) },
+        { text: languageJSON.background_location_accept, onPress: () => resolve(true) },
+      ],
+      { cancelable: false }
+    );
+  });
+}
 
 function emit(event, payload) {
   (listeners[event] || []).forEach((fn) => {
@@ -89,7 +115,11 @@ const BackgroundGeolocation = {
 
     let backgroundStarted = false;
     try {
-      const bg = await Location.requestBackgroundPermissionsAsync();
+      const already = await Location.getBackgroundPermissionsAsync();
+      // L'information n'est presentee qu'une fois : inutile de la repeter a
+      // chaque course si le chauffeur a deja accorde la permission.
+      const consent = already.status === 'granted' || (await askBackgroundConsent());
+      const bg = consent ? await Location.requestBackgroundPermissionsAsync() : already;
       if (bg.status === 'granted') {
         await Location.startLocationUpdatesAsync(TASK_NAME, {
           ...watchOptions(),
