@@ -1,28 +1,28 @@
 // Sonnerie de nouvelle demande de course.
 //
-// Le chauffeur conduit : une notification silencieuse ne sert à rien. La
-// sonnerie retentit une fois, au volume maximum, et s'entend même si le
-// téléphone est en mode silencieux ou vibreur (playsInSilentMode).
+// Le chauffeur conduit : une notification silencieuse ne sert à rien. Le
+// carillon retentit au volume maximum, et s'entend même si le téléphone est en
+// mode silencieux ou vibreur (playsInSilentMode).
 //
-// Une seule fois et non en boucle : le chauffeur regarde son téléphone dès le
-// premier son, et une alarme qui insiste pendant qu'il conduit dérange plus
-// qu'elle n'aide.
+// Il sonne trois fois, espacées de deux secondes, puis se tait — un compromis
+// entre la sonnerie unique, qu'un chauffeur peut manquer téléphone en poche ou
+// autoradio fort, et la boucle sans fin, qui dérange au volant. Il s'arrête
+// immédiatement dès que la demande n'attend plus de réponse.
 //
 // Un seul lecteur pour toute l'application : appeler plusieurs fois
 // setRideAlert n'empile pas les sonneries.
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-// Sonnerie retenue parmi les trois produites par tools/make-alert-sound.js
-// (nouvelle-course, sirene, carillon) : changer ce chemin suffit.
 const RINGTONE = require('../../assets/sounds/carillon.wav');
 
-// Durée du carillon, un peu arrondie : passé ce délai le son s'est tu de
-// lui-même et une nouvelle demande pourra sonner à son tour.
-const RING_MS = 3200;
+const REPEATS = 3;      // nombre total de sonneries
+const RING_MS = 3200;   // durée du carillon, arrondie
+const GAP_MS = 2000;    // silence entre deux sonneries
 
 let player = null;
 let ringing = false;
-let stopTimer = null;
+let repeatsLeft = 0;
+let nextTimer = null;
 
 function getPlayer() {
     if (player) return player;
@@ -37,17 +37,43 @@ function getPlayer() {
     return player;
 }
 
+function playOnce() {
+    const current = getPlayer();
+    current.seekTo(0);
+    current.play();
+}
+
+/** Programme la sonnerie suivante, ou clôt la série. */
+function scheduleNext() {
+    nextTimer = setTimeout(() => {
+        nextTimer = null;
+        if (repeatsLeft <= 0) {
+            ringing = false;
+            return;
+        }
+        repeatsLeft -= 1;
+        try {
+            playOnce();
+        } catch (error) {
+            console.log('[Sonnerie]', error && error.message);
+            ringing = false;
+            return;
+        }
+        scheduleNext();
+    }, RING_MS + GAP_MS);
+}
+
 /** Démarre ou arrête la sonnerie. Sans effet si elle est déjà dans cet état. */
 export function setRideAlert(active) {
     try {
         if (active && !ringing) {
-            const current = getPlayer();
-            current.seekTo(0);
-            current.play();
             ringing = true;
-            stopTimer = setTimeout(() => { ringing = false; stopTimer = null; }, RING_MS);
+            repeatsLeft = REPEATS - 1;
+            playOnce();
+            scheduleNext();
         } else if (!active && ringing) {
-            if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
+            if (nextTimer) { clearTimeout(nextTimer); nextTimer = null; }
+            repeatsLeft = 0;
             player.pause();
             player.seekTo(0);
             ringing = false;
