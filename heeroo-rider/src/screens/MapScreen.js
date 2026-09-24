@@ -133,6 +133,23 @@ export default class MScreen extends React.Component {
                             return;
                         }
                     }
+
+                    // Course encore en cours a la reouverture : l'application revenait
+                    // au formulaire de reservation et le passager perdait le suivi de
+                    // son trajet, sans moyen de revenir dessus ni de joindre son
+                    // chauffeur.
+                    for (const key of Object.keys(all)) {
+                        const booking = all[key];
+                        if (!booking) continue;
+                        if (booking.status == 'START') {
+                            propsForOn.navigation.navigate('trackRide', { data: booking, bId: key });
+                            return;
+                        }
+                        if (booking.status == 'ACCEPTED' || booking.status == 'ARRIVED') {
+                            propsForOn.navigation.navigate('BookedCab', { passData: { ...booking, bokkingId: key } });
+                            return;
+                        }
+                    }
                 });
 
                 const bookingData = firebase.database().ref('users/' + curuser.uid + '/my-booking');
