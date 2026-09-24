@@ -50,8 +50,7 @@ if [ "$FORMAT" = "aab" ]; then
   # régénéré à chaque prebuild, on ne peut donc pas y inscrire la clé.
   (cd android && ./gradlew bundleRelease --no-daemon --console=plain -q     -Pandroid.injected.signing.store.file="$CREDENTIALS/heeroo-upload.keystore"     -Pandroid.injected.signing.store.password="$HEEROO_UPLOAD_STORE_PASSWORD"     -Pandroid.injected.signing.key.alias="$HEEROO_UPLOAD_KEY_ALIAS"     -Pandroid.injected.signing.key.password="$HEEROO_UPLOAD_KEY_PASSWORD")
   BUNDLE="$ROOT/$APP/android/app/build/outputs/bundle/release/app-release.aab"
-  ls -la "$BUNDLE" | awk '{printf "Bundle : %.1f Mo
-", $5/1048576}'
+  ls -la "$BUNDLE" | awk '{print "Bundle : " int($5/104858)/10 " Mo"}'
   echo "$BUNDLE"
   exit 0
 fi
