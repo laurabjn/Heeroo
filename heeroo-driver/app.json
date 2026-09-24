@@ -74,7 +74,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Heeroo accède à vos photos pour votre photo de profil.",
-          "cameraPermission": "Heeroo utilise l'appareil photo pour votre photo de profil."
+          "cameraPermission": "Heeroo utilise l'appareil photo pour votre photo de profil.",
+          "microphonePermission": false
         }
       ],
       [
