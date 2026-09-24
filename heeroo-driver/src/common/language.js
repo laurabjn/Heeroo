@@ -6,6 +6,7 @@ export default {
     valid_identityfront_check: "Ce document est obligatoire",
     // Crédit chauffeur (recharge Wave)
     credit_balance: 'Mon crédit',
+    credit_commission_note: 'Ce solde suit les commissions dues sur vos courses réglées en espèces. Il est réglé avec votre exploitant.',
     topup_button: 'Recharger',
     topup_title: 'Recharger mon crédit',
     credit_insufficient_title: 'Crédit insuffisant',

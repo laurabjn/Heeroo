@@ -16,9 +16,10 @@ import { base_url } from '../common/key';
 const PRESETS = [1000, 2500, 5000, 10000];
 const MIN_TOPUP = 1000;
 
-// Wave n'opere qu'au Senegal et ne regle qu'en francs CFA : la carte de credit
-// reste invisible ailleurs, ou elle annoncerait un solde dans une monnaie que
-// le chauffeur n'utilise pas.
+// Wave n'opere qu'au Senegal : la recharge n'est proposee que la-bas. Le solde,
+// lui, s'affiche partout — ailleurs il ne sert pas de porte-monnaie mais de
+// compte des commissions dues sur les courses payees en especes, que le
+// chauffeur doit pouvoir consulter.
 const WAVE_COUNTRY = 'SN';
 
 async function callFunction(name, body) {
@@ -34,7 +35,7 @@ async function callFunction(name, body) {
 }
 
 export default class WalletTopup extends React.Component {
-  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null };
+  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null, currencies: [] };
 
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
@@ -47,6 +48,12 @@ export default class WalletTopup extends React.Component {
     // Sous credit_settings et non sous settings : ce dernier est un tableau de
     // pays, et y ajouter une clé nommée le convertirait en objet, ce qui casse
     // les parcours de liste dans les écrans.
+    // Le pays arrive de facon asynchrone : on garde la table des monnaies et on
+    // en deduit le symbole a l'affichage, quand les deux sont connus.
+    firebase.database().ref('settings').once('value', (snapshot) => {
+      const list = snapshot.val();
+      this.setState({ currencies: Array.isArray(list) ? list : Object.values(list || {}) });
+    });
     this.enabledRef = firebase.database().ref('credit_settings/waveEnabled');
     this.enabledRef.on('value', (snapshot) => this.setState({ enabled: snapshot.val() === true }));
     this.balanceRef = firebase.database().ref('users/' + uid + '/walletBalance');
@@ -99,18 +106,24 @@ export default class WalletTopup extends React.Component {
   };
 
   render() {
-    if (!this.state.enabled || this.state.country !== WAVE_COUNTRY) return null;
+    if (!this.state.enabled) return null;
+    const canTopUp = this.state.country === WAVE_COUNTRY;
+    const currency = this.state.currencies.find((entry) => entry && entry.country === this.state.country);
+    const symbol = (currency && currency.symbol) || (canTopUp ? 'FCFA' : '');
     return (
       <View style={styles.card}>
         <View style={styles.row}>
           <View>
             <Text style={styles.label}>{languageJSON.credit_balance}</Text>
-            <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} FCFA</Text>
+            <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
           </View>
-          <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
-            <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
-          </TouchableOpacity>
+          {canTopUp ? (
+            <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
+              <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
+        {canTopUp ? null : <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>}
         {this.state.pendingSession ? <Text style={styles.pending}>{languageJSON.topup_pending}</Text> : null}
 
         <Modal animationType="slide" transparent visible={this.state.modalVisible} onRequestClose={() => this.setState({ modalVisible: false })}>
