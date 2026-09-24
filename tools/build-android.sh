@@ -39,7 +39,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT/$APP"
 
 echo "== $APP ($APP_ENV) =="
-npx expo prebuild --platform android --no-install >/dev/null
+# --clean : prebuild ajoute au dossier natif mais n'en retire jamais rien. Sans
+# cette option, une permission supprimee de app.json restait dans le manifeste
+# d'un build precedent — le micro est reste ainsi dans les deux applications.
+npx expo prebuild --platform android --no-install --clean >/dev/null
 
 if [ "$FORMAT" = "aab" ]; then
   ENV_FILE="$CREDENTIALS/cle-de-signature.env"
