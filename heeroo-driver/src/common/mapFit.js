@@ -10,6 +10,11 @@
 
 const DEFAULT_PADDING = { top: 60, right: 60, bottom: 60, left: 60 };
 
+// Etendue minimale du cadrage, en degres — environ 450 metres. Cadrer deux
+// points confondus, ce qui arrive des que le chauffeur est arrive au point de
+// depart, envoie la carte au zoom maximum sur une zone sans aucun detail.
+const MIN_SPAN = 0.004;
+
 function usable(point) {
     return point && Number.isFinite(Number(point.latitude)) && Number.isFinite(Number(point.longitude));
 }
@@ -28,6 +33,17 @@ export function fitMapToPoints(mapRef, points, options = {}) {
         longitude: Number(p.longitude),
     }));
     if (valid.length < 2) return;
+
+    const latitudes = valid.map((p) => p.latitude);
+    const longitudes = valid.map((p) => p.longitude);
+    const latSpan = Math.max(...latitudes) - Math.min(...latitudes);
+    const lngSpan = Math.max(...longitudes) - Math.min(...longitudes);
+    if (latSpan < MIN_SPAN && lngSpan < MIN_SPAN) {
+        const centerLat = (Math.max(...latitudes) + Math.min(...latitudes)) / 2;
+        const centerLng = (Math.max(...longitudes) + Math.min(...longitudes)) / 2;
+        valid.push({ latitude: centerLat - MIN_SPAN / 2, longitude: centerLng - MIN_SPAN / 2 });
+        valid.push({ latitude: centerLat + MIN_SPAN / 2, longitude: centerLng + MIN_SPAN / 2 });
+    }
 
     setTimeout(() => {
         try {
