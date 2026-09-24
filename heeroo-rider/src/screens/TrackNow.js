@@ -7,12 +7,14 @@ import {
     Text,
     View,
     TouchableWithoutFeedback,
+    TouchableOpacity,
     PermissionsAndroid,
     Platform,
     Linking,
     Alert,
 } from 'react-native';
-import { Header } from '@rneui/themed';
+import { Header, Icon } from '@rneui/themed';
+import languageJSON from '../common/language';
 import haversine from "haversine";
 import MapView, {
     Marker,
@@ -241,6 +243,40 @@ export default class TrackNow extends React.Component {
                         <Pin height={40} width={30} />
                     </Marker>
                 </MapView>
+
+                {/* Pendant la course, le passager ne voyait qu'une carte : ni le nom
+                    de son chauffeur, ni la destination, ni le moyen de le joindre,
+                    alors que tout cela s'affichait a l'ecran precedent. */}
+                {this.state.allData ? (
+                    <View style={styles.tripCard}>
+                        <Text style={styles.tripLabel}>{languageJSON.ride_in_progress}</Text>
+                        <Text style={styles.tripDrop} numberOfLines={1}>
+                            {this.state.allData.drop ? this.state.allData.drop.add : ''}
+                        </Text>
+                        <View style={styles.tripRow}>
+                            <View style={styles.tripDriver}>
+                                <Text style={styles.tripName} numberOfLines={1}>{this.state.allData.driver_name || ''}</Text>
+                                <Text style={styles.tripVehicle} numberOfLines={1}>
+                                    {[this.state.allData.carType, this.state.allData.vehicle_number].filter(Boolean).join(' \u00b7 ')}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.tripAction}
+                                onPress={() => this.props.navigation.navigate('onlineChat', {
+                                    passData: { ...this.state.allData, bokkingId: this.props.route.params.bId },
+                                })}>
+                                <Icon name="message-square" type="feather" color={colors.SECONDARY} size={22} />
+                            </TouchableOpacity>
+                            {this.state.allData.driver_contact ? (
+                                <TouchableOpacity
+                                    style={styles.tripAction}
+                                    onPress={() => Linking.openURL('tel:' + String(this.state.allData.driver_contact).replace(/\s/g, ''))}>
+                                    <Icon name="phone" type="feather" color={colors.SECONDARY} size={22} />
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+                    </View>
+                ) : null}
             </View>
         );
     }
@@ -259,6 +295,64 @@ const styles = StyleSheet.create({
         zIndex: 1,
         ...StyleSheet.absoluteFill,
         height: 100
+    },
+    tripCard: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: 24,
+        zIndex: 3,
+        backgroundColor: colors.WHITE,
+        borderRadius: 16,
+        paddingHorizontal: 18,
+        paddingVertical: 16,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOpacity: 0.16,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+    },
+    tripLabel: {
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 12,
+        letterSpacing: 1,
+        color: colors.SECONDARY,
+    },
+    tripDrop: {
+        fontFamily: 'Montserrat-Regular',
+        fontSize: 16,
+        color: colors.PRIMARY,
+        marginTop: 2,
+    },
+    tripRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 14,
+    },
+    tripDriver: {
+        flex: 1,
+        paddingRight: 12,
+    },
+    tripName: {
+        fontFamily: 'Montserrat-SemiBold',
+        fontSize: 15,
+        color: colors.PRIMARY,
+    },
+    tripVehicle: {
+        fontFamily: 'Montserrat-Regular',
+        fontSize: 13,
+        color: colors.SECONDARY,
+        marginTop: 1,
+    },
+    tripAction: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        marginLeft: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.SECONDARY,
     },
     headerStyle: {
         zIndex: 2,

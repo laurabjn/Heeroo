@@ -219,6 +219,7 @@ export default {
     select: "Selectionner",
     from_position: "Départ",
     to_position: "Arrivée",
+    ride_in_progress: "COURSE EN COURS",
     Detailsdelacourse: "Details de la course",
     Commissionprovisoire: "Prix de la course",
     Annulerlacourse: "Annuler la course",
