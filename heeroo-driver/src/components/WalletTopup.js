@@ -13,14 +13,32 @@ import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 import { base_url } from '../common/key';
 
-const PRESETS = [1000, 2500, 5000, 10000];
-const MIN_TOPUP = 1000;
-
-// Wave n'opere qu'au Senegal : la recharge n'est proposee que la-bas. Le solde,
-// lui, s'affiche partout — ailleurs il ne sert pas de porte-monnaie mais de
-// compte des commissions dues sur les courses payees en especes, que le
-// chauffeur doit pouvoir consulter.
+// Deux moyens de recharge selon le pays : Wave la ou il opere (Senegal), la
+// carte bancaire ailleurs. Les deux suivent le meme chemin — une page de
+// paiement ouverte dans le navigateur, puis le serveur qui credite le solde —
+// de sorte que l'application n'embarque aucun module de paiement.
 const WAVE_COUNTRY = 'SN';
+
+const PROVIDERS = {
+  wave: {
+    presets: [1000, 2500, 5000, 10000],
+    min: 1000,
+    create: 'createWaveCheckout',
+    confirm: 'confirmWaveCheckout',
+    confirmLabel: () => languageJSON.topup_confirm,
+    hint: () => languageJSON.topup_hint,
+    round: (value) => Math.round(value),
+  },
+  card: {
+    presets: [10, 20, 50, 100],
+    min: 5,
+    create: 'createCardTopup',
+    confirm: 'confirmCardTopup',
+    confirmLabel: () => languageJSON.topup_confirm_card,
+    hint: () => languageJSON.topup_hint_card,
+    round: (value) => Math.round(value * 100) / 100,
+  },
+};
 
 async function callFunction(name, body) {
   const idToken = await firebase.auth().currentUser.getIdToken();
@@ -70,20 +88,46 @@ export default class WalletTopup extends React.Component {
     if (this.appStateSubscription) this.appStateSubscription.remove();
   }
 
+  /** Wave au Senegal, carte bancaire ailleurs. */
+  provider() {
+    return this.state.country === WAVE_COUNTRY ? PROVIDERS.wave : PROVIDERS.card;
+  }
+
+  /**
+   * Code ISO de la monnaie du chauffeur, d'apres son pays.
+   *
+   * Le back-office laisse saisir ce code librement et contient par exemple
+   * « FCFA », qui n'est pas un code ISO : on ne le retient que s'il en a la
+   * forme, sinon on retombe sur la monnaie du pays.
+   */
+  currency() {
+    const row = this.state.currencies.find((entry) => entry && entry.country === this.state.country);
+    const code = row && row.code ? String(row.code).trim().toUpperCase() : '';
+    if (/^[A-Z]{3}$/.test(code)) return code;
+    return this.state.country === WAVE_COUNTRY ? 'XOF' : 'EUR';
+  }
+
+  /** Symbole affiche a cote du solde. */
+  symbol() {
+    const row = this.state.currencies.find((entry) => entry && entry.country === this.state.country);
+    return (row && row.symbol && String(row.symbol).trim()) || (this.state.country === WAVE_COUNTRY ? 'FCFA' : '');
+  }
+
   startTopup = async () => {
-    const amount = Math.round(Number(this.state.amount));
-    if (!(amount >= MIN_TOPUP)) {
-      Alert.alert(languageJSON.Error || 'Erreur', languageJSON.topup_min_error);
+    const provider = this.provider();
+    const amount = provider.round(Number(this.state.amount));
+    if (!(amount >= provider.min)) {
+      Alert.alert(languageJSON.error, languageJSON.topup_min_error.replace('{min}', provider.min.toLocaleString('fr-FR') + ' ' + this.symbol()));
       return;
     }
     this.setState({ loading: true });
     try {
-      const data = await callFunction('createWaveCheckout', { amount });
+      const data = await callFunction(provider.create, { amount, currency: this.currency() });
       this.setState({ loading: false, modalVisible: false, amount: '', pendingSession: data.sessionId });
       await Linking.openURL(data.launchUrl);
     } catch (error) {
       this.setState({ loading: false });
-      Alert.alert(languageJSON.Error || 'Erreur', error.message || String(error));
+      Alert.alert(languageJSON.error, error.message || String(error));
     }
   };
 
@@ -91,7 +135,7 @@ export default class WalletTopup extends React.Component {
     const sessionId = this.state.pendingSession;
     if (!sessionId) return;
     try {
-      const data = await callFunction('confirmWaveCheckout', { sessionId });
+      const data = await callFunction(this.provider().confirm, { sessionId });
       if (data.status === 'completed') {
         this.setState({ pendingSession: null });
         Alert.alert(languageJSON.topup_title, languageJSON.topup_success);
@@ -99,17 +143,16 @@ export default class WalletTopup extends React.Component {
         this.setState({ pendingSession: null });
         Alert.alert(languageJSON.topup_title, languageJSON.topup_failed);
       }
-      // 'pending' : Wave n'a pas encore confirmé ; le solde se mettra à jour tout seul.
+      // 'pending' : le prestataire n'a pas encore confirmé ; le solde se mettra à jour tout seul.
     } catch (error) {
-      console.log('[wave] confirmation', error);
+      console.log('[recharge] confirmation', error);
     }
   };
 
   render() {
     if (!this.state.enabled) return null;
-    const canTopUp = this.state.country === WAVE_COUNTRY;
-    const currency = this.state.currencies.find((entry) => entry && entry.country === this.state.country);
-    const symbol = (currency && currency.symbol) || (canTopUp ? 'FCFA' : '');
+    const provider = this.provider();
+    const symbol = this.symbol();
     return (
       <View style={styles.card}>
         <View style={styles.row}>
@@ -117,13 +160,11 @@ export default class WalletTopup extends React.Component {
             <Text style={styles.label}>{languageJSON.credit_balance}</Text>
             <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
           </View>
-          {canTopUp ? (
-            <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
-              <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
-            </TouchableOpacity>
-          ) : null}
+          <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
+            <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
+          </TouchableOpacity>
         </View>
-        {canTopUp ? null : <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>}
+        <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>
         {this.state.pendingSession ? <Text style={styles.pending}>{languageJSON.topup_pending}</Text> : null}
 
         <Modal animationType="slide" transparent visible={this.state.modalVisible} onRequestClose={() => this.setState({ modalVisible: false })}>
@@ -133,9 +174,9 @@ export default class WalletTopup extends React.Component {
                 inatteignable. */}
             <SafeAreaView edges={['bottom']} style={styles.sheet}>
               <Text style={styles.sheetTitle}>{languageJSON.topup_title}</Text>
-              <Text style={styles.sheetHint}>{languageJSON.topup_hint}</Text>
+              <Text style={styles.sheetHint}>{provider.hint()}</Text>
               <View style={styles.presets}>
-                {PRESETS.map((value) => (
+                {provider.presets.map((value) => (
                   <TouchableOpacity key={value} style={[styles.preset, String(value) === this.state.amount && styles.presetActive]} onPress={() => this.setState({ amount: String(value) })}>
                     <Text style={[styles.presetText, String(value) === this.state.amount && styles.presetTextActive]}>{value.toLocaleString('fr-FR')}</Text>
                   </TouchableOpacity>
@@ -144,13 +185,13 @@ export default class WalletTopup extends React.Component {
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
-                placeholder={languageJSON.topup_amount_placeholder}
+                placeholder={languageJSON.topup_amount_placeholder.replace('{devise}', symbol)}
                 placeholderTextColor={colors.GREY.secondary}
                 value={this.state.amount}
                 onChangeText={(amount) => this.setState({ amount: amount.replace(/[^0-9]/g, '') })}
               />
               <TouchableOpacity style={[styles.button, styles.buttonWide]} onPress={this.startTopup} disabled={this.state.loading}>
-                {this.state.loading ? <ActivityIndicator color={colors.WHITE} /> : <Text style={styles.buttonText}>{languageJSON.topup_confirm}</Text>}
+                {this.state.loading ? <ActivityIndicator color={colors.WHITE} /> : <Text style={styles.buttonText}>{provider.confirmLabel()}</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancel} onPress={() => this.setState({ modalVisible: false })}>
                 <Text style={styles.cancelText}>{languageJSON.cancel}</Text>

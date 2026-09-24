@@ -14,6 +14,12 @@ function toStripeAmount(amount, currency) {
   return ZERO_DECIMAL_CURRENCIES.has(currency) ? Math.round(value) : Math.round(value * 100);
 }
 
+/** Montant lisible a partir d'un montant Stripe : 1250 centimes -> 12.5 EUR. */
+function fromStripeAmount(amount, currency) {
+  const value = Number(amount) || 0;
+  return ZERO_DECIMAL_CURRENCIES.has(String(currency).toUpperCase()) ? value : value / 100;
+}
+
 /** Vérifie l'en-tête Wave-Signature : t=<timestamp>,v1=<hmac-sha256(secret, timestamp + corps)>. */
 function waveSignatureValid(header, rawBody, secret) {
   if (!header) return false;
@@ -64,4 +70,4 @@ function commissionRate(carTypes, carType, country) {
   return Number.isFinite(rate) && rate > 0 ? rate : 0;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };

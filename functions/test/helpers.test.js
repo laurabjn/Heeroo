@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate } = require('../lib/helpers');
 
 describe('toStripeAmount', () => {
   test('convertit les euros en centimes', () => {
@@ -115,4 +115,16 @@ describe('commissionRate', () => {
     const asObject = Object.fromEntries(rates.map((r, i) => ['k' + i, r]));
     assert.equal(commissionRate(asObject, 'Berline', 'SN'), 13);
   });
+});
+
+test('fromStripeAmount rend un montant lisible', () => {
+  assert.equal(fromStripeAmount(1250, 'EUR'), 12.5);
+  assert.equal(fromStripeAmount(5000, 'XOF'), 5000);
+  assert.equal(fromStripeAmount(undefined, 'EUR'), 0);
+});
+
+test('fromStripeAmount annule toStripeAmount', () => {
+  for (const [value, currency] of [[12.5, 'EUR'], [0.01, 'EUR'], [5000, 'XOF']]) {
+    assert.equal(fromStripeAmount(toStripeAmount(value, currency), currency), value);
+  }
 });

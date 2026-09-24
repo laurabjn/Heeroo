@@ -30,7 +30,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -491,6 +491,18 @@ exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECR
 
     if (event.type === 'payment_intent.succeeded') {
       await settleCardPayment(stripe, event.data.object);
+    } else if (event.type === 'checkout.session.completed') {
+      // Seules les recharges de credit passent par une page de paiement Stripe ;
+      // les courses, elles, utilisent une empreinte bancaire.
+      const session = event.data.object;
+      if (session.metadata && session.metadata.type === 'wallet_topup' && session.payment_status === 'paid') {
+        await creditTopup(session.id, {
+          amount: fromStripeAmount(session.amount_total, session.currency),
+          currency: session.currency,
+          transactionId: session.payment_intent,
+          reason: 'card_topup',
+        });
+      }
     }
     res.json({ received: true });
   });
@@ -531,39 +543,59 @@ async function waveRequest(method, path, body) {
   return data;
 }
 
-/** Crédite le chauffeur pour une session payée. Idempotent via walletTopups/{id}/status. */
-async function creditWaveTopup(sessionId, session) {
+/**
+ * Credite le chauffeur pour une recharge payee, quel que soit le prestataire.
+ *
+ * Idempotent via walletTopups/{id}/status : le webhook et la verification de
+ * secours peuvent tous deux arriver, le solde n'est credite qu'une fois. Le
+ * montant annonce par le prestataire est confronte a celui enregistre au
+ * moment de la demande : une divergence fait echouer la recharge plutot que
+ * de crediter un montant qu'on n'a pas demande.
+ */
+async function creditTopup(sessionId, { amount, currency, transactionId, reason }) {
   const topupRef = admin.database().ref(`walletTopups/${sessionId}`);
   const topup = (await topupRef.once('value')).val();
   if (!topup) {
-    logger.warn(`Recharge Wave ${sessionId} inconnue`);
+    logger.warn(`Recharge ${sessionId} inconnue`);
     return false;
   }
   if (topup.status === 'completed') return true;
 
-  const amount = Number(session.amount);
-  if (!(amount > 0) || String(session.currency).toUpperCase() !== WAVE_CURRENCY) {
-    logger.warn(`Recharge Wave ${sessionId} : montant ou devise inattendus`, session.amount, session.currency);
+  const paid = Number(amount);
+  const expected = Number(topup.amount);
+  const sameCurrency = String(currency).toUpperCase() === String(topup.currency).toUpperCase();
+  if (!(paid > 0) || !sameCurrency || Math.abs(paid - expected) > 0.001) {
+    logger.warn(`Recharge ${sessionId} : attendu ${expected} ${topup.currency}, recu ${amount} ${currency}`);
     return false;
   }
 
   const driverRef = admin.database().ref(`users/${topup.uid}`);
-  await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + amount);
+  await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + paid);
   await driverRef.child('walletHistory').push({
     type: 'Credit',
-    reason: 'wave_topup',
-    amount,
+    reason: reason || 'topup',
+    amount: paid,
     date: admin.database.ServerValue.TIMESTAMP,
     txRef: sessionId,
-    transaction_id: session.transaction_id || null,
+    transaction_id: transactionId || null,
   });
   await topupRef.update({
     status: 'completed',
-    transaction_id: session.transaction_id || null,
+    transaction_id: transactionId || null,
     completed_at: admin.database.ServerValue.TIMESTAMP,
   });
-  logger.info(`Recharge Wave ${sessionId} : +${amount} ${WAVE_CURRENCY} pour ${topup.uid}`);
+  logger.info(`Recharge ${sessionId} : +${paid} ${topup.currency} pour ${topup.uid}`);
   return true;
+}
+
+/** Recharge Wave : le montant est rendu tel quel, en francs CFA. */
+function creditWaveTopup(sessionId, session) {
+  return creditTopup(sessionId, {
+    amount: session.amount,
+    currency: session.currency,
+    transactionId: session.transaction_id,
+    reason: 'wave_topup',
+  });
 }
 
 exports.createWaveCheckout = httpEndpoint(async (req, res) => {
@@ -614,6 +646,83 @@ exports.confirmWaveCheckout = httpEndpoint(async (req, res) => {
     res.json({ status: session.payment_status === 'processing' ? 'pending' : 'failed', wave: session.checkout_status });
   }
 }, { secrets: [WAVE_API_KEY] });
+
+// ---------------------------------------------------------------------------
+// Recharge par carte bancaire — la ou Wave n'opere pas (France).
+//
+// Meme principe que Wave : on ouvre une page de paiement hebergee par Stripe,
+// et c'est le webhook qui credite le solde. L'application n'embarque donc
+// aucun module de paiement, et le numero de carte ne transite jamais par elle.
+// ---------------------------------------------------------------------------
+
+const CARD_TOPUP_MIN = 5;    // euros
+const CARD_TOPUP_MAX = 1000;
+
+exports.createCardTopup = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const profile = (await admin.database().ref(`users/${user.uid}`).once('value')).val();
+  if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+
+  const currency = String((req.body && req.body.currency) || 'EUR').trim().toUpperCase();
+  const amount = Math.round(Number(req.body && req.body.amount) * 100) / 100;
+  if (!(amount >= CARD_TOPUP_MIN && amount <= CARD_TOPUP_MAX)) {
+    throw httpError(400, `Montant entre ${CARD_TOPUP_MIN} et ${CARD_TOPUP_MAX} ${currency}`);
+  }
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    client_reference_id: user.uid,
+    metadata: { uid: user.uid, type: 'wallet_topup' },
+    success_url: hostingUrl('/wave/succes.html'),
+    cancel_url: hostingUrl('/wave/echec.html'),
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: currency.toLowerCase(),
+        unit_amount: toStripeAmount(amount, currency),
+        product_data: { name: 'Recharge du crédit chauffeur Heeroo' },
+      },
+    }],
+  });
+
+  await admin.database().ref(`walletTopups/${session.id}`).set({
+    uid: user.uid,
+    amount,
+    currency,
+    provider: 'stripe',
+    status: 'pending',
+    created_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  res.json({ sessionId: session.id, launchUrl: session.url, amount, currency });
+}, { secrets: [STRIPE_SECRET_KEY] });
+
+exports.confirmCardTopup = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { sessionId } = req.body || {};
+  if (!sessionId) throw httpError(400, 'Paramètre sessionId requis');
+
+  const topup = (await admin.database().ref(`walletTopups/${sessionId}`).once('value')).val();
+  if (!topup || topup.uid !== user.uid) throw httpError(404, 'Recharge introuvable');
+  if (topup.status === 'completed') {
+    res.json({ status: 'completed' });
+    return;
+  }
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.payment_status === 'paid') {
+    await creditTopup(sessionId, {
+      amount: fromStripeAmount(session.amount_total, session.currency),
+      currency: session.currency,
+      transactionId: session.payment_intent,
+      reason: 'card_topup',
+    });
+    res.json({ status: 'completed' });
+  } else {
+    res.json({ status: session.status === 'expired' ? 'failed' : 'pending' });
+  }
+}, { secrets: [STRIPE_SECRET_KEY] });
 
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
