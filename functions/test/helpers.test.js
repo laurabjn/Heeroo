@@ -36,6 +36,10 @@ describe('waveSignatureValid', () => {
     assert.equal(waveSignatureValid(`t=1700000000,v1=${sign('1700000000')}`, Buffer.from('{}'), secret), false);
     assert.equal(waveSignatureValid(`t=1700000001,v1=${sign('1700000000')}`, body, secret), false);
   });
+  test('tolère les espaces autour des séparateurs', () => {
+    assert.equal(waveSignatureValid(`t=1700000000, v1=${sign('1700000000')}`, body, secret), true);
+    assert.equal(waveSignatureValid(` t = 1700000000 , v1 = ${sign('1700000000')} `, body, secret), true);
+  });
   test('refuse un en-tête absent ou malformé', () => {
     assert.equal(waveSignatureValid(undefined, body, secret), false);
     assert.equal(waveSignatureValid('', body, secret), false);

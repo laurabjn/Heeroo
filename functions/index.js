@@ -727,7 +727,9 @@ exports.confirmCardTopup = httpEndpoint(async (req, res) => {
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
     if (!waveSignatureValid(req.headers['wave-signature'], req.rawBody, WAVE_WEBHOOK_SECRET.value())) {
-      logger.warn('Webhook Wave : signature invalide');
+      // On trace l'en-tête reçu (ce n'est pas un secret, c'est une signature) :
+      // sans lui, un rejet reste indiagnosticable.
+      logger.warn('Webhook Wave : signature invalide', { entete: String(req.headers['wave-signature'] || '(absent)') });
       res.status(400).send('Signature invalide');
       return;
     }

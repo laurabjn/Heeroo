@@ -23,7 +23,14 @@ function fromStripeAmount(amount, currency) {
 /** Vérifie l'en-tête Wave-Signature : t=<timestamp>,v1=<hmac-sha256(secret, timestamp + corps)>. */
 function waveSignatureValid(header, rawBody, secret) {
   if (!header) return false;
-  const parts = Object.fromEntries(String(header).split(',').map((p) => p.split('=')));
+  // Wave envoie « t=<horodatage>,v1=<signature> ». Certaines passerelles
+  // insèrent une espace après la virgule : sans nettoyage, la clé lue serait
+  // «  v1 » et toute livraison serait rejetée. On découpe donc sur le premier
+  // « = » seulement, et on émonde les deux côtés.
+  const parts = Object.fromEntries(String(header).split(',').map((part) => {
+    const cut = part.indexOf('=');
+    return cut < 0 ? [part.trim(), ''] : [part.slice(0, cut).trim(), part.slice(cut + 1).trim()];
+  }));
   if (!parts.t || !parts.v1) return false;
   const expected = crypto.createHmac('sha256', secret).update(parts.t + rawBody.toString('utf8')).digest('hex');
   const given = String(parts.v1);
