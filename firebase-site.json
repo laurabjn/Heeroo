@@ -1,0 +1,8 @@
+{
+  "hosting": {
+    "site": "heeroo",
+    "public": "site-public",
+    "ignore": ["firebase.json", "firebase-site.json", "**/.*", "**/node_modules/**"],
+    "cleanUrls": true
+  }
+}
