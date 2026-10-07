@@ -192,7 +192,7 @@ export default class EmailLoginScreen extends Component {
     }
 
     async openTerms() {
-        Linking.openURL("https://samajakarta.com/cgu.html").catch(err => console.error("Couldn't load page", err));
+        Linking.openURL("https://heeroo.web.app/conditions-utilisation").catch(err => console.error("Couldn't load page", err));
     }
 
     navToRegister() {
