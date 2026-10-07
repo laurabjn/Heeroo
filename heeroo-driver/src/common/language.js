@@ -28,6 +28,7 @@ export default {
     about_us: 'A propos',
     Error: "Erreur",
     contact_details: 'Contact',
+    privacy_policy: 'Politique de confidentialité',
     estimatedIncome: 'Revenu estimé : ',
     email: 'E-mail',
     phone: 'Téléphone',

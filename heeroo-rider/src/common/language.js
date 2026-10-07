@@ -102,6 +102,7 @@ export default {
     not_available: 'Non disponible',
     book_now_button: 'Réserver maintenant',
     contact_details: 'Détail de contact',
+    privacy_policy: 'Politique de confidentialité',
     phone: 'Téléphone',
     my_wallet_tile: 'Mon portefeuille',
     wallet_ballance: 'Votre relevé',

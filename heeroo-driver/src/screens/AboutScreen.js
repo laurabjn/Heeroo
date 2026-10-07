@@ -66,6 +66,15 @@ export default class AboutPage extends React.Component {
                                 <Text style={styles.contacttype1}> {this.state.phone}</Text>
                             </TouchableOpacity>
                         ) : null}
+
+                        {/* Google Play et l'App Store exigent que la politique de
+                            confidentialite soit accessible depuis l'application
+                            elle-meme, pas seulement depuis la fiche du magasin. */}
+                        <TouchableOpacity
+                            onPress={() => Linking.openURL('https://heeroo.web.app/politique-de-confidentialite')}
+                            style={styles.policyLink}>
+                            <Text style={styles.policyText}>{languageJSON.privacy_policy}</Text>
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </View>
@@ -75,6 +84,16 @@ export default class AboutPage extends React.Component {
 
 }
 const styles = StyleSheet.create({
+    policyLink: {
+        marginTop: 24,
+        paddingVertical: 10,
+    },
+    policyText: {
+        color: colors.SECONDARY,
+        fontFamily: 'Montserrat-Bold',
+        fontSize: 15,
+        textDecorationLine: 'underline',
+    },
     mainView: {
         flex: 1,
         backgroundColor: colors.WHITE,
