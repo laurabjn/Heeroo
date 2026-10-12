@@ -45,10 +45,10 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyD_i3DFnhk1Cs36eFGz2eMcwto-50JIiBw"
+          "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 3
+      "versionCode": 4
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
