@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Heeroo Driver — Maquette de la page chauffeurs</title>
+<meta name="description" content="Proposition de page de recrutement des chauffeurs partenaires Heeroo." />
+<style>
+  :root {
+    --encre: #0b1f18;
+    --vert: #104836;
+    --vert-fonce: #09241c;
+    --accent: #34c77b;
+    --accent-sombre: #1ea463;
+    --clair: #f4f7f5;
+    --gris: #5d7369;
+    --trait: #dde5e0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--encre); background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .bande { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  .avis { background: #ffd666; color: #4a3a00; text-align: center; font-size: 13px; font-weight: 600; padding: 9px 16px; }
+
+  header { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--trait); }
+  .nav { display: flex; align-items: center; gap: 14px; height: 68px; }
+  .nav img { width: 36px; height: 36px; border-radius: 10px; }
+  .nav b { font-size: 19px; letter-spacing: -.3px; }
+  .nav .lien { margin-left: auto; font-size: 15px; color: var(--gris); text-decoration: none; }
+  .nav .lien:hover { color: var(--encre); }
+  .btn { display: inline-block; border-radius: 999px; padding: 13px 26px; font-weight: 700; font-size: 15px; text-decoration: none; background: var(--accent); color: #06281c; transition: background .15s; }
+  .btn:hover { background: var(--accent-sombre); color: #fff; }
+  .btn.clair { background: #fff; color: var(--vert); }
+  .btn.ligne { background: transparent; color: var(--encre); border: 1.5px solid var(--trait); }
+
+  .heros { background: linear-gradient(160deg, var(--vert) 0%, var(--vert-fonce) 100%); color: #fff; overflow: hidden; }
+  .heros .grille { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; padding: 72px 0 0; }
+  .heros h1 { font-size: 54px; line-height: 1.06; letter-spacing: -1.5px; font-weight: 800; }
+  .heros p.chapeau { font-size: 19px; color: #cfe6dc; margin: 20px 0 32px; max-width: 30em; }
+  .pastille { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .preuve { margin-top: 26px; color: #9fc4b6; font-size: 14px; }
+  .heros .visuel img { width: 100%; max-width: 320px; display: block; margin: 0 auto; }
+
+  section { padding: 84px 0; }
+  h2 { font-size: 34px; line-height: 1.15; letter-spacing: -.8px; font-weight: 750; }
+  .sous { color: var(--gris); font-size: 17px; margin-top: 12px; max-width: 34em; }
+
+  .cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; margin-top: 44px; }
+  .carte { background: var(--clair); border: 1px solid var(--trait); border-radius: 18px; padding: 26px; }
+  .carte .num { width: 34px; height: 34px; border-radius: 10px; background: var(--vert); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 15px; margin-bottom: 14px; }
+  .carte h3 { font-size: 18px; margin-bottom: 8px; }
+  .carte p { color: var(--gris); font-size: 15px; }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .duo img { width: 100%; max-width: 300px; display: block; margin: 0 auto; }
+  .liste { margin-top: 22px; display: grid; gap: 14px; }
+  .liste div { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; }
+  .liste span { color: var(--accent-sombre); font-weight: 800; }
+
+  .dossier { background: var(--clair); }
+  .papiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 34px; }
+  .papier { background: #fff; border: 1px solid var(--trait); border-radius: 14px; padding: 16px 18px; font-size: 15px; display: flex; gap: 10px; align-items: center; }
+  .papier span { color: var(--accent-sombre); font-weight: 800; }
+
+  .final { background: linear-gradient(160deg, var(--vert) 0%, var(--vert-fonce) 100%); color: #fff; text-align: center; }
+  .final h2 { font-size: 40px; }
+  .final p { color: #cfe6dc; margin: 16px auto 32px; max-width: 32em; }
+  .final .actions { justify-content: center; }
+
+  footer { padding: 40px 0 64px; color: var(--gris); font-size: 14px; border-top: 1px solid var(--trait); }
+  footer a { color: var(--gris); }
+  .pied { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .pied .pousse { margin-left: auto; }
+
+  @media (max-width: 880px) {
+    .heros .grille { grid-template-columns: 1fr; padding-top: 52px; gap: 24px; }
+    .heros h1 { font-size: 38px; letter-spacing: -1px; }
+    .duo { grid-template-columns: 1fr; gap: 32px; }
+    section { padding: 60px 0; }
+    h2 { font-size: 28px; }
+    .final h2 { font-size: 30px; }
+    .nav b { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="avis">MAQUETTE — page chauffeurs, soumise à validation</div>
+
+<header>
+  <div class="bande nav">
+    <img src="img/logo.png" alt="Heeroo" />
+    <b>Heeroo Driver</b>
+    <a class="lien" href="/maquette">Je cherche une course</a>
+  </div>
+</header>
+
+<div class="heros">
+  <div class="bande grille">
+    <div>
+      <div class="pastille">Chauffeurs partenaires</div>
+      <h1>Vos courses,<br />vos revenus.</h1>
+      <p class="chapeau">
+        Recevez les demandes de course autour de vous, acceptez en un geste,
+        et suivez vos gains jour après jour. Vous décidez quand vous travaillez.
+      </p>
+      <div class="actions">
+        <a class="btn" href="#inscription">Devenir chauffeur partenaire</a>
+      </div>
+      <p class="preuve">Inscription en quelques minutes. Dossier validé avant la première course.</p>
+    </div>
+    <div class="visuel"><img src="img/ecran-gains.png" alt="Tableau de bord des gains dans Heeroo Driver" /></div>
+  </div>
+</div>
+
+<section>
+  <div class="bande">
+    <h2>Comment ça marche</h2>
+    <p class="sous">Pas de planning imposé, pas d'objectif à tenir. Vous vous mettez en ligne quand vous voulez travailler.</p>
+    <div class="cartes">
+      <div class="carte">
+        <div class="num">1</div>
+        <h3>Vous vous mettez en ligne</h3>
+        <p>Un interrupteur dans l'application. Hors ligne, vous ne recevez rien.</p>
+      </div>
+      <div class="carte">
+        <div class="num">2</div>
+        <h3>Une course arrive</h3>
+        <p>Notification même application fermée. Vous voyez le départ, la destination et le montant avant d'accepter.</p>
+      </div>
+      <div class="carte">
+        <div class="num">3</div>
+        <h3>Vous conduisez</h3>
+        <p>L'itinéraire s'ouvre dans votre application de navigation habituelle. Le passager peut vous joindre par message.</p>
+      </div>
+      <div class="carte">
+        <div class="num">4</div>
+        <h3>Vous êtes payé</h3>
+        <p>Le prix est calculé automatiquement selon la distance et la durée. Espèces ou carte, sans manipulation de votre part.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="bande duo">
+    <div>
+      <h2>Vos gains, toujours à l'œil</h2>
+      <p class="sous">
+        Le tableau de bord affiche vos courses du jour, vos revenus du mois et l'historique complet de vos trajets.
+      </p>
+      <div class="liste">
+        <div><span>•</span><div>La commission de chaque course en espèces est prélevée sur votre crédit, jamais sur votre poche.</div></div>
+        <div><span>•</span><div>Vous rechargez ce crédit depuis l'application — carte bancaire en France, Wave au Sénégal.</div></div>
+        <div><span>•</span><div>Chaque mouvement apparaît dans votre historique, au centime près.</div></div>
+      </div>
+    </div>
+    <div><img src="img/ecran-demande.png" alt="Demande de course reçue par le chauffeur" /></div>
+  </div>
+</section>
+
+<section class="dossier" id="inscription">
+  <div class="bande">
+    <h2>Ce qu'il faut pour commencer</h2>
+    <p class="sous">Préparez ces documents, l'inscription se fait ensuite en quelques minutes depuis l'application.</p>
+    <div class="papiers">
+      <div class="papier"><span>✓</span> Permis de conduire</div>
+      <div class="papier"><span>✓</span> Carte professionnelle VTC</div>
+      <div class="papier"><span>✓</span> Relevé d'information restreint</div>
+      <div class="papier"><span>✓</span> Attestation à titre onéreux</div>
+      <div class="papier"><span>✓</span> Carte grise du véhicule</div>
+      <div class="papier"><span>✓</span> Attestation d'assurance</div>
+    </div>
+    <p class="sous" style="margin-top:26px">
+      Notre équipe vérifie votre dossier avant d'activer votre compte. Vous êtes prévenu dès qu'il est validé.
+    </p>
+  </div>
+</section>
+
+<section class="final">
+  <div class="bande">
+    <h2>Rejoignez Heeroo</h2>
+    <p>Téléchargez Heeroo Driver et créez votre compte. France et Sénégal.</p>
+    <div class="actions">
+      <a class="btn" href="https://apps.apple.com/app/id1623383465">App Store</a>
+      <a class="btn clair" href="#">Google Play</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="bande pied">
+    <div>© Heeroo. — SASU, RCS Paris 948 906 813</div>
+    <div class="pousse">
+      <a href="/maquette">Passagers</a> ·
+      <a href="/politique-de-confidentialite">Confidentialité</a> ·
+      <a href="/conditions-utilisation">Conditions</a> ·
+      <a href="mailto:contact@heeroo.fr">contact@heeroo.fr</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
