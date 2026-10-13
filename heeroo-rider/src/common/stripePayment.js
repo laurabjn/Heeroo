@@ -1,11 +1,30 @@
 // Paiement par carte d'une course avec la feuille de paiement Stripe.
 // Le montant est fixé côté serveur (createPaymentIntent) à partir de la course
 // en base ; la confirmation définitive arrive par le webhook Stripe.
+//
+// Le serveur renvoie aussi de quoi rattacher le paiement au client Stripe du
+// passager. C'est ce qui permet à la feuille de proposer « mémoriser ma carte »,
+// puis de la retrouver déjà saisie aux courses suivantes. Les coordonnées
+// bancaires restent chez Stripe : l'app ne les voit jamais, et n'en conserve
+// rien.
 import Constants from 'expo-constants';
-import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
+import { initPaymentSheet, presentPaymentSheet, resetPaymentSheetCustomer } from '@stripe/stripe-react-native';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import { base_url } from './key';
+
+/**
+ * À appeler à la déconnexion. La feuille de paiement garde sur le téléphone de
+ * quoi reconnaître le dernier passager ; sans cet oubli, le suivant à se
+ * connecter sur le même appareil verrait ses cartes proposées.
+ */
+export async function forgetCardCustomer() {
+  try {
+    await resetPaymentSheetCustomer();
+  } catch (error) {
+    console.log('[stripe] oubli du client impossible', error && error.message);
+  }
+}
 
 export function isCardPaymentAvailable() {
   const key = Constants.expoConfig.extra.stripePublishableKey;
@@ -32,6 +51,8 @@ export async function payBookingWithCard({ bookingId, email, merchantCountryCode
   const init = await initPaymentSheet({
     merchantDisplayName: 'Heeroo',
     paymentIntentClientSecret: data.clientSecret,
+    customerId: data.customerId,
+    customerSessionClientSecret: data.customerSessionClientSecret,
     defaultBillingDetails: email ? { email } : undefined,
     googlePay: { merchantCountryCode, testEnv: Constants.expoConfig.extra.appEnv !== 'production' },
     applePay: { merchantCountryCode },
@@ -87,6 +108,8 @@ export async function authorizeRideWithCard({ estimate, currency = 'EUR', carTyp
   const init = await initPaymentSheet({
     merchantDisplayName: 'Heeroo',
     paymentIntentClientSecret: data.clientSecret,
+    customerId: data.customerId,
+    customerSessionClientSecret: data.customerSessionClientSecret,
     defaultBillingDetails: email ? { email } : undefined,
     googlePay: { merchantCountryCode, testEnv: Constants.expoConfig.extra.appEnv !== 'production' },
     applePay: { merchantCountryCode },

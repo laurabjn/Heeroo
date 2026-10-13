@@ -15,6 +15,7 @@ import {
 import { Icon, Header } from '@rneui/themed';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
+import { forgetCardCustomer } from '../common/stripePayment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 var { width, height } = Dimensions.get('window');
 import firebase from 'firebase/compat/app';
@@ -144,6 +145,7 @@ export default function SideMenu(props) {
 
     //sign out and clear all async storage
     const signOut = async () => {
+        await forgetCardCustomer();
         firebase.auth().signOut().then(() => {
             props.navigation.reset({
                 index: 0,

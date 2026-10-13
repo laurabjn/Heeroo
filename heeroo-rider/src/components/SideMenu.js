@@ -10,6 +10,7 @@ import 'firebase/compat/database';
 import SideMenuHeader from './SideMenuHeader';
 import { colors } from '../common/theme';
 import languageJSON from '../common/language';
+import { forgetCardCustomer } from '../common/stripePayment';
 var { width, height } = Dimensions.get('window');
 import {
     DrawerContentScrollView,
@@ -46,6 +47,7 @@ export default function SideMenu(props) {
         firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/pushToken').remove();
         firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/userPlatform').remove();
         AsyncStorage.clear();
+        await forgetCardCustomer();
 
         firebase.auth().signOut()
     }

@@ -24,7 +24,7 @@
 //   - badge administrateur (custom claim) recopié depuis users/{uid}/isAdmin.
 
 const functions = require('firebase-functions/v1');
-const { onValueUpdated, onValueCreated, onValueWritten } = require('firebase-functions/v2/database');
+const { onValueUpdated, onValueCreated, onValueWritten, onValueDeleted } = require('firebase-functions/v2/database');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
@@ -340,6 +340,68 @@ async function settleCardPayment(stripe, intent) {
   return 'refunded';
 }
 
+/**
+ * Identifiant du passager chez Stripe, créé au premier paiement par carte et
+ * conservé en base. C'est lui qui porte les cartes enregistrées : sans client
+ * Stripe, chaque course repart d'une carte à ressaisir entièrement.
+ */
+async function stripeCustomerFor(stripe, user) {
+  const ref = admin.database().ref(`users/${user.uid}/stripe_customer_id`);
+  const known = (await ref.once('value')).val();
+  if (known) {
+    // Un client effacé côté Stripe (ménage, bascule de compte) ne doit pas
+    // empêcher de payer : on en recrée un plutôt que d'échouer.
+    try {
+      const customer = await stripe.customers.retrieve(known);
+      if (!customer.deleted) return known;
+    } catch (e) {
+      logger.warn(`Client Stripe ${known} introuvable pour ${user.uid}, recréation`);
+    }
+  }
+
+  const profile = (await admin.database().ref(`users/${user.uid}`).once('value')).val() || {};
+  const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+  const customer = await stripe.customers.create({
+    email: user.email || profile.email || undefined,
+    name: name || undefined,
+    phone: profile.mobile || undefined,
+    metadata: { uid: user.uid },
+  });
+  await ref.set(customer.id);
+  return customer.id;
+}
+
+/**
+ * Autorise la feuille de paiement à travailler sur les cartes du passager :
+ * proposer la case « mémoriser ma carte », réafficher celles déjà enregistrées
+ * au paiement suivant, et permettre d'en supprimer une.
+ *
+ * La carte n'est jamais enregistrée d'office : c'est le passager qui coche. Si
+ * la case est cochée, Stripe pose lui-même setup_future_usage sur le paiement,
+ * il n'y a rien à faire de plus ici.
+ *
+ * Le secret renvoyé est à usage unique et de courte durée ; il ne donne accès
+ * qu'aux moyens de paiement de ce passager, jamais au reste du compte Stripe.
+ */
+async function paymentSheetCustomer(stripe, user) {
+  const customerId = await stripeCustomerFor(stripe, user);
+  const session = await stripe.customerSessions.create({
+    customer: customerId,
+    components: {
+      mobile_payment_element: {
+        enabled: true,
+        features: {
+          payment_method_save: 'enabled',
+          payment_method_save_usage: 'off_session',
+          payment_method_redisplay: 'enabled',
+          payment_method_remove: 'enabled',
+        },
+      },
+    },
+  });
+  return { customerId, customerSessionClientSecret: session.client_secret };
+}
+
 exports.createPaymentIntent = httpEndpoint(async (req, res) => {
   const user = await requireUser(req);
   const { bookingId } = req.body || {};
@@ -355,15 +417,24 @@ exports.createPaymentIntent = httpEndpoint(async (req, res) => {
   if (amount <= 0) throw httpError(400, 'Montant de la course invalide');
 
   const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const { customerId, customerSessionClientSecret } = await paymentSheetCustomer(stripe, user);
   const intent = await stripe.paymentIntents.create({
     amount,
     currency: currency.toLowerCase(),
+    customer: customerId,
     automatic_payment_methods: { enabled: true },
     description: `Course Heeroo ${bookingId}`,
     receipt_email: user.email || undefined,
     metadata: { bookingId, uid: user.uid, driver: booking.driver || '' },
   });
-  res.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id, amount, currency });
+  res.json({
+    clientSecret: intent.client_secret,
+    paymentIntentId: intent.id,
+    amount,
+    currency,
+    customerId,
+    customerSessionClientSecret,
+  });
 }, { secrets: [STRIPE_SECRET_KEY] });
 
 // confirmCardPayment — appelée par l'app passager juste après la feuille de
@@ -403,9 +474,11 @@ exports.authorizeRideCard = httpEndpoint(async (req, res) => {
   if (authorized <= 0) throw httpError(400, 'Montant à bloquer invalide');
 
   const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  const { customerId, customerSessionClientSecret } = await paymentSheetCustomer(stripe, user);
   const intent = await stripe.paymentIntents.create({
     amount: authorized,
     currency: currency.toLowerCase(),
+    customer: customerId,
     capture_method: 'manual',
     automatic_payment_methods: { enabled: true },
     description: `Empreinte course Heeroo (${carType || 'course'})`,
@@ -417,6 +490,8 @@ exports.authorizeRideCard = httpEndpoint(async (req, res) => {
     paymentIntentId: intent.id,
     authorizedAmount: authorized,
     currency,
+    customerId,
+    customerSessionClientSecret,
   });
 }, { secrets: [STRIPE_SECRET_KEY] });
 
@@ -992,5 +1067,37 @@ exports.onBookingCompleted = onValueUpdated(
       txRef: bookingId,
     });
     logger.info(`Course ${bookingId} : commission ${commission} (${rate} % de ${tripCost}) débitée du chauffeur ${booking.driver}`);
+  }
+);
+
+// Suppression de compte : effacer aussi les cartes enregistrées chez Stripe.
+//
+// Le passager peut supprimer son compte depuis l'app, et le back-office peut le
+// faire pour lui ; dans les deux cas c'est le nœud users/{uid} qui disparaît.
+// Sans ce nettoyage, son client Stripe survivrait à son compte, avec ses cartes
+// et ses coordonnées de facturation — ce que la politique de confidentialité
+// lui promet justement d'effacer.
+//
+// Supprimer le client chez Stripe détache et efface ses moyens de paiement. Les
+// paiements déjà réalisés, eux, restent : ce sont des pièces comptables.
+exports.onUserDeleted = onValueDeleted(
+  { ref: '/users/{uid}/stripe_customer_id', instance: target.instance, region: target.region, secrets: [STRIPE_SECRET_KEY] },
+  async (event) => {
+    const customerId = event.data.val();
+    if (!customerId) return;
+
+    // Le nœud peut avoir été vidé sans que le compte parte (recréation du
+    // client après un effacement chez Stripe) : on ne supprime que si le profil
+    // a bien disparu.
+    const profile = (await admin.database().ref(`users/${event.params.uid}`).once('value')).val();
+    if (profile) return;
+
+    try {
+      await new Stripe(STRIPE_SECRET_KEY.value()).customers.del(customerId);
+      logger.info(`Compte ${event.params.uid} supprimé : client Stripe ${customerId} effacé`);
+    } catch (error) {
+      // Déjà supprimé, ou clé indisponible : on trace sans faire échouer.
+      logger.warn(`Client Stripe ${customerId} non supprimé : ${error.message}`);
+    }
   }
 );
