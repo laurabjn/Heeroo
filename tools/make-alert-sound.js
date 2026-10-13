@@ -10,7 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 const RATE = 44100;
-const PEAK = 0.95;   // proche du maximum : la sonnerie doit couvrir le bruit de la route
+const PEAK = 0.97;        // proche du maximum : la sonnerie doit couvrir le bruit de la route
+const SATURATION = 2;     // remplissage de la forme d'onde, sans distorsion audible sur un bip
 
 /** Enveloppe attaque/extinction, sinon chaque bip claque. */
 function envelope(position, length) {
@@ -26,8 +27,34 @@ function beep(samples, offset, frequency, duration) {
   for (let i = 0; i < length && offset + i < samples.length; i++) {
     const t = i / RATE;
     const wave = Math.sin(2 * Math.PI * frequency * t) + 0.35 * Math.sin(2 * Math.PI * 3 * frequency * t);
-    samples[offset + i] += (wave / 1.35) * envelope(i, length) * PEAK;
+    samples[offset + i] += wave * envelope(i, length);
   }
+}
+
+// Une sinusoïde n'occupe pleinement l'échelle qu'à l'instant de sa crête : les
+// trois décibels d'écart entre son pic et son niveau moyen sont autant de
+// puissance perdue. La saturation douce arrondit les crêtes et remplit la forme
+// d'onde, procédé courant sur les sonneries d'alerte : le pic reste le même, le
+// son porte nettement plus loin.
+function sature(samples, force) {
+  const division = Math.tanh(force);
+  for (let i = 0; i < samples.length; i++) samples[i] = Math.tanh(force * samples[i]) / division;
+}
+
+// Le gain final se calcule sur le signal obtenu, et non en divisant chaque bip
+// par son maximum théorique : deux sinusoïdes ne culminent presque jamais au
+// même instant, et une division à l'aveugle laissait un tiers de l'échelle
+// inutilisé — soit trois décibels perdus sur une sonnerie qui doit s'entendre
+// au volant.
+function normalise(samples, peak) {
+  let loudest = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const level = Math.abs(samples[i]);
+    if (level > loudest) loudest = level;
+  }
+  if (!loudest) return;
+  const gain = peak / loudest;
+  for (let i = 0; i < samples.length; i++) samples[i] *= gain;
 }
 
 /** Écrit un WAV mono 16 bits. */
@@ -61,20 +88,27 @@ const SOUNDS = {
   // Trois bips montants, deux fois : le motif « appel » classique d'un dispatch.
   'nouvelle-course': (samples) => {
     [0, 1.4].forEach((start) => {
-      beep(samples, Math.round(start * RATE), 880, 0.16);
-      beep(samples, Math.round((start + 0.22) * RATE), 1108, 0.16);
-      beep(samples, Math.round((start + 0.44) * RATE), 1318, 0.26);
+      beep(samples, Math.round(start * RATE), 1760, 0.16);
+      beep(samples, Math.round((start + 0.22) * RATE), 2217, 0.16);
+      beep(samples, Math.round((start + 0.44) * RATE), 2637, 0.26);
     });
   },
   // Deux tons alternés façon sirène : le plus perçant des trois.
   'sirene': (samples) => {
     for (let i = 0; i < 6; i++) {
-      beep(samples, Math.round(i * 0.42 * RATE), i % 2 ? 1046 : 1568, 0.36);
+      beep(samples, Math.round(i * 0.42 * RATE), i % 2 ? 2093 : 3136, 0.36);
     }
   },
-  // Carillon plus doux, pour un usage en intérieur ou de nuit.
+  // Le carillon de l'app chauffeur. Le motif descendant d'origine sonnait une
+  // octave plus bas : un haut-parleur de téléphone, large de quelques
+  // millimètres, ne descend pas sous le kilohertz sans y perdre l'essentiel de
+  // sa puissance, et l'oreille est elle-même la plus sensible entre deux et
+  // quatre kilohertz. Transposé dans cette bande, à amplitude égale, le même
+  // carillon s'entend bien plus fort. Les notes restent jointives sans se
+  // recouvrir : deux notes superposées additionnent leurs crêtes, et la
+  // normalisation redescend alors tout le morceau sans rien gagner.
   'carillon': (samples) => {
-    [[0, 1318], [0.3, 1046], [0.6, 880], [1.5, 1318], [1.8, 1046], [2.1, 880]].forEach(([start, frequency]) => {
+    [[0, 2637], [0.3, 2093], [0.6, 1760], [1.5, 2637], [1.8, 2093], [2.1, 1760]].forEach(([start, frequency]) => {
       beep(samples, Math.round(start * RATE), frequency, 0.3);
     });
   },
@@ -86,6 +120,9 @@ fs.mkdirSync(outDir, { recursive: true });
 for (const [name, fill] of Object.entries(SOUNDS)) {
   const samples = new Float64Array(Math.round(LOOP_SECONDS * RATE));
   fill(samples);
+  normalise(samples, 1);
+  sature(samples, SATURATION);
+  normalise(samples, PEAK);
   const file = path.join(outDir, name + '.wav');
   const size = writeWav(file, samples);
   console.log(`${name}.wav — ${(size / 1024).toFixed(0)} Ko`);

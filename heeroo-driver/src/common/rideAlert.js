@@ -9,8 +9,13 @@
 // autoradio fort, et la boucle sans fin, qui dérange au volant. Il s'arrête
 // immédiatement dès que la demande n'attend plus de réponse.
 //
+// Le vibreur accompagne le carillon : un téléphone au fond d'une veste, ou un
+// autoradio poussé, et le son ne suffit plus. Les deux se déclenchent et
+// s'arrêtent ensemble.
+//
 // Un seul lecteur pour toute l'application : appeler plusieurs fois
 // setRideAlert n'empile pas les sonneries.
+import { Vibration } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 const RINGTONE = require('../../assets/sounds/carillon.wav');
@@ -18,6 +23,10 @@ const RINGTONE = require('../../assets/sounds/carillon.wav');
 const REPEATS = 3;      // nombre total de sonneries
 const RING_MS = 3200;   // durée du carillon, arrondie
 const GAP_MS = 2000;    // silence entre deux sonneries
+
+// Calé sur le carillon, qui compte deux groupes de notes séparés d'un demi-tour
+// de silence : [attente, vibration, attente, vibration].
+const BUZZ = [0, 900, 600, 900];
 
 let player = null;
 let ringing = false;
@@ -41,6 +50,7 @@ function playOnce() {
     const current = getPlayer();
     current.seekTo(0);
     current.play();
+    Vibration.vibrate(BUZZ, false);
 }
 
 /** Programme la sonnerie suivante, ou clôt la série. */
@@ -74,6 +84,7 @@ export function setRideAlert(active) {
         } else if (!active && ringing) {
             if (nextTimer) { clearTimeout(nextTimer); nextTimer = null; }
             repeatsLeft = 0;
+            Vibration.cancel();
             player.pause();
             player.seekTo(0);
             ringing = false;
@@ -82,6 +93,7 @@ export function setRideAlert(active) {
         // Un défaut de la sonnerie ne doit jamais empêcher le chauffeur de voir
         // la demande : on trace et on continue.
         console.log('[Sonnerie]', error && error.message);
+        try { Vibration.cancel(); } catch (ignore) {}
         ringing = false;
     }
 }

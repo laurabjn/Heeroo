@@ -2,7 +2,7 @@
   "expo": {
     "name": "Heeroo Driver",
     "slug": "heeroo-driver",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/images/appIcon.png",
     "userInterfaceStyle": "light",
@@ -41,14 +41,15 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 4
+      "versionCode": 5
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
