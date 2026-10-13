@@ -384,22 +384,31 @@ async function stripeCustomerFor(stripe, user) {
  * qu'aux moyens de paiement de ce passager, jamais au reste du compte Stripe.
  */
 async function paymentSheetCustomer(stripe, user) {
-  const customerId = await stripeCustomerFor(stripe, user);
-  const session = await stripe.customerSessions.create({
-    customer: customerId,
-    components: {
-      mobile_payment_element: {
-        enabled: true,
-        features: {
-          payment_method_save: 'enabled',
-          payment_method_save_usage: 'off_session',
-          payment_method_redisplay: 'enabled',
-          payment_method_remove: 'enabled',
+  try {
+    const customerId = await stripeCustomerFor(stripe, user);
+    const session = await stripe.customerSessions.create({
+      customer: customerId,
+      components: {
+        mobile_payment_element: {
+          enabled: true,
+          features: {
+            payment_method_save: 'enabled',
+            payment_method_save_usage: 'off_session',
+            payment_method_redisplay: 'enabled',
+            payment_method_remove: 'enabled',
+          },
         },
       },
-    },
-  });
-  return { customerId, customerSessionClientSecret: session.client_secret };
+    });
+    return { customerId, customerSessionClientSecret: session.client_secret };
+  } catch (error) {
+    // Le confort ne doit jamais bloquer l'essentiel : si l'enregistrement de la
+    // carte est indisponible, le passager paie sa course sans carte mémorisée
+    // plutôt que de ne pas pouvoir payer du tout. Les champs restent absents,
+    // la feuille de paiement s'ouvre alors en saisie simple.
+    logger.error(`Session client Stripe indisponible pour ${user.uid} : ${error.message}`);
+    return {};
+  }
 }
 
 exports.createPaymentIntent = httpEndpoint(async (req, res) => {
