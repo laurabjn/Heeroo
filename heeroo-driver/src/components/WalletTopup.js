@@ -54,7 +54,7 @@ async function callFunction(name, body) {
 }
 
 export default class WalletTopup extends React.Component {
-  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null, currencies: [], payoutsEnabled: false, accountStatus: null };
+  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null, currencies: [], payoutsEnabled: false, accountStatus: null, apercu: null };
 
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
@@ -83,6 +83,7 @@ export default class WalletTopup extends React.Component {
     this.payoutsRef.on('value', (snapshot) => this.setState({ payoutsEnabled: snapshot.val() === true }));
     this.statusRef = firebase.database().ref('users/' + uid + '/stripe_account_status');
     this.statusRef.on('value', (snapshot) => this.setState({ accountStatus: snapshot.val() }));
+    this.chargerApercu();
     this.appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'active' && this.state.pendingSession) this.confirmPending();
     });
@@ -181,54 +182,20 @@ export default class WalletTopup extends React.Component {
     return this.state.country === WAVE_COUNTRY || this.state.payoutsEnabled;
   }
 
-  // On demande d'abord au serveur ce qui est reellement retirable : une part de
-  // course payee par carte reste bloquee quelques jours. Afficher le solde
-  // entier puis n'en verser qu'une partie serait incomprehensible.
-  askPayout = async () => {
-    this.setState({ loading: true });
-    let apercu;
+  // Ce qui partira lundi, demande au serveur a l'ouverture de l'ecran. Le
+  // chauffeur ne declenche plus de versement : il consulte.
+  chargerApercu = async () => {
     try {
-      apercu = await callFunction('requestDriverPayout', { preview: true });
+      const apercu = await callFunction('requestDriverPayout', { preview: true });
+      this.setState({ apercu });
     } catch (error) {
-      Alert.alert(languageJSON.payout_title, error && error.message ? error.message : '');
-      return;
-    } finally {
-      this.setState({ loading: false });
+      // Un apercu indisponible ne doit pas abimer l'ecran : le solde, lui,
+      // reste affiche.
+      console.log('[Versement] aperçu indisponible', error && error.message);
     }
-
-    const devise = ' ' + apercu.currency;
-    if (apercu.available < apercu.minimum) {
-      const detail = apercu.held > 0
-        ? '\n\n' + languageJSON.payout_held + apercu.held.toLocaleString('fr-FR') + devise + '\n' + languageJSON.payout_held_note
-        : '';
-      Alert.alert(languageJSON.payout_title, languageJSON.payout_min + detail);
-      return;
-    }
-
-    const retenu = apercu.held > 0
-      ? '\n' + languageJSON.payout_held + apercu.held.toLocaleString('fr-FR') + devise
-      : '';
-    Alert.alert(
-      languageJSON.payout_title,
-      languageJSON.payout_question + '\n\n' + apercu.available.toLocaleString('fr-FR') + devise + retenu + '\n\n' + languageJSON.payout_hint,
-      [
-        { text: languageJSON.cancel, style: 'cancel' },
-        { text: languageJSON.payout_confirm, onPress: this.doPayout },
-      ],
-    );
   };
 
-  doPayout = async () => {
-    this.setState({ loading: true });
-    try {
-      const result = await callFunction('requestDriverPayout', {});
-      Alert.alert(languageJSON.payout_title, languageJSON.payout_done + Number(result.amount).toLocaleString('fr-FR') + ' ' + result.currency);
-    } catch (error) {
-      Alert.alert(languageJSON.payout_title, languageJSON.payout_failed + (error && error.message ? error.message : ''));
-    } finally {
-      this.setState({ loading: false });
-    }
-  };
+
 
   render() {
     // Le drapeau credit_settings/waveEnabled commande la recharge Wave, donc le
@@ -247,11 +214,7 @@ export default class WalletTopup extends React.Component {
             <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
           </View>
           <View style={styles.actions}>
-            {this.canWithdraw() ? (
-              <TouchableOpacity style={[styles.button, styles.buttonGhost]} onPress={this.askPayout} disabled={this.state.loading}>
-                <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_button}</Text>
-              </TouchableOpacity>
-            ) : (
+            {this.canWithdraw() ? null : (
               <TouchableOpacity style={[styles.button, styles.buttonGhost]} onPress={this.startBankSetup} disabled={this.state.loading}>
                 <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_setup}</Text>
               </TouchableOpacity>
@@ -262,6 +225,20 @@ export default class WalletTopup extends React.Component {
           </View>
         </View>
         <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>
+        {this.canWithdraw() ? <Text style={styles.pending}>{languageJSON.payout_weekly}</Text> : null}
+        {this.state.apercu && this.state.apercu.available > 0 ? (
+          <Text style={styles.pending}>
+            {languageJSON.payout_available}
+            {this.state.apercu.available.toLocaleString('fr-FR')} {this.state.apercu.currency}
+          </Text>
+        ) : null}
+        {this.state.apercu && this.state.apercu.held > 0 ? (
+          <Text style={styles.pending}>
+            {languageJSON.payout_held}
+            {this.state.apercu.held.toLocaleString('fr-FR')} {this.state.apercu.currency}
+            {' — '}{languageJSON.payout_held_note}
+          </Text>
+        ) : null}
         {!this.canWithdraw() && this.state.accountStatus === 'en_verification' ? (
           <Text style={styles.pending}>{languageJSON.payout_pending_check}</Text>
         ) : null}

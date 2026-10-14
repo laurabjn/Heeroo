@@ -25,6 +25,7 @@
 
 const functions = require('firebase-functions/v1');
 const { onValueUpdated, onValueCreated, onValueWritten, onValueDeleted } = require('firebase-functions/v2/database');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
@@ -1007,50 +1008,26 @@ async function verserParWave(canal, profile, montant, reference) {
   return { issue: 'succes', id: data.id || null, frais: data.fee || null, enCours: data.status !== 'succeeded' };
 }
 
-exports.requestDriverPayout = httpEndpoint(async (req, res) => {
-  const user = await requireUser(req);
-
-  // Un administrateur peut verser pour un chauffeur depuis le back-office ;
-  // sinon, chacun ne demande que le sien.
-  const cible = (req.body && req.body.uid) || user.uid;
-  if (cible !== user.uid) {
-    const estAdmin = (await admin.database().ref(`users/${user.uid}/isAdmin`).once('value')).val();
-    if (estAdmin !== true) throw httpError(403, 'Réservé aux administrateurs');
-  }
-
+/**
+ * Verse a un chauffeur ce qui lui est du. Coeur commun au versement
+ * hebdomadaire et a la demande ponctuelle d'un administrateur.
+ *
+ * Rend { verse: false, motif } quand il n'y a rien a faire — pas de canal, rien
+ * de retirable — et leve une erreur quand le versement a ete tente et refuse.
+ * La distinction compte pour le traitement hebdomadaire : un chauffeur sans
+ * canal n'est pas un incident, un versement refuse en est un.
+ */
+async function effectuerVersement(cible, demandeur) {
   const driverRef = admin.database().ref(`users/${cible}`);
   const profile = (await driverRef.once('value')).val();
   if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
 
   const canal = canalDeVersement(profile);
-  if (!canal) {
-    throw httpError(400, "Aucun moyen de versement : terminez votre inscription bancaire, ou renseignez un numéro de mobile avec son indicatif");
-  }
+  if (!canal) return { verse: false, motif: 'aucun moyen de versement' };
 
-  // Wave ne connaît que les francs CFA entiers ; l'euro garde ses centimes.
   const { solde: total, retenu, disponible: solde } = await soldeDisponible(driverRef, profile, canal.devise);
-
-  // Mode apercu : l'app demande ce qui est retirable avant de proposer au
-  // chauffeur de confirmer. Rien n'est engagé, rien n'est débité.
-  if (req.body && req.body.preview === true) {
-    res.json({
-      preview: true,
-      balance: total,
-      held: retenu,
-      available: solde,
-      currency: canal.devise,
-      channel: canal.nom,
-      minimum: canal.minimum,
-      holdDays: PAYOUT_HOLD_DAYS,
-    });
-    return;
-  }
-
   if (solde < canal.minimum) {
-    const detail = retenu > 0
-      ? ` — ${retenu} ${canal.devise} encore en délai de sécurité de ${PAYOUT_HOLD_DAYS} jours`
-      : '';
-    throw httpError(400, `Montant retirable insuffisant : minimum ${canal.minimum} ${canal.devise}${detail}`);
+    return { verse: false, motif: `montant retirable sous le minimum (${solde} / ${canal.minimum} ${canal.devise})`, retenu, total };
   }
 
   const payoutRef = admin.database().ref('driverPayouts').push();
@@ -1061,12 +1038,12 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
     channel: canal.nom,
     mobile: canal.mobile || null,
     status: 'pending',
-    requested_by: user.uid,
+    requested_by: demandeur,
     created_at: admin.database.ServerValue.TIMESTAMP,
   });
 
-  // Réservation du montant. La transaction échoue si le solde a bougé entre la
-  // lecture et ici — une course terminée entre-temps, par exemple.
+  // Reservation du montant. La transaction echoue si le solde a bouge entre la
+  // lecture et ici — une course terminee entre-temps, par exemple.
   const reservation = await driverRef.child('walletBalance').transaction((balance) => {
     const actuel = Number(balance) || 0;
     return actuel < solde ? undefined : actuel - solde;
@@ -1097,8 +1074,7 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
   }
 
   if (resultat.issue === 'refus') {
-    const motif = resultat.motif;
-    await payoutRef.update({ status: 'failed', error: motif });
+    await payoutRef.update({ status: 'failed', error: resultat.motif });
     // Échec définitif : le chauffeur retrouve son crédit.
     await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + solde);
     await driverRef.child('walletHistory').push({
@@ -1108,8 +1084,8 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
       date: admin.database.ServerValue.TIMESTAMP,
       txRef: payoutRef.key,
     });
-    logger.error(`Versement ${payoutRef.key} refusé (${canal.nom}) : ${motif} — crédit restitué`);
-    throw httpError(502, `Versement refusé : ${motif}`);
+    logger.error(`Versement ${payoutRef.key} refusé (${canal.nom}) : ${resultat.motif} — crédit restitué`);
+    throw httpError(502, `Versement refusé : ${resultat.motif}`);
   }
 
   const etat = resultat.enCours ? 'processing' : 'succeeded';
@@ -1120,8 +1096,98 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
     confirmed_at: admin.database.ServerValue.TIMESTAMP,
   });
   logger.info(`Versement ${payoutRef.key} : ${solde} ${canal.devise} au chauffeur ${cible} par ${canal.nom} (${resultat.id})`);
-  res.json({ success: true, amount: solde, currency: canal.devise, channel: canal.nom, payoutId: resultat.id || null, status: etat });
+  return { verse: true, amount: solde, currency: canal.devise, channel: canal.nom, payoutId: resultat.id || null, status: etat };
+}
+
+// requestDriverPayout — consultation par le chauffeur, versement exceptionnel
+// par un administrateur.
+//
+// Le chauffeur ne declenche plus de versement : ses gains partent
+// automatiquement le lundi. Il peut en revanche consulter ce qui lui revient,
+// et c'est le mode apercu. Un administrateur, lui, peut verser hors calendrier
+// depuis le back-office — un depart, un litige.
+exports.requestDriverPayout = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const cible = (req.body && req.body.uid) || user.uid;
+  const apercu = !!(req.body && req.body.preview === true);
+
+  if (cible !== user.uid || !apercu) {
+    const estAdmin = (await admin.database().ref(`users/${user.uid}/isAdmin`).once('value')).val();
+    if (estAdmin !== true) {
+      throw httpError(403, apercu
+        ? 'Réservé aux administrateurs'
+        : 'Les gains sont versés automatiquement chaque lundi');
+    }
+  }
+
+  if (apercu) {
+    const driverRef = admin.database().ref(`users/${cible}`);
+    const profile = (await driverRef.once('value')).val();
+    if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+    const canal = canalDeVersement(profile);
+    if (!canal) {
+      res.json({ preview: true, channel: null, holdDays: PAYOUT_HOLD_DAYS });
+      return;
+    }
+    const { solde: total, retenu, disponible } = await soldeDisponible(driverRef, profile, canal.devise);
+    res.json({
+      preview: true,
+      balance: total,
+      held: retenu,
+      available: disponible,
+      currency: canal.devise,
+      channel: canal.nom,
+      minimum: canal.minimum,
+      holdDays: PAYOUT_HOLD_DAYS,
+    });
+    return;
+  }
+
+  const resultat = await effectuerVersement(cible, user.uid);
+  if (!resultat.verse) throw httpError(400, `Rien à verser : ${resultat.motif}`);
+  res.json({ success: true, ...resultat });
 }, { secrets: [STRIPE_SECRET_KEY, WAVE_API_KEY] });
+
+// ---------------------------------------------------------------------------
+// weeklyDriverPayouts — versement automatique du lundi.
+//
+// Choix du client : les chauffeurs ne retirent pas quand ils veulent, ils sont
+// payes une fois par semaine. Deux raisons, l'une et l'autre bonnes — chaque
+// virement est facture a l'unite, et un rythme fixe se previent et se controle.
+//
+// Un chauffeur sans moyen de versement, ou sous le minimum, est simplement
+// saute : ce n'est pas un incident, son solde attendra lundi prochain. Un
+// versement refuse, lui, est trace sans interrompre les suivants — l'echec d'un
+// chauffeur ne doit pas priver les autres de leur paie.
+// ---------------------------------------------------------------------------
+exports.weeklyDriverPayouts = onSchedule(
+  {
+    schedule: 'every monday 08:00',
+    timeZone: 'Europe/Paris',
+    region: REGION,
+    secrets: [STRIPE_SECRET_KEY, WAVE_API_KEY],
+  },
+  async () => {
+    const tous = (await admin.database().ref('users').orderByChild('usertype').equalTo('driver').once('value')).val() || {};
+    const chauffeurs = Object.keys(tous);
+    let verses = 0;
+    let sautes = 0;
+    let echecs = 0;
+
+    for (const uid of chauffeurs) {
+      try {
+        const resultat = await effectuerVersement(uid, 'versement_hebdomadaire');
+        if (resultat.verse) verses += 1;
+        else sautes += 1;
+      } catch (error) {
+        echecs += 1;
+        logger.error(`Versement hebdomadaire : chauffeur ${uid} en échec — ${error.message}`);
+      }
+    }
+
+    logger.info(`Versement hebdomadaire : ${chauffeurs.length} chauffeurs, ${verses} versés, ${sautes} sans rien à verser, ${echecs} en échec`);
+  }
+);
 
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
