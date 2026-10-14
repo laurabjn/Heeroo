@@ -55,6 +55,10 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "env": {
+        "APP_ENV": "production"
+      }
+    }
   }
 }
