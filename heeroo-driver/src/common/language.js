@@ -30,7 +30,7 @@ export default {
     payout_missing_docs: 'Votre dossier bancaire est incomplet. Reprenez-le pour recevoir vos gains.',
     topup_title: 'Recharger mon crédit',
     credit_insufficient_title: 'Crédit insuffisant',
-    credit_insufficient_msg: 'Votre crédit est de {balance} FCFA. Il faut au moins {min} FCFA pour accepter une course : rechargez-le depuis « Mes revenus ».',
+    credit_insufficient_msg: 'Votre crédit est de {balance} {currency}. Il faut au moins {min} {currency} pour accepter une course : rechargez-le depuis « Mes revenus ».',
     topup_hint: 'Choisissez un montant, puis payez avec Wave. La commission de chaque course est prélevée sur ce crédit.',
     topup_amount_placeholder: 'Autre montant ({devise})',
     topup_confirm: 'Payer avec Wave',

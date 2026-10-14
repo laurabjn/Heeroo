@@ -297,18 +297,34 @@ export default class DriverTripAccept extends React.Component {
     }
 
     onPressAccept(item, index) {
-        // Crédit prépayé (modèle Sénégal) : si l'exploitant a fixé un crédit minimum
-        // (settings/minDriverBalance, en FCFA ; 0 ou absent = pas de règle), un
-        // chauffeur en dessous ne peut pas accepter une course au départ du Sénégal.
-        // Les courses ailleurs (France : paiement à la course, pas de commission
-        // sur crédit) ne sont pas concernées.
+        // Credit prepaye : la commission d'une course payee en especes est
+        // prelevee sur le credit du chauffeur, qui a deja l'argent en main. Rien
+        // ne l'oblige a le reverser — sauf de ne plus recevoir de course une fois
+        // son credit epuise. C'est la seule garantie du modele.
+        //
+        // La regle valait jusqu'ici pour le seul Senegal, alors que la commission
+        // est prelevee partout : un chauffeur francais pouvait encaisser du
+        // liquide, passer en negatif et continuer a prendre des courses.
+        //
+        // Le seuil depend de la monnaie du pays de depart : 5 000 FCFA et 5 000
+        // euros ne sont pas le meme ordre de grandeur. Un seuil absent ou nul
+        // desactive la regle pour cette monnaie — c'est ainsi qu'un pays
+        // nouvellement ouvert demarre sans blocage tant que l'exploitant n'a rien
+        // decide.
         const rideCountry = item.pickup && item.pickup.country;
-        const minBalance = Number(this.state.creditSettings && this.state.creditSettings.minDriverBalance) || 0;
+        const rideCurrency = countryCurrency[rideCountry] || 'EUR';
+        const reglages = this.state.creditSettings || {};
+        const minBalance = Number(
+            rideCurrency === 'EUR' ? reglages.minDriverBalanceEUR : reglages.minDriverBalance
+        ) || 0;
         const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
-        if (rideCountry === 'SN' && minBalance > 0 && balance < minBalance) {
+        if (minBalance > 0 && balance < minBalance) {
             Alert.alert(
                 languageJSON.credit_insufficient_title,
-                languageJSON.credit_insufficient_msg.replace('{balance}', balance.toLocaleString('fr-FR')).replace('{min}', minBalance.toLocaleString('fr-FR'))
+                languageJSON.credit_insufficient_msg
+                    .replace(/\{balance\}/g, balance.toLocaleString('fr-FR'))
+                    .replace(/\{min\}/g, minBalance.toLocaleString('fr-FR'))
+                    .replace(/\{currency\}/g, rideCurrency === 'EUR' ? '€' : 'FCFA')
             );
             return;
         }
