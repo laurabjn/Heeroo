@@ -1,6 +1,6 @@
 {
-  "Scooter": { "min": 400,  "km": 100, "heure": 1500, "commission": 13 },
-  "Eco":     { "min": 600,  "km": 150, "heure": 2100, "commission": 13 },
-  "Berline": { "min": 1000, "km": 250, "heure": 3000, "commission": 13 },
-  "Van":     { "min": 1200, "km": 300, "heure": 3600, "commission": 13 }
+  "Scooter": { "min": 400, "km": 90,  "heure": 600,  "commission": 13 },
+  "Eco":     { "min": 530, "km": 130, "heure": 840,  "commission": 13 },
+  "Berline": { "min": 680, "km": 180, "heure": 1200, "commission": 13 },
+  "Van":     { "min": 800, "km": 220, "heure": 1440, "commission": 13 }
 }
