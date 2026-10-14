@@ -79,3 +79,22 @@ heeroo-driver/ios/
 # Secrets des fonctions pour l'émulateur (jamais versionnés)
 **/.secret.local
 **/.env.local
+
+# Secrets de signature et de publication — ne doivent JAMAIS entrer dans Git.
+# Le keystore d'upload est irremplaçable : le perdre interdit toute mise à jour
+# des applications déjà publiées, et le diffuser permettrait à un tiers de
+# signer une fausse mise à jour. La clé Apple (.p8) ouvre l'accès App Store
+# Connect. Sauvegarde hors du dépôt, dans un gestionnaire de mots de passe.
+heeroo-credentials/
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+
+# Livrables de build et éléments des magasins : lourds, régénérables, et sans
+# intérêt dans l'historique (près d'un gigaoctet à eux deux).
+heeroo-bundles/
+heeroo-store/
+*.aab
+*.apk
