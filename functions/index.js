@@ -41,6 +41,11 @@ const COMPLETED_STATUS = 'END';
 // ou dans functions/.secret.local pour l'émulateur. Jamais dans le code.
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
+// Un endpoint Stripe ecoute soit le compte de la plateforme, soit les comptes
+// rattaches — jamais les deux. Les evenements Connect (account.updated, qui dit
+// ou en est le dossier bancaire d'un chauffeur) exigent donc un second endpoint,
+// pointant sur la meme adresse mais signe avec une autre cle.
+const STRIPE_CONNECT_WEBHOOK_SECRET = defineSecret('STRIPE_CONNECT_WEBHOOK_SECRET');
 const WAVE_API_KEY = defineSecret('WAVE_API_KEY');
 const WAVE_WEBHOOK_SECRET = defineSecret('WAVE_WEBHOOK_SECRET');
 
@@ -561,14 +566,28 @@ async function releaseRideCard(bookingId, booking) {
   }
 }
 
-exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] })
+exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_CONNECT_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
     const stripe = new Stripe(STRIPE_SECRET_KEY.value());
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET.value());
-    } catch (error) {
-      logger.warn('Webhook Stripe : signature invalide', error.message);
+
+    // Les deux endpoints aboutissent ici, chacun avec sa cle. On essaie l'une
+    // puis l'autre : une signature valide pour l'une ne l'est jamais pour
+    // l'autre, il n'y a donc aucune ambiguite. Une cle absente ou laissee en
+    // valeur provisoire est simplement ignoree.
+    const secrets = [STRIPE_WEBHOOK_SECRET.value(), STRIPE_CONNECT_WEBHOOK_SECRET.value()]
+      .filter((cle) => typeof cle === 'string' && cle.startsWith('whsec_'));
+    let event = null;
+    for (const cle of secrets) {
+      try {
+        event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], cle);
+        break;
+      } catch (error) {
+        // On ne trace qu'apres avoir epuise les cles : echouer sur la premiere
+        // est le cas normal pour un evenement venu du second endpoint.
+      }
+    }
+    if (!event) {
+      logger.warn(`Webhook Stripe : signature invalide (${secrets.length} clé(s) essayée(s))`);
       res.status(400).send('Signature invalide');
       return;
     }
