@@ -22,6 +22,7 @@ const WAVE_COUNTRY = 'SN';
 // En dessous, les frais de versement de Wave mangent une part déraisonnable du
 // montant. Même seuil que côté serveur, qui refuserait la demande.
 const PAYOUT_MIN = 500;
+const PAYOUT_MIN_EUR = 5;
 
 const PROVIDERS = {
   wave: {
@@ -57,7 +58,7 @@ async function callFunction(name, body) {
 }
 
 export default class WalletTopup extends React.Component {
-  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null, currencies: [] };
+  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null, currencies: [], payoutsEnabled: false, accountStatus: null };
 
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
@@ -80,6 +81,12 @@ export default class WalletTopup extends React.Component {
     this.enabledRef.on('value', (snapshot) => this.setState({ enabled: snapshot.val() === true }));
     this.balanceRef = firebase.database().ref('users/' + uid + '/walletBalance');
     this.balanceRef.on('value', (snapshot) => this.setState({ balance: Number(snapshot.val()) || 0 }));
+    // Etat du dossier bancaire, tenu a jour par le serveur a partir des
+    // notifications de Stripe : le chauffeur voit son avancement sans rien faire.
+    this.payoutsRef = firebase.database().ref('users/' + uid + '/stripe_payouts_enabled');
+    this.payoutsRef.on('value', (snapshot) => this.setState({ payoutsEnabled: snapshot.val() === true }));
+    this.statusRef = firebase.database().ref('users/' + uid + '/stripe_account_status');
+    this.statusRef.on('value', (snapshot) => this.setState({ accountStatus: snapshot.val() }));
     this.appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'active' && this.state.pendingSession) this.confirmPending();
     });
@@ -89,6 +96,8 @@ export default class WalletTopup extends React.Component {
     if (this.countryRef) this.countryRef.off();
     if (this.enabledRef) this.enabledRef.off();
     if (this.balanceRef) this.balanceRef.off();
+    if (this.payoutsRef) this.payoutsRef.off();
+    if (this.statusRef) this.statusRef.off();
     if (this.appStateSubscription) this.appStateSubscription.remove();
   }
 
@@ -153,12 +162,33 @@ export default class WalletTopup extends React.Component {
     }
   };
 
+  // Inscription bancaire du chauffeur. Le parcours est tenu par Stripe, dans le
+  // navigateur : piece d'identite et IBAN ne passent jamais par l'application.
+  // Le lien expire en quelques minutes, on le redemande a chaque fois.
+  startBankSetup = async () => {
+    this.setState({ loading: true });
+    try {
+      const result = await callFunction('startDriverStripeOnboarding', {});
+      await Linking.openURL(result.url);
+    } catch (error) {
+      Alert.alert(languageJSON.payout_setup_title, error && error.message ? error.message : '');
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
   // Retrait du crédit vers le compte Wave du chauffeur. Le serveur débite le
   // solde avant d'appeler Wave et le restitue si le versement échoue : l'écran
   // n'a donc rien à rattraper, il affiche ce qui s'est passé.
+  /** Un versement est possible des qu'un canal existe : Wave, ou un compte bancaire valide. */
+  canWithdraw() {
+    return this.state.country === WAVE_COUNTRY || this.state.payoutsEnabled;
+  }
+
   askPayout = () => {
     const { balance } = this.state;
-    if (balance < PAYOUT_MIN) { Alert.alert(languageJSON.payout_title, languageJSON.payout_min); return; }
+    const minimum = this.state.country === WAVE_COUNTRY ? PAYOUT_MIN : PAYOUT_MIN_EUR;
+    if (balance < minimum) { Alert.alert(languageJSON.payout_title, languageJSON.payout_min); return; }
     Alert.alert(
       languageJSON.payout_title,
       languageJSON.payout_question + '\n\n' + balance.toLocaleString('fr-FR') + ' ' + this.symbol() + '\n\n' + languageJSON.payout_hint,
@@ -182,7 +212,12 @@ export default class WalletTopup extends React.Component {
   };
 
   render() {
-    if (!this.state.enabled) return null;
+    // Le drapeau credit_settings/waveEnabled commande la recharge Wave, donc le
+    // Senegal. Ailleurs, le portefeuille doit rester visible quoi qu'il arrive :
+    // c'est la que le chauffeur voit sa part des courses payees par carte, et
+    // qu'il ouvre son dossier bancaire. Le masquer derriere un drapeau Wave le
+    // priverait de ses gains sans explication.
+    if (this.state.country === WAVE_COUNTRY && !this.state.enabled) return null;
     const provider = this.provider();
     const symbol = this.symbol();
     return (
@@ -193,17 +228,27 @@ export default class WalletTopup extends React.Component {
             <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
           </View>
           <View style={styles.actions}>
-            {this.state.country === WAVE_COUNTRY ? (
+            {this.canWithdraw() ? (
               <TouchableOpacity style={[styles.button, styles.buttonGhost]} onPress={this.askPayout} disabled={this.state.loading}>
                 <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_button}</Text>
               </TouchableOpacity>
-            ) : null}
+            ) : (
+              <TouchableOpacity style={[styles.button, styles.buttonGhost]} onPress={this.startBankSetup} disabled={this.state.loading}>
+                <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_setup}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
               <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
             </TouchableOpacity>
           </View>
         </View>
         <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>
+        {!this.canWithdraw() && this.state.accountStatus === 'en_verification' ? (
+          <Text style={styles.pending}>{languageJSON.payout_pending_check}</Text>
+        ) : null}
+        {!this.canWithdraw() && this.state.accountStatus === 'pieces_manquantes' ? (
+          <Text style={styles.pending}>{languageJSON.payout_missing_docs}</Text>
+        ) : null}
         {this.state.pendingSession ? <Text style={styles.pending}>{languageJSON.topup_pending}</Text> : null}
 
         <Modal animationType="slide" transparent visible={this.state.modalVisible} onRequestClose={() => this.setState({ modalVisible: false })}>

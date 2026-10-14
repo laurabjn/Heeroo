@@ -575,6 +575,25 @@ exports.stripeWebhook = functions.region(REGION).runWith({ secrets: [STRIPE_SECR
 
     if (event.type === 'payment_intent.succeeded') {
       await settleCardPayment(stripe, event.data.object);
+    } else if (event.type === 'account.updated') {
+      // Dossier d'un chauffeur chez Stripe. Seul payouts_enabled compte ici :
+      // un compte peut accepter des paiements sans pouvoir encore recevoir de
+      // virement, tant qu'une pièce manque.
+      //
+      // Cet évènement n'arrive que si l'endpoint est déclaré « Connect » dans
+      // le tableau de bord Stripe ; sur un endpoint de compte ordinaire, il
+      // n'est jamais émis.
+      const account = event.data.object;
+      const uid = account.metadata && account.metadata.uid;
+      if (uid) {
+        const manquant = account.requirements && (account.requirements.currently_due || []);
+        await admin.database().ref(`users/${uid}`).update({
+          stripe_payouts_enabled: account.payouts_enabled === true,
+          stripe_account_status: account.payouts_enabled === true ? 'actif'
+            : manquant.length ? 'pieces_manquantes' : 'en_verification',
+        });
+        logger.info(`Compte Stripe du chauffeur ${uid} : versements ${account.payouts_enabled ? 'autorisés' : 'bloqués'}`);
+      }
     } else if (event.type === 'checkout.session.completed') {
       // Seules les recharges de credit passent par une page de paiement Stripe ;
       // les courses, elles, utilisent une empreinte bancaire.
@@ -814,6 +833,63 @@ exports.confirmCardTopup = httpEndpoint(async (req, res) => {
 }, { secrets: [STRIPE_SECRET_KEY] });
 
 // ---------------------------------------------------------------------------
+// startDriverStripeOnboarding — ouvrir au chauffeur un compte rattache chez
+// Stripe, pour que ses gains partent sur son compte bancaire.
+//
+// Le parcours de verification est tenu par Stripe : identite, piece d'identite,
+// coordonnees bancaires. Rien de tout cela ne transite par nos serveurs, et
+// c'est voulu — ces pieces sont ce qu'un dossier contient de plus sensible.
+//
+// Le lien renvoye expire en quelques minutes. L'app le redemande a chaque fois
+// plutot que de le conserver.
+// ---------------------------------------------------------------------------
+
+exports.startDriverStripeOnboarding = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const driverRef = admin.database().ref(`users/${user.uid}`);
+  const profile = (await driverRef.once('value')).val();
+  if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  let accountId = profile.stripe_account_id;
+
+  if (accountId) {
+    // Un compte efface cote Stripe ne doit pas bloquer le chauffeur.
+    try {
+      const existant = await stripe.accounts.retrieve(accountId);
+      if (existant.deleted) accountId = null;
+    } catch (error) {
+      logger.warn(`Compte Stripe ${accountId} introuvable pour ${user.uid}, recréation`);
+      accountId = null;
+    }
+  }
+
+  if (!accountId) {
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'FR',
+      email: user.email || profile.email || undefined,
+      business_type: 'individual',
+      // Seul le virement est demande : la societe encaisse le passager, le
+      // compte du chauffeur ne sert qu'a recevoir sa part.
+      capabilities: { transfers: { requested: true } },
+      business_profile: { mcc: '4121', product_description: 'Transport de personnes avec chauffeur' },
+      metadata: { uid: user.uid },
+    });
+    accountId = account.id;
+    await driverRef.update({ stripe_account_id: accountId, stripe_payouts_enabled: false, stripe_account_status: 'en_verification' });
+  }
+
+  const lien = await stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: hostingUrl('/stripe/recommencer.html'),
+    return_url: hostingUrl('/stripe/termine.html'),
+    type: 'account_onboarding',
+  });
+  res.json({ url: lien.url, accountId });
+}, { secrets: [STRIPE_SECRET_KEY] });
+
+// ---------------------------------------------------------------------------
 // requestDriverPayout — verser au chauffeur le solde de son crédit, sur son
 // compte Wave.
 //
@@ -831,6 +907,67 @@ exports.confirmCardTopup = httpEndpoint(async (req, res) => {
 // Des deux erreurs possibles, retenir un montant quelques secondes de trop vaut
 // infiniment mieux que de le payer deux fois.
 const WAVE_MIN_PAYOUT = 500;      // FCFA : en dessous, les frais Wave n'ont plus de sens
+const STRIPE_MIN_PAYOUT = 5;     // euros
+
+/**
+ * Par ou verser a ce chauffeur, ou null si aucun canal n'est ouvert.
+ *
+ * Stripe d'abord : un chauffeur qui a mene son dossier a son terme est paye sur
+ * son compte bancaire, ce qui vaut mieux qu'un portefeuille mobile. Wave ensuite,
+ * la ou Stripe ne verse pas — il ne versera jamais vers une banque senegalaise.
+ */
+function canalDeVersement(profile) {
+  if (profile.stripe_account_id && profile.stripe_payouts_enabled === true) {
+    return { nom: 'stripe', devise: 'EUR', minimum: STRIPE_MIN_PAYOUT };
+  }
+  const mobile = waveMobile(profile.mobile);
+  if (mobile && mobile.startsWith('+221')) {
+    return { nom: 'wave', devise: WAVE_CURRENCY, minimum: WAVE_MIN_PAYOUT, mobile };
+  }
+  return null;
+}
+
+/**
+ * Verse par Stripe. Rend { issue } : 'succes', 'refus' (definitif) ou
+ * 'reessayer' (incident passager, le versement a pu aboutir sans qu'on le sache).
+ */
+async function verserParStripe(canal, profile, montant, reference) {
+  const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+  try {
+    const virement = await stripe.transfers.create({
+      amount: toStripeAmount(montant, canal.devise),
+      currency: canal.devise.toLowerCase(),
+      destination: profile.stripe_account_id,
+      description: 'Gains Heeroo',
+      metadata: { payout: reference, uid: profile.uid || '' },
+    }, { idempotencyKey: reference });
+    return { issue: 'succes', id: virement.id };
+  } catch (error) {
+    const passager = error.type === 'StripeConnectionError' || Number(error.statusCode) >= 500 || error.code === 'rate_limit';
+    return { issue: passager ? 'reessayer' : 'refus', motif: error.message };
+  }
+}
+
+/** Verse par Wave. Meme contrat de retour que verserParStripe. */
+async function verserParWave(canal, profile, montant, reference) {
+  const { ok, status, data } = await waveRequest('POST', '/payout', {
+    currency: canal.devise,
+    receive_amount: String(montant),
+    mobile: canal.mobile,
+    name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || undefined,
+    client_reference: reference,
+    payment_reason: 'Gains Heeroo',
+  }, { headers: { 'Idempotency-Key': reference }, brut: true });
+
+  if (!ok && (status === 408 || status === 429 || status >= 500)) {
+    return { issue: 'reessayer', motif: `Wave ${status}` };
+  }
+  const echec = data && data.payout_error;
+  if (!ok || echec || (data && data.status === 'failed')) {
+    return { issue: 'refus', motif: (echec && echec.error_message) || (data && data.message) || `Wave ${status}` };
+  }
+  return { issue: 'succes', id: data.id || null, frais: data.fee || null, enCours: data.status !== 'succeeded' };
+}
 
 exports.requestDriverPayout = httpEndpoint(async (req, res) => {
   const user = await requireUser(req);
@@ -847,21 +984,25 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
   const profile = (await driverRef.once('value')).val();
   if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
 
-  const mobile = waveMobile(profile.mobile);
-  if (!mobile) throw httpError(400, "Numéro de mobile inexploitable : il doit comporter l'indicatif du pays");
+  const canal = canalDeVersement(profile);
+  if (!canal) {
+    throw httpError(400, "Aucun moyen de versement : terminez votre inscription bancaire, ou renseignez un numéro de mobile avec son indicatif");
+  }
 
-  // Wave ne connaît que les francs CFA entiers.
-  const solde = Math.floor(Number(profile.walletBalance) || 0);
-  if (solde < WAVE_MIN_PAYOUT) {
-    throw httpError(400, `Solde insuffisant : minimum ${WAVE_MIN_PAYOUT} ${WAVE_CURRENCY}`);
+  // Wave ne connaît que les francs CFA entiers ; l'euro garde ses centimes.
+  const brut = Number(profile.walletBalance) || 0;
+  const solde = canal.devise === WAVE_CURRENCY ? Math.floor(brut) : Math.round(brut * 100) / 100;
+  if (solde < canal.minimum) {
+    throw httpError(400, `Solde insuffisant : minimum ${canal.minimum} ${canal.devise}`);
   }
 
   const payoutRef = admin.database().ref('driverPayouts').push();
   await payoutRef.set({
     uid: cible,
     amount: solde,
-    currency: WAVE_CURRENCY,
-    mobile,
+    currency: canal.devise,
+    channel: canal.nom,
+    mobile: canal.mobile || null,
     status: 'pending',
     requested_by: user.uid,
     created_at: admin.database.ServerValue.TIMESTAMP,
@@ -885,28 +1026,21 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
     txRef: payoutRef.key,
   });
 
-  const { ok, status, data } = await waveRequest('POST', '/payout', {
-    currency: WAVE_CURRENCY,
-    receive_amount: String(solde),
-    mobile,
-    name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || undefined,
-    client_reference: payoutRef.key,
-    payment_reason: 'Gains Heeroo',
-  }, { headers: { 'Idempotency-Key': payoutRef.key }, brut: true });
+  const resultat = canal.nom === 'stripe'
+    ? await verserParStripe(canal, { ...profile, uid: cible }, solde, payoutRef.key)
+    : await verserParWave(canal, profile, solde, payoutRef.key);
 
-  const echecWave = data && data.payout_error;
-
-  // 408, 429 et 5xx : l'appel peut avoir abouti chez Wave sans que la réponse
-  // nous parvienne. On ne recrédite surtout pas — la clé d'idempotence permet
-  // de rejouer la même demande sans double versement.
-  if (!ok && (status === 408 || status === 429 || status >= 500)) {
-    await payoutRef.update({ status: 'pending', last_error: `Wave ${status}`, retriable: true });
-    logger.warn(`Versement ${payoutRef.key} : Wave a répondu ${status}, à rejouer`);
-    throw httpError(503, 'Wave est momentanément indisponible, le versement reste en attente');
+  // Incident passager : le versement a pu aboutir chez le prestataire sans que
+  // la réponse nous parvienne. On ne recrédite surtout pas — la clé
+  // d'idempotence permet de rejouer la même demande sans double versement.
+  if (resultat.issue === 'reessayer') {
+    await payoutRef.update({ status: 'pending', last_error: resultat.motif, retriable: true });
+    logger.warn(`Versement ${payoutRef.key} : ${resultat.motif}, à rejouer`);
+    throw httpError(503, 'Le service de paiement est momentanément indisponible, le versement reste en attente');
   }
 
-  if (!ok || echecWave || (data && data.status === 'failed')) {
-    const motif = (echecWave && echecWave.error_message) || (data && data.message) || `Wave ${status}`;
+  if (resultat.issue === 'refus') {
+    const motif = resultat.motif;
     await payoutRef.update({ status: 'failed', error: motif });
     // Échec définitif : le chauffeur retrouve son crédit.
     await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + solde);
@@ -917,19 +1051,20 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
       date: admin.database.ServerValue.TIMESTAMP,
       txRef: payoutRef.key,
     });
-    logger.error(`Versement ${payoutRef.key} refusé par Wave : ${motif} — crédit restitué`);
+    logger.error(`Versement ${payoutRef.key} refusé (${canal.nom}) : ${motif} — crédit restitué`);
     throw httpError(502, `Versement refusé : ${motif}`);
   }
 
+  const etat = resultat.enCours ? 'processing' : 'succeeded';
   await payoutRef.update({
-    status: data.status === 'succeeded' ? 'succeeded' : 'processing',
-    wave_payout_id: data.id || null,
-    fee: data.fee || null,
+    status: etat,
+    provider_payout_id: resultat.id || null,
+    fee: resultat.frais || null,
     confirmed_at: admin.database.ServerValue.TIMESTAMP,
   });
-  logger.info(`Versement ${payoutRef.key} : ${solde} ${WAVE_CURRENCY} au chauffeur ${cible} (${data.id})`);
-  res.json({ success: true, amount: solde, currency: WAVE_CURRENCY, payoutId: data.id || null, status: data.status });
-}, { secrets: [WAVE_API_KEY] });
+  logger.info(`Versement ${payoutRef.key} : ${solde} ${canal.devise} au chauffeur ${cible} par ${canal.nom} (${resultat.id})`);
+  res.json({ success: true, amount: solde, currency: canal.devise, channel: canal.nom, payoutId: resultat.id || null, status: etat });
+}, { secrets: [STRIPE_SECRET_KEY, WAVE_API_KEY] });
 
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
