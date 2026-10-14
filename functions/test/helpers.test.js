@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, waveMobile } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile } = require('../lib/helpers');
 
 describe('toStripeAmount', () => {
   test('convertit les euros en centimes', () => {
@@ -185,5 +185,40 @@ describe('waveMobile', () => {
     assert.equal(waveMobile('+221'), null);         // indicatif seul
     assert.equal(waveMobile('abc'), null);
     assert.equal(waveMobile('+0123456789'), null);  // indicatif commencant par 0
+  });
+});
+
+describe('heldShare', () => {
+  const JOUR = 24 * 60 * 60 * 1000;
+  const maintenant = 1760000000000;
+  const part = (amount, ageJours) => ({ reason: 'part_course_carte', amount, date: maintenant - ageJours * JOUR });
+
+  test('retient les parts recentes et libere les anciennes', () => {
+    const lignes = [part(10, 1), part(20, 3), part(30, 9)];
+    assert.equal(heldShare(lignes, maintenant, 7 * JOUR), 30);
+  });
+  test('ignore tout ce qui n est pas une part de course par carte', () => {
+    const lignes = [
+      part(10, 1),
+      { reason: 'commission', amount: 5, date: maintenant },
+      { reason: 'topup', amount: 50, date: maintenant },
+      { reason: 'admin_topup', amount: 99, date: maintenant },
+    ];
+    assert.equal(heldShare(lignes, maintenant, 7 * JOUR), 10);
+  });
+  test('accepte la forme objet rendue par Firebase', () => {
+    assert.equal(heldShare({ a: part(10, 1), b: part(5, 2) }, maintenant, 7 * JOUR), 15);
+  });
+  test('ne retient rien sans historique', () => {
+    assert.equal(heldShare(null, maintenant, 7 * JOUR), 0);
+    assert.equal(heldShare([], maintenant, 7 * JOUR), 0);
+    assert.equal(heldShare(undefined, maintenant, 7 * JOUR), 0);
+  });
+  test('ignore une ligne sans date exploitable', () => {
+    const lignes = [part(10, 1), { reason: 'part_course_carte', amount: 99 }];
+    assert.equal(heldShare(lignes, maintenant, 7 * JOUR), 10);
+  });
+  test('une ligne pile a la limite est liberee', () => {
+    assert.equal(heldShare([part(10, 7)], maintenant, 7 * JOUR), 0);
   });
 });

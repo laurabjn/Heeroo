@@ -19,10 +19,6 @@ import { base_url } from '../common/key';
 // de sorte que l'application n'embarque aucun module de paiement.
 const WAVE_COUNTRY = 'SN';
 
-// En dessous, les frais de versement de Wave mangent une part déraisonnable du
-// montant. Même seuil que côté serveur, qui refuserait la demande.
-const PAYOUT_MIN = 500;
-const PAYOUT_MIN_EUR = 5;
 
 const PROVIDERS = {
   wave: {
@@ -185,13 +181,36 @@ export default class WalletTopup extends React.Component {
     return this.state.country === WAVE_COUNTRY || this.state.payoutsEnabled;
   }
 
-  askPayout = () => {
-    const { balance } = this.state;
-    const minimum = this.state.country === WAVE_COUNTRY ? PAYOUT_MIN : PAYOUT_MIN_EUR;
-    if (balance < minimum) { Alert.alert(languageJSON.payout_title, languageJSON.payout_min); return; }
+  // On demande d'abord au serveur ce qui est reellement retirable : une part de
+  // course payee par carte reste bloquee quelques jours. Afficher le solde
+  // entier puis n'en verser qu'une partie serait incomprehensible.
+  askPayout = async () => {
+    this.setState({ loading: true });
+    let apercu;
+    try {
+      apercu = await callFunction('requestDriverPayout', { preview: true });
+    } catch (error) {
+      Alert.alert(languageJSON.payout_title, error && error.message ? error.message : '');
+      return;
+    } finally {
+      this.setState({ loading: false });
+    }
+
+    const devise = ' ' + apercu.currency;
+    if (apercu.available < apercu.minimum) {
+      const detail = apercu.held > 0
+        ? '\n\n' + languageJSON.payout_held + apercu.held.toLocaleString('fr-FR') + devise + '\n' + languageJSON.payout_held_note
+        : '';
+      Alert.alert(languageJSON.payout_title, languageJSON.payout_min + detail);
+      return;
+    }
+
+    const retenu = apercu.held > 0
+      ? '\n' + languageJSON.payout_held + apercu.held.toLocaleString('fr-FR') + devise
+      : '';
     Alert.alert(
       languageJSON.payout_title,
-      languageJSON.payout_question + '\n\n' + balance.toLocaleString('fr-FR') + ' ' + this.symbol() + '\n\n' + languageJSON.payout_hint,
+      languageJSON.payout_question + '\n\n' + apercu.available.toLocaleString('fr-FR') + devise + retenu + '\n\n' + languageJSON.payout_hint,
       [
         { text: languageJSON.cancel, style: 'cancel' },
         { text: languageJSON.payout_confirm, onPress: this.doPayout },

@@ -30,7 +30,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -928,6 +928,25 @@ exports.startDriverStripeOnboarding = httpEndpoint(async (req, res) => {
 const WAVE_MIN_PAYOUT = 500;      // FCFA : en dessous, les frais Wave n'ont plus de sens
 const STRIPE_MIN_PAYOUT = 5;     // euros
 
+// Delai de securite avant qu'une part de course payee par carte devienne
+// retirable. Un impayé peut tomber des semaines plus tard, et si le chauffeur a
+// deja ete paye, c'est la plateforme qui rembourse. Sept jours n'eliminent pas
+// le risque — la fenetre de contestation se compte en mois — mais ils ecartent
+// les cas les plus frequents, carte volee en tete, sans faire attendre un
+// chauffeur qui vit de ses courses.
+const PAYOUT_HOLD_DAYS = 7;
+const PAYOUT_HOLD_MS = PAYOUT_HOLD_DAYS * 24 * 60 * 60 * 1000;
+
+/** Solde, part retenue et part retirable d'un chauffeur. */
+async function soldeDisponible(driverRef, profile, devise) {
+  const brut = Number(profile.walletBalance) || 0;
+  const depuis = Date.now() - PAYOUT_HOLD_MS;
+  const recent = (await driverRef.child('walletHistory').orderByChild('date').startAt(depuis).once('value')).val();
+  const retenu = heldShare(recent, Date.now(), PAYOUT_HOLD_MS);
+  const arrondi = (v) => (devise === WAVE_CURRENCY ? Math.floor(v) : Math.round(v * 100) / 100);
+  return { solde: arrondi(brut), retenu: arrondi(retenu), disponible: Math.max(0, arrondi(brut - retenu)) };
+}
+
 /**
  * Par ou verser a ce chauffeur, ou null si aucun canal n'est ouvert.
  *
@@ -1009,10 +1028,29 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
   }
 
   // Wave ne connaît que les francs CFA entiers ; l'euro garde ses centimes.
-  const brut = Number(profile.walletBalance) || 0;
-  const solde = canal.devise === WAVE_CURRENCY ? Math.floor(brut) : Math.round(brut * 100) / 100;
+  const { solde: total, retenu, disponible: solde } = await soldeDisponible(driverRef, profile, canal.devise);
+
+  // Mode apercu : l'app demande ce qui est retirable avant de proposer au
+  // chauffeur de confirmer. Rien n'est engagé, rien n'est débité.
+  if (req.body && req.body.preview === true) {
+    res.json({
+      preview: true,
+      balance: total,
+      held: retenu,
+      available: solde,
+      currency: canal.devise,
+      channel: canal.nom,
+      minimum: canal.minimum,
+      holdDays: PAYOUT_HOLD_DAYS,
+    });
+    return;
+  }
+
   if (solde < canal.minimum) {
-    throw httpError(400, `Solde insuffisant : minimum ${canal.minimum} ${canal.devise}`);
+    const detail = retenu > 0
+      ? ` — ${retenu} ${canal.devise} encore en délai de sécurité de ${PAYOUT_HOLD_DAYS} jours`
+      : '';
+    throw httpError(400, `Montant retirable insuffisant : minimum ${canal.minimum} ${canal.devise}${detail}`);
   }
 
   const payoutRef = admin.database().ref('driverPayouts').push();

@@ -119,4 +119,30 @@ function waveMobile(value) {
   return /^\+[1-9]\d{7,14}$/.test(avecIndicatif) ? avecIndicatif : null;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, driverShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+/**
+ * Part du crédit encore retenue : les sommes créditées par des courses payées
+ * par carte depuis moins de `delai` millisecondes.
+ *
+ * Un impayé peut tomber longtemps après la course. Si le chauffeur a déjà
+ * retiré sa part, c'est la plateforme qui rembourse de sa poche. Retenir
+ * quelques jours ne supprime pas le risque — la fenêtre de contestation d'une
+ * carte se compte en mois — mais elle écarte les cas les plus courants : carte
+ * volée, course contestée dans la foulée.
+ *
+ * Le montant se déduit de l'historique plutôt que d'être tenu dans un compteur :
+ * un compteur demanderait une tâche planifiée pour le faire décroître, et
+ * finirait par dériver du solde réel.
+ */
+function heldShare(entries, now, delai) {
+  const limite = Number(now) - Number(delai);
+  const lignes = Array.isArray(entries) ? entries : Object.values(entries || {});
+  const total = lignes.reduce((somme, ligne) => {
+    if (!ligne || ligne.reason !== 'part_course_carte') return somme;
+    const date = Number(ligne.date);
+    if (!Number.isFinite(date) || date <= limite) return somme;
+    return somme + (Number(ligne.amount) || 0);
+  }, 0);
+  return Math.max(0, Math.round(total * 100) / 100);
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };

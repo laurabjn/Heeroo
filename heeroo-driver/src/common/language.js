@@ -20,6 +20,8 @@ export default {
     payout_done: 'Versement effectué : ',
     payout_failed: 'Versement impossible : ',
     payout_min: 'Votre crédit est trop faible pour un retrait.',
+    payout_held: 'En délai de sécurité : ',
+    payout_held_note: "Les gains d'une course payée par carte deviennent retirables au bout de 7 jours.",
     payout_setup: 'Recevoir mes gains',
     payout_setup_title: 'Versement sur votre compte bancaire',
     payout_setup_hint: "Stripe va vous demander votre pièce d'identité et votre IBAN. Une fois votre dossier validé, vos gains partiront automatiquement sur votre compte.",
