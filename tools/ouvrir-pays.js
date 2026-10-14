@@ -44,6 +44,39 @@ function modelePour(pays) {
   return CURRENCIES[pays] === 'EUR' ? 'FR' : 'SN';
 }
 
+// Parité fixe et légale du franc CFA, identique pour l'UEMOA et la CEMAC.
+const PARITE_CFA = 655.957;
+
+/**
+ * Applique une grille de prix exprimée en francs CFA à toute la zone franc,
+ * pays existants compris.
+ *
+ * Les tarifs sont stockés en euros et convertis à l'affichage : une grille
+ * pensée en francs doit donc être divisée par la parité avant d'être écrite.
+ * Saisir 150 FCFA du kilomètre revient à enregistrer 0,2287 € — une gymnastique
+ * que personne ne fera de tête sans se tromper, d'où cette option.
+ *
+ * Format attendu, en francs CFA :
+ *   { "Eco": { "min": 600, "km": 150, "heure": 2100, "commission": 13 }, … }
+ */
+function appliquerGrilleCfa(lignes, grille) {
+  const touchees = [];
+  for (const ligne of lignes) {
+    const monnaie = CURRENCIES[String(ligne.country).toUpperCase()];
+    if (monnaie !== 'XOF' && monnaie !== 'XAF') continue;
+    const prix = grille[ligne.name];
+    if (!prix) continue;
+
+    const euro = (francs) => Math.round((francs / PARITE_CFA) * 10000) / 10000;
+    ligne.min_fare = String(euro(prix.min));
+    ligne.rate_per_kilometer = euro(prix.km);
+    ligne.rate_per_hour = euro(prix.heure);
+    if (prix.commission !== undefined) ligne.convenience_fees = prix.commission;
+    touchees.push(`${ligne.country}/${ligne.name}`);
+  }
+  return touchees;
+}
+
 function lire(fichier) {
   const brut = JSON.parse(fs.readFileSync(fichier, 'utf8'));
   // La base rend tantôt un tableau, tantôt un objet indexé selon les trous.
@@ -81,12 +114,18 @@ function comparer(avant, apres) {
   for (const l of modifiees) console.log(`    MODIFIÉE  ${cle(l)}`);
   for (const l of disparues) console.log(`    DISPARUE  ${cle(l)}`);
 
-  if (disparues.length === 0 && modifiees.length === 0) {
+  // Une ligne qui disparaît est toujours un accident : rien dans ce script ne
+  // supprime. Une ligne modifiée, en revanche, est normale si l'on vient de
+  // corriger des tarifs — elle demande une relecture, pas un arrêt.
+  if (disparues.length > 0) {
+    console.log('\nNE PAS APPLIQUER : des lignes existantes disparaîtraient.\n');
+    process.exitCode = 1;
+  } else if (modifiees.length > 0) {
+    console.log('\nAucune disparition. Les lignes ci-dessus changent de tarif :');
+    console.log('attendu si vous venez de corriger des prix, suspect sinon.\n');
+  } else {
     console.log('\nAucune perte : tout ce qui existait est repris à l\'identique.');
     console.log('Vous pouvez répondre Oui à la demande d\'écrasement.\n');
-  } else {
-    console.log('\nNe pas appliquer : des lignes existantes seraient perdues ou changées.\n');
-    process.exitCode = 1;
   }
 }
 
@@ -159,6 +198,31 @@ function main() {
   }
 
   const final = [...lignes, ...ajouts].map((ligne, i) => ({ ...ligne, tableData: { id: i } }));
+
+  const fichierGrille = valeur('--tarifs-cfa');
+  if (fichierGrille) {
+    const grille = JSON.parse(fs.readFileSync(fichierGrille, 'utf8'));
+    const touchees = appliquerGrilleCfa(final, grille);
+    console.log(`Grille franc CFA appliquée à ${touchees.length} lignes, pays déjà ouverts compris.\n`);
+    console.log('GAMME       MINIMUM        AU KM        A L\'HEURE   COMMISSION');
+    for (const [nom, p] of Object.entries(grille)) {
+      console.log(
+        nom.padEnd(11),
+        `${p.min} F`.padStart(8), '    ',
+        `${p.km} F`.padStart(7), '    ',
+        `${p.heure} F`.padStart(8), '  ',
+        p.commission !== undefined ? `${p.commission} %` : 'inchangée'
+      );
+    }
+    // Un repère concret vaut mieux qu'une grille : c'est le prix affiché au
+    // passager qui se vérifie, pas le tarif unitaire stocké en euros.
+    const exemple = Object.entries(grille)[0];
+    if (exemple) {
+      const [nom, p] = exemple;
+      const course = 10 * p.km + (25 / 60) * p.heure;
+      console.log(`\nExemple : ${nom}, 10 km en 25 minutes = ${Math.round(Math.max(course, p.min)).toLocaleString('fr-FR')} FCFA.\n`);
+    }
+  }
 
   console.log(`\n${lignes.length} lignes existantes, ${ajouts.length} à ajouter, ${final.length} au total.\n`);
   if (rapport.length === 0) {
