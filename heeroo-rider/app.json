@@ -2,7 +2,7 @@
   "expo": {
     "name": "Heeroo",
     "slug": "heeroo-rider",
-    "version": "1.7.0",
+    "version": "1.8.0",
     "orientation": "portrait",
     "icon": "./assets/images/appIcon.png",
     "userInterfaceStyle": "light",
@@ -44,7 +44,7 @@
           "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 4
+      "versionCode": 5
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
