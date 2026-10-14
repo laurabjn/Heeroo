@@ -1,6 +1,6 @@
 # Prépare des captures d'écran Android pour l'App Store.
 #
-#   python tools/captures-ios.py heeroo-store/captures-chauffeur heeroo-store/captures-ios-chauffeur
+#   python tools/captures-ios.py <source> <destination> [moyen|grand]
 #
 # Apple refuse les captures montrant une barre d'état qui n'est pas celle d'iOS
 # (règle 2.3.10, « Accurate Metadata ») : l'heure, le Wi-Fi et la batterie
@@ -17,8 +17,14 @@ import os
 import sys
 from PIL import Image
 
-# iPhone 6,9 pouces : le seul format désormais exigé, Apple dérive les autres.
-LARGEUR, HAUTEUR = 1320, 2868
+# App Store Connect range les captures par gabarit d'appareil, et chacun
+# n'accepte que ses dimensions exactes. « Écran moyen » est celui qu'il réclame
+# par défaut ; le grand écran reste proposé en complément. Envoyer les mauvaises
+# donne « les dimensions du fichier ne sont pas valides », sans autre indice.
+FORMATS = {
+    'moyen': (1206, 2622),   # iPhone avec Dynamic Island, écran moyen
+    'grand': (1320, 2868),   # iPhone avec Dynamic Island, grand écran
+}
 
 # Un pixel est « sombre » s'il tranche nettement sur un fond clair : c'est ainsi
 # qu'on repère l'heure et les icônes, sans connaître leur position exacte.
@@ -51,7 +57,7 @@ def premiere_occupee(image, debut, fin):
     return premiere
 
 
-def traiter(source, destination):
+def traiter(source, destination, largeur, hauteur):
     im = Image.open(source).convert('RGB')
     l, h = im.size
 
@@ -68,7 +74,7 @@ def traiter(source, destination):
     im = im.crop((0, haut, l, bas))
 
     # Recadrage latéral pour atteindre le rapport de l'écran visé.
-    cible = LARGEUR / HAUTEUR
+    cible = largeur / hauteur
     actuel = im.width / im.height
     if actuel > cible:
         neuve = int(im.height * cible)
@@ -79,23 +85,28 @@ def traiter(source, destination):
         marge = (im.height - neuve) // 2
         im = im.crop((0, marge, im.width, marge + neuve))
 
-    im = im.resize((LARGEUR, HAUTEUR), Image.LANCZOS)
+    im = im.resize((largeur, hauteur), Image.LANCZOS)
     im.save(destination, 'PNG', optimize=True)
     return haut, bas
 
 
 def main():
     if len(sys.argv) < 3:
-        print('Usage : python tools/captures-ios.py <dossier source> <dossier destination>')
+        print('Usage : python tools/captures-ios.py <dossier source> <dossier destination> [moyen|grand]')
+        print('        sans troisieme argument, les deux formats sont produits.')
         sys.exit(1)
-    source, destination = sys.argv[1], sys.argv[2]
-    os.makedirs(destination, exist_ok=True)
 
+    source, destination = sys.argv[1], sys.argv[2]
+    demandes = [sys.argv[3]] if len(sys.argv) > 3 else list(FORMATS)
     fichiers = sorted(f for f in os.listdir(source) if f.lower().endswith('.png'))
-    for nom in fichiers:
-        haut, bas = traiter(os.path.join(source, nom), os.path.join(destination, nom))
-        print(f'{nom:<28} barre d\'etat retiree jusqu\'a {haut} px, bas coupe a {bas} px')
-    print(f'\n{len(fichiers)} captures ecrites dans {destination}, au format {LARGEUR}x{HAUTEUR}.')
+
+    for nom_format in demandes:
+        largeur, hauteur = FORMATS[nom_format]
+        dossier = os.path.join(destination, nom_format)
+        os.makedirs(dossier, exist_ok=True)
+        for nom in fichiers:
+            traiter(os.path.join(source, nom), os.path.join(dossier, nom), largeur, hauteur)
+        print(f'{len(fichiers)} captures en {largeur}x{hauteur} -> {dossier}')
 
 
 main()
