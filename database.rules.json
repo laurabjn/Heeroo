@@ -91,6 +91,12 @@
         ".read": "auth != null && data.child('uid').val() === auth.uid",
         ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
       }
+    },
+    "driverPayouts": {
+      "$payoutId": {
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+      }
     }
   }
 }

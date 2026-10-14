@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, waveMobile } = require('../lib/helpers');
 
 describe('toStripeAmount', () => {
   test('convertit les euros en centimes', () => {
@@ -162,5 +162,28 @@ describe('driverShare', () => {
     assert.equal(driverShare(undefined, 2), 0);
     assert.equal(driverShare('abc', 2), 0);
     assert.equal(driverShare(-10, 1), 0);
+  });
+});
+
+describe('waveMobile', () => {
+  test('nettoie les separateurs et garde l indicatif', () => {
+    assert.equal(waveMobile('+221 77 123 45 67'), '+221771234567');
+    assert.equal(waveMobile('+221-77-123-45-67'), '+221771234567');
+    assert.equal(waveMobile('+33 6 12 34 56 78'), '+33612345678');
+  });
+  test('accepte la forme internationale en 00', () => {
+    assert.equal(waveMobile('00221771234567'), '+221771234567');
+  });
+  test('complete un numero senegalais saisi sans indicatif', () => {
+    assert.equal(waveMobile('771234567'), '+221771234567');
+    assert.equal(waveMobile('77 123 45 67'), '+221771234567');
+  });
+  test('refuse ce qui n est pas exploitable', () => {
+    assert.equal(waveMobile(''), null);
+    assert.equal(waveMobile(null), null);
+    assert.equal(waveMobile('0612345678'), null);   // national, indicatif inconnu
+    assert.equal(waveMobile('+221'), null);         // indicatif seul
+    assert.equal(waveMobile('abc'), null);
+    assert.equal(waveMobile('+0123456789'), null);  // indicatif commencant par 0
   });
 });

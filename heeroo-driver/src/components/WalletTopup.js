@@ -19,6 +19,10 @@ import { base_url } from '../common/key';
 // de sorte que l'application n'embarque aucun module de paiement.
 const WAVE_COUNTRY = 'SN';
 
+// En dessous, les frais de versement de Wave mangent une part déraisonnable du
+// montant. Même seuil que côté serveur, qui refuserait la demande.
+const PAYOUT_MIN = 500;
+
 const PROVIDERS = {
   wave: {
     presets: [1000, 2500, 5000, 10000],
@@ -149,6 +153,34 @@ export default class WalletTopup extends React.Component {
     }
   };
 
+  // Retrait du crédit vers le compte Wave du chauffeur. Le serveur débite le
+  // solde avant d'appeler Wave et le restitue si le versement échoue : l'écran
+  // n'a donc rien à rattraper, il affiche ce qui s'est passé.
+  askPayout = () => {
+    const { balance } = this.state;
+    if (balance < PAYOUT_MIN) { Alert.alert(languageJSON.payout_title, languageJSON.payout_min); return; }
+    Alert.alert(
+      languageJSON.payout_title,
+      languageJSON.payout_question + '\n\n' + balance.toLocaleString('fr-FR') + ' ' + this.symbol() + '\n\n' + languageJSON.payout_hint,
+      [
+        { text: languageJSON.cancel, style: 'cancel' },
+        { text: languageJSON.payout_confirm, onPress: this.doPayout },
+      ],
+    );
+  };
+
+  doPayout = async () => {
+    this.setState({ loading: true });
+    try {
+      const result = await callFunction('requestDriverPayout', {});
+      Alert.alert(languageJSON.payout_title, languageJSON.payout_done + Number(result.amount).toLocaleString('fr-FR') + ' ' + result.currency);
+    } catch (error) {
+      Alert.alert(languageJSON.payout_title, languageJSON.payout_failed + (error && error.message ? error.message : ''));
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
   render() {
     if (!this.state.enabled) return null;
     const provider = this.provider();
@@ -160,9 +192,16 @@ export default class WalletTopup extends React.Component {
             <Text style={styles.label}>{languageJSON.credit_balance}</Text>
             <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
           </View>
-          <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
-            <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
-          </TouchableOpacity>
+          <View style={styles.actions}>
+            {this.state.country === WAVE_COUNTRY ? (
+              <TouchableOpacity style={[styles.button, styles.buttonGhost]} onPress={this.askPayout} disabled={this.state.loading}>
+                <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_button}</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
+              <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>
         {this.state.pendingSession ? <Text style={styles.pending}>{languageJSON.topup_pending}</Text> : null}
@@ -211,6 +250,9 @@ const styles = StyleSheet.create({
   balance: { fontFamily: 'Montserrat-Bold', fontSize: 22, color: colors.PRIMARY, marginTop: 2 },
   button: { backgroundColor: colors.PRIMARY, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   buttonWide: { marginTop: 14 },
+  actions: { flexDirection: 'row', gap: 8 },
+  buttonGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.PRIMARY },
+  buttonGhostText: { color: colors.PRIMARY },
   buttonText: { fontFamily: 'Montserrat-SemiBold', fontSize: 14, color: colors.WHITE },
   pending: { marginTop: 10, fontFamily: 'Montserrat-Regular', fontSize: 12, color: colors.GREY.secondary },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

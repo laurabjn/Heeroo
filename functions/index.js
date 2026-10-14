@@ -30,7 +30,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -613,13 +613,18 @@ function hostingUrl(path) {
   return `https://${config.projectId}.web.app${path}`;
 }
 
-async function waveRequest(method, path, body) {
+async function waveRequest(method, path, body, options) {
+  const { headers = {}, brut = false } = options || {};
   const response = await fetch(WAVE_API + path, {
     method,
-    headers: { Authorization: `Bearer ${WAVE_API_KEY.value()}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${WAVE_API_KEY.value()}`, 'Content-Type': 'application/json', ...headers },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
+  // Un versement doit distinguer l'échec définitif (solde insuffisant, numéro
+  // refusé) de l'incident passager (429, 5xx) : le premier se solde, le second
+  // se rejoue. L'appelant reçoit donc le statut brut quand il le demande.
+  if (brut) return { ok: response.ok, status: response.status, data };
   if (!response.ok) {
     logger.error('Wave', response.status, data);
     throw httpError(502, data.message || `Wave a répondu ${response.status}`);
@@ -807,6 +812,124 @@ exports.confirmCardTopup = httpEndpoint(async (req, res) => {
     res.json({ status: session.status === 'expired' ? 'failed' : 'pending' });
   }
 }, { secrets: [STRIPE_SECRET_KEY] });
+
+// ---------------------------------------------------------------------------
+// requestDriverPayout — verser au chauffeur le solde de son crédit, sur son
+// compte Wave.
+//
+// Le crédit du chauffeur est un registre : il monte de sa part sur chaque course
+// payée par carte, il baisse des commissions de ses courses en espèces. Ce
+// versement solde ce registre et envoie l'argent pour de vrai.
+//
+// Wave facture chaque versement : on solde donc le cumul plutôt que de verser
+// course par course. Le chauffeur n'a pas besoin d'un compte Wave — sans compte,
+// il reçoit un SMS et retire chez un agent.
+//
+// ORDRE DES OPÉRATIONS. Le solde est débité AVANT l'appel à Wave, et recrédité
+// si le versement échoue définitivement. L'ordre inverse serait plus simple,
+// mais permettrait de verser deux fois à un appel relancé après une coupure.
+// Des deux erreurs possibles, retenir un montant quelques secondes de trop vaut
+// infiniment mieux que de le payer deux fois.
+const WAVE_MIN_PAYOUT = 500;      // FCFA : en dessous, les frais Wave n'ont plus de sens
+
+exports.requestDriverPayout = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+
+  // Un administrateur peut verser pour un chauffeur depuis le back-office ;
+  // sinon, chacun ne demande que le sien.
+  const cible = (req.body && req.body.uid) || user.uid;
+  if (cible !== user.uid) {
+    const estAdmin = (await admin.database().ref(`users/${user.uid}/isAdmin`).once('value')).val();
+    if (estAdmin !== true) throw httpError(403, 'Réservé aux administrateurs');
+  }
+
+  const driverRef = admin.database().ref(`users/${cible}`);
+  const profile = (await driverRef.once('value')).val();
+  if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+
+  const mobile = waveMobile(profile.mobile);
+  if (!mobile) throw httpError(400, "Numéro de mobile inexploitable : il doit comporter l'indicatif du pays");
+
+  // Wave ne connaît que les francs CFA entiers.
+  const solde = Math.floor(Number(profile.walletBalance) || 0);
+  if (solde < WAVE_MIN_PAYOUT) {
+    throw httpError(400, `Solde insuffisant : minimum ${WAVE_MIN_PAYOUT} ${WAVE_CURRENCY}`);
+  }
+
+  const payoutRef = admin.database().ref('driverPayouts').push();
+  await payoutRef.set({
+    uid: cible,
+    amount: solde,
+    currency: WAVE_CURRENCY,
+    mobile,
+    status: 'pending',
+    requested_by: user.uid,
+    created_at: admin.database.ServerValue.TIMESTAMP,
+  });
+
+  // Réservation du montant. La transaction échoue si le solde a bougé entre la
+  // lecture et ici — une course terminée entre-temps, par exemple.
+  const reservation = await driverRef.child('walletBalance').transaction((balance) => {
+    const actuel = Number(balance) || 0;
+    return actuel < solde ? undefined : actuel - solde;
+  });
+  if (!reservation.committed) {
+    await payoutRef.update({ status: 'failed', error: 'solde modifié pendant la demande' });
+    throw httpError(409, 'Le solde a changé, relancez la demande');
+  }
+  await driverRef.child('walletHistory').push({
+    type: 'Debit',
+    reason: 'versement_wave',
+    amount: solde,
+    date: admin.database.ServerValue.TIMESTAMP,
+    txRef: payoutRef.key,
+  });
+
+  const { ok, status, data } = await waveRequest('POST', '/payout', {
+    currency: WAVE_CURRENCY,
+    receive_amount: String(solde),
+    mobile,
+    name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || undefined,
+    client_reference: payoutRef.key,
+    payment_reason: 'Gains Heeroo',
+  }, { headers: { 'Idempotency-Key': payoutRef.key }, brut: true });
+
+  const echecWave = data && data.payout_error;
+
+  // 408, 429 et 5xx : l'appel peut avoir abouti chez Wave sans que la réponse
+  // nous parvienne. On ne recrédite surtout pas — la clé d'idempotence permet
+  // de rejouer la même demande sans double versement.
+  if (!ok && (status === 408 || status === 429 || status >= 500)) {
+    await payoutRef.update({ status: 'pending', last_error: `Wave ${status}`, retriable: true });
+    logger.warn(`Versement ${payoutRef.key} : Wave a répondu ${status}, à rejouer`);
+    throw httpError(503, 'Wave est momentanément indisponible, le versement reste en attente');
+  }
+
+  if (!ok || echecWave || (data && data.status === 'failed')) {
+    const motif = (echecWave && echecWave.error_message) || (data && data.message) || `Wave ${status}`;
+    await payoutRef.update({ status: 'failed', error: motif });
+    // Échec définitif : le chauffeur retrouve son crédit.
+    await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + solde);
+    await driverRef.child('walletHistory').push({
+      type: 'Credit',
+      reason: 'versement_echoue',
+      amount: solde,
+      date: admin.database.ServerValue.TIMESTAMP,
+      txRef: payoutRef.key,
+    });
+    logger.error(`Versement ${payoutRef.key} refusé par Wave : ${motif} — crédit restitué`);
+    throw httpError(502, `Versement refusé : ${motif}`);
+  }
+
+  await payoutRef.update({
+    status: data.status === 'succeeded' ? 'succeeded' : 'processing',
+    wave_payout_id: data.id || null,
+    fee: data.fee || null,
+    confirmed_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  logger.info(`Versement ${payoutRef.key} : ${solde} ${WAVE_CURRENCY} au chauffeur ${cible} (${data.id})`);
+  res.json({ success: true, amount: solde, currency: WAVE_CURRENCY, payoutId: data.id || null, status: data.status });
+}, { secrets: [WAVE_API_KEY] });
 
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {

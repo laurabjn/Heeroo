@@ -97,4 +97,26 @@ function driverShare(tripCost, commission) {
   return Math.max(0, centimes / 100);
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, driverShare, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+/**
+ * Numéro de mobile au format E.164 attendu par Wave : un « + », l'indicatif
+ * pays, puis le numéro, sans espace ni séparateur.
+ *
+ * Rend null si le numéro n'est pas exploitable. Mieux vaut refuser un versement
+ * que l'envoyer à un numéro approximatif : chez Wave, un numéro inconnu ne
+ * rebondit pas, il déclenche un SMS invitant un inconnu à retirer l'argent chez
+ * un agent.
+ */
+function waveMobile(value) {
+  const brut = String(value || '').replace(/[\s.()-]/g, '');
+  if (!brut) return null;
+  // Un numéro sénégalais saisi sans indicatif commence par 7 et compte 9
+  // chiffres ; on le complète plutôt que de le rejeter.
+  const avecIndicatif = brut.startsWith('+') ? brut
+    : brut.startsWith('00') ? '+' + brut.slice(2)
+    : /^7\d{8}$/.test(brut) ? '+221' + brut
+    : null;
+  if (!avecIndicatif) return null;
+  return /^\+[1-9]\d{7,14}$/.test(avecIndicatif) ? avecIndicatif : null;
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, driverShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
