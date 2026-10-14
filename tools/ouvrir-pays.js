@@ -51,10 +51,61 @@ function lire(fichier) {
   return lignes.filter(Boolean);
 }
 
+/**
+ * Compare l'export d'origine au fichier produit, avant d'écraser le nœud en
+ * base. `database:set` remplace tout : la seule question qui vaille est de
+ * savoir si les lignes existantes sont intactes et si rien n'a disparu.
+ */
+function comparer(avant, apres) {
+  const a = lire(avant);
+  const b = lire(apres);
+  const cle = (l) => `${String(l.country).toUpperCase()}|${l.name}`;
+  const champs = ['country', 'name', 'min_fare', 'rate_per_hour', 'rate_per_kilometer', 'convenience_fees', 'image'];
+  const memeTarif = (x, y) => champs.every((c) => String(x[c]) === String(y[c]));
+
+  const apresParCle = new Map(b.map((l) => [cle(l), l]));
+  const disparues = a.filter((l) => !apresParCle.has(cle(l)));
+  const modifiees = a.filter((l) => {
+    const n = apresParCle.get(cle(l));
+    return n && !memeTarif(l, n);
+  });
+  const avantCles = new Set(a.map(cle));
+  const ajoutees = b.filter((l) => !avantCles.has(cle(l)));
+
+  console.log(`\nAvant : ${a.length} lignes.   Après : ${b.length} lignes.\n`);
+  console.log(`  lignes existantes conservées telles quelles : ${a.length - disparues.length - modifiees.length} / ${a.length}`);
+  console.log(`  lignes modifiées                            : ${modifiees.length}`);
+  console.log(`  lignes disparues                            : ${disparues.length}`);
+  console.log(`  lignes ajoutées                             : ${ajoutees.length}`);
+
+  for (const l of modifiees) console.log(`    MODIFIÉE  ${cle(l)}`);
+  for (const l of disparues) console.log(`    DISPARUE  ${cle(l)}`);
+
+  if (disparues.length === 0 && modifiees.length === 0) {
+    console.log('\nAucune perte : tout ce qui existait est repris à l\'identique.');
+    console.log('Vous pouvez répondre Oui à la demande d\'écrasement.\n');
+  } else {
+    console.log('\nNe pas appliquer : des lignes existantes seraient perdues ou changées.\n');
+    process.exitCode = 1;
+  }
+}
+
 function main() {
   const [fichier, ...options] = process.argv.slice(2);
+
+  if (fichier === '--comparer') {
+    const [avant, apres] = options;
+    if (!avant || !apres) {
+      console.error('Usage : node tools/ouvrir-pays.js --comparer <avant.json> <apres.json>');
+      process.exit(1);
+    }
+    comparer(avant, apres);
+    return;
+  }
+
   if (!fichier) {
     console.error('Usage : node tools/ouvrir-pays.js <export-rates.json> [--pays CI,ML] [--ecrire sortie.json]');
+    console.error('        node tools/ouvrir-pays.js --comparer <avant.json> <apres.json>');
     process.exit(1);
   }
 
