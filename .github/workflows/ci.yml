@@ -45,8 +45,13 @@ jobs:
         working-directory: .
         run: node tools/compile-sources.js ${{ matrix.app }}
 
+      # Le contrôle complet est conservé, mais une dérive de versions purement
+      # correctives devient un avertissement : Expo en publie plusieurs par
+      # semaine, et la CI tombait sur des commits n'ayant touché aucune
+      # dépendance. Tout autre décalage bloque comme avant.
       - name: Cohérence des dépendances avec le SDK Expo
-        run: npx expo-doctor
+        working-directory: .
+        run: node tools/expo-doctor-ci.js ${{ matrix.app }}
         env:
           EXPO_NO_TELEMETRY: '1'
 
