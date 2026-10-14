@@ -77,4 +77,24 @@ function commissionRate(carTypes, carType, country) {
   return Number.isFinite(rate) && rate > 0 ? rate : 0;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+/**
+ * Part revenant au chauffeur sur une course déjà encaissée par la plateforme.
+ *
+ * Elle n'est jamais négative : une commission supérieure au prix de la course
+ * trahit une erreur de paramétrage des tarifs, et mieux vaut ne rien verser que
+ * prélever de l'argent au chauffeur sur la foi d'un taux erroné.
+ */
+function driverShare(tripCost, commission) {
+  const total = Number(tripCost);
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  const retenue = Number(commission);
+  const prelevee = Number.isFinite(retenue) && retenue > 0 ? retenue : 0;
+  // Soustraction en centimes, et non en euros. 10,1 - 1,515 vaut 8,584999... en
+  // virgule flottante : l'arrondi bascule d'un centime selon le dernier bit.
+  // Ramener chaque montant à l'unité facturable avant de soustraire rend le
+  // résultat indépendant de la représentation machine.
+  const centimes = Math.round(total * 100) - Math.round(prelevee * 100);
+  return Math.max(0, centimes / 100);
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, driverShare, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };

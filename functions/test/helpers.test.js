@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare } = require('../lib/helpers');
 
 describe('toStripeAmount', () => {
   test('convertit les euros en centimes', () => {
@@ -131,4 +131,36 @@ test('fromStripeAmount annule toStripeAmount', () => {
   for (const [value, currency] of [[12.5, 'EUR'], [0.01, 'EUR'], [5000, 'XOF']]) {
     assert.equal(fromStripeAmount(toStripeAmount(value, currency), currency), value);
   }
+});
+
+describe('driverShare', () => {
+  test('retranche la commission du prix de la course', () => {
+    assert.equal(driverShare(20, 3), 17);
+    assert.equal(driverShare('20', '3'), 17);
+    assert.equal(driverShare(2500, 325), 2175);   // francs CFA, unités entières
+  });
+  test("arrondit au centime sans trainer d'erreur flottante", () => {
+    // La commission est d'abord ramenee au centime (1,515 -> 1,52), puis
+    // retranchee : 10,10 - 1,52 = 8,58. Sans cela le resultat dependrait de la
+    // representation flottante de 8,584999...
+    assert.equal(driverShare(10.1, 1.515), 8.58);
+    assert.equal(driverShare(0.3, 0.1), 0.2);
+    assert.equal(driverShare(0.1 + 0.2, 0.1), 0.2);
+  });
+  test('rend le prix entier quand la commission est nulle ou absente', () => {
+    assert.equal(driverShare(20, 0), 20);
+    assert.equal(driverShare(20, undefined), 20);
+    assert.equal(driverShare(20, 'abc'), 20);
+    assert.equal(driverShare(20, -5), 20);
+  });
+  test('ne rend jamais une part negative', () => {
+    // Un taux de commission mal saisi ne doit pas se traduire par un debit.
+    assert.equal(driverShare(10, 25), 0);
+  });
+  test('vaut 0 pour une course sans prix', () => {
+    assert.equal(driverShare(0, 0), 0);
+    assert.equal(driverShare(undefined, 2), 0);
+    assert.equal(driverShare('abc', 2), 0);
+    assert.equal(driverShare(-10, 1), 0);
+  });
 });

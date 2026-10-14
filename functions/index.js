@@ -30,7 +30,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -1056,8 +1056,32 @@ exports.onBookingCompleted = onValueUpdated(
       commission_charged_at: admin.database.ServerValue.TIMESTAMP,
     });
 
+    // Course réglée par carte : la plateforme détient l'argent du passager, et
+    // le chauffeur n'a rien encaissé. Sa part lui est donc portée au crédit, où
+    // elle vient en déduction des commissions de ses courses en espèces. La
+    // société ne lui règle plus que le solde.
+    //
+    // C'est le dispositif retenu partout où le versement bancaire automatique
+    // n'est pas possible — au Sénégal notamment, Stripe ne versant pas vers les
+    // comptes bancaires locaux. Quand le virement automatique sera en place, il
+    // viendra se substituer à ce crédit pour les chauffeurs qui en disposent.
     if (paidByCard) {
-      logger.info(`Course ${bookingId} : commission ${commission} retenue sur le paiement par carte, crédit chauffeur inchangé`);
+      const part = driverShare(tripCost, commission);
+      if (part <= 0) {
+        logger.info(`Course ${bookingId} : part chauffeur nulle (prix ${tripCost}, commission ${commission})`);
+        return;
+      }
+      const driverRef = admin.database().ref(`users/${booking.driver}`);
+      await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) + part);
+      await driverRef.child('walletHistory').push({
+        type: 'Credit',
+        reason: 'part_course_carte',
+        amount: part,
+        date: admin.database.ServerValue.TIMESTAMP,
+        txRef: bookingId,
+      });
+      await bookingRef.update({ driver_share: part, driver_share_credited_at: admin.database.ServerValue.TIMESTAMP });
+      logger.info(`Course ${bookingId} : commission ${commission} retenue sur le paiement par carte, part ${part} créditée au chauffeur ${booking.driver}`);
       return;
     }
 
