@@ -441,7 +441,7 @@ exports.createPaymentIntent = httpEndpoint(async (req, res) => {
     description: `Course Heeroo ${bookingId}`,
     receipt_email: user.email || undefined,
     metadata: { bookingId, uid: user.uid, driver: booking.driver || '' },
-  });
+  }, { idempotencyKey: `paiement-${bookingId}` });
   res.json({
     clientSecret: intent.client_secret,
     paymentIntentId: intent.id,
@@ -480,7 +480,24 @@ const AUTHORIZATION_MARGIN = 1.3;
 
 exports.authorizeRideCard = httpEndpoint(async (req, res) => {
   const user = await requireUser(req);
-  const { estimate, currency: rawCurrency, carType } = req.body || {};
+  const { estimate, currency: rawCurrency, carType, requestId } = req.body || {};
+
+  // Sans cle d'idempotence, un renvoi apres une coupure reseau creait une
+  // SECONDE empreinte : deux blocages sur la carte du passager, dont le premier
+  // n'etait jamais libere et trainait jusqu'a expiration, une semaine plus tard.
+  //
+  // La course n'existe pas encore a cet instant — elle n'est creee qu'une fois
+  // l'empreinte acceptee — donc rien cote serveur ne distingue une nouvelle
+  // demande d'un renvoi. C'est l'app qui tranche : elle tire un identifiant au
+  // moment ou le passager confirme, et le reutilise tant que la reservation
+  // n'a pas abouti. Stripe rend alors la meme empreinte au lieu d'en creer une
+  // autre.
+  //
+  // L'identifiant est prefixe par l'utilisateur : deux passagers ne peuvent pas
+  // se marcher dessus, meme en cas de collision improbable.
+  const tentative = typeof requestId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(requestId)
+    ? `empreinte-${user.uid}-${requestId}`
+    : null;
   const estimated = Number(estimate);
   if (!Number.isFinite(estimated) || estimated <= 0) throw httpError(400, 'Estimation de course invalide');
 
@@ -499,7 +516,7 @@ exports.authorizeRideCard = httpEndpoint(async (req, res) => {
     description: `Empreinte course Heeroo (${carType || 'course'})`,
     receipt_email: user.email || undefined,
     metadata: { uid: user.uid, kind: 'ride_authorization', estimate: String(estimated) },
-  });
+  }, tentative ? { idempotencyKey: tentative } : undefined);
   res.json({
     clientSecret: intent.client_secret,
     paymentIntentId: intent.id,
@@ -1160,6 +1177,58 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
 // versement refuse, lui, est trace sans interrompre les suivants — l'echec d'un
 // chauffeur ne doit pas priver les autres de leur paie.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// expireUnansweredBookings — annuler les courses que personne n'accepte.
+//
+// Une course restait en attente indefiniment si aucun chauffeur ne la prenait,
+// et l'empreinte bancaire avec elle. Un passager qui refermait simplement
+// l'application voyait son argent bloque une semaine, le temps que Stripe laisse
+// expirer l'autorisation de lui-meme.
+//
+// Passe le delai, la course est annulee. Le passage en CANCELLED declenche la
+// liberation de l'empreinte par le chemin habituel, celui qui sert deja aux
+// annulations manuelles — on ne duplique pas cette logique.
+//
+// Le balayage tourne toutes les deux minutes : assez souvent pour que le
+// passager ne poireaute pas, assez rare pour ne rien couter. Seules les courses
+// encore en NEW sont lues, et il n'y en a jamais beaucoup — ce sont celles qui
+// attendent un chauffeur a cet instant.
+// ---------------------------------------------------------------------------
+const BOOKING_EXPIRY_MINUTES = 10;
+
+exports.expireUnansweredBookings = onSchedule(
+  {
+    schedule: 'every 2 minutes',
+    timeZone: 'Europe/Paris',
+    region: REGION,
+    secrets: [STRIPE_SECRET_KEY],
+  },
+  async () => {
+    const limite = Date.now() - BOOKING_EXPIRY_MINUTES * 60 * 1000;
+    const attente = (await admin.database().ref('bookings').orderByChild('status').equalTo('NEW').once('value')).val() || {};
+
+    let expirees = 0;
+    for (const [bookingId, booking] of Object.entries(attente)) {
+      if (!booking) continue;
+      const depuis = Number(booking.tripdate);
+      if (!Number.isFinite(depuis) || depuis > limite) continue;
+
+      // On passe par le statut : onBookingStatusChanged libere l'empreinte et
+      // previent le passager, exactement comme pour une annulation manuelle.
+      await admin.database().ref(`bookings/${bookingId}`).update({
+        status: 'CANCELLED',
+        cancelledBy: 'system',
+        reason: "Aucun chauffeur n'a accepté la course",
+        cancel_date: admin.database.ServerValue.TIMESTAMP,
+      });
+      expirees += 1;
+      logger.info(`Course ${bookingId} expirée après ${BOOKING_EXPIRY_MINUTES} min sans chauffeur`);
+    }
+
+    if (expirees) logger.info(`Expiration : ${expirees} course(s) annulée(s) faute de chauffeur`);
+  }
+);
+
 exports.weeklyDriverPayouts = onSchedule(
   {
     schedule: 'every monday 08:00',

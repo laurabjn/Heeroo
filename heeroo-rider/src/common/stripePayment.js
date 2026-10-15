@@ -93,12 +93,12 @@ export async function payBookingWithCard({ bookingId, email, merchantCountryCode
  * { authorized: false, canceled: true } s'il a renoncé, et rejette en cas
  * d'échec (carte refusée, réseau…).
  */
-export async function authorizeRideWithCard({ estimate, currency = 'EUR', carType, email, merchantCountryCode = 'FR' }) {
+export async function authorizeRideWithCard({ estimate, currency = 'EUR', carType, email, requestId, merchantCountryCode = 'FR' }) {
   const idToken = await firebase.auth().currentUser.getIdToken();
   const response = await fetch(base_url + 'authorizeRideCard', {
     method: 'post',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-    body: JSON.stringify({ estimate, currency, carType }),
+    body: JSON.stringify({ estimate, currency, carType, requestId }),
   });
   const data = await response.json();
   if (!response.ok || !data.clientSecret) {

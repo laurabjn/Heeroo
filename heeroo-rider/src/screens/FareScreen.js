@@ -322,17 +322,27 @@ export default class FareScreen extends React.Component {
         if (this.state.paymentMode === 'Card') {
             try {
                 this.setState({ loading: true });
+                // Identifiant de tentative, tire une seule fois et conserve
+                // tant que la reservation n'a pas abouti. Il rend l'empreinte
+                // idempotente : un renvoi apres une coupure reseau retombe sur
+                // la meme autorisation au lieu d'en bloquer une seconde sur la
+                // carte du passager.
+                if (!this.cardRequestId) {
+                    this.cardRequestId = Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+                }
                 const result = await authorizeRideWithCard({
                     estimate: parseFloat(this.state.estimateFare) || 0,
                     currency: countryCurrency[this.state.country] || 'EUR',
                     carType: this.state.carType,
                     email: this.state.userDetails && this.state.userDetails.email,
+                    requestId: this.cardRequestId,
                 });
                 if (result.canceled) {
                     this.setState({ loading: false });
                     return;
                 }
                 this.authorizedIntentId = result.paymentIntentId;
+                this.cardRequestId = null;   // tentative close : la suivante aura son propre identifiant
             } catch (error) {
                 this.setState({ loading: false });
                 Alert.alert(languageJSON.Error || 'Erreur', error.message || String(error));
