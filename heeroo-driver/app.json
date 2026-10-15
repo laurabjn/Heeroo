@@ -2,7 +2,7 @@
   "expo": {
     "name": "Heeroo Driver",
     "slug": "heeroo-driver",
-    "version": "1.4.1",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/images/appIcon.png",
     "userInterfaceStyle": "light",
@@ -50,7 +50,7 @@
           "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 5
+      "versionCode": 6
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
