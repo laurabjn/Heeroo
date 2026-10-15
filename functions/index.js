@@ -965,6 +965,19 @@ async function soldeDisponible(driverRef, profile, devise) {
   return { solde: arrondi(brut), retenu: arrondi(retenu), disponible: Math.max(0, arrondi(brut - retenu)) };
 }
 
+// Projet de production. Sert de frontiere a une seule chose, mais elle compte :
+// Wave n'a pas d'environnement de test. La meme cle, les memes numeros, le meme
+// argent — un versement declenche depuis le developpement partirait pour de bon,
+// chez un vrai destinataire. Stripe, lui, distingue test et production par la
+// cle employee : ses virements sur dev sont fictifs et peuvent donc etre
+// eprouves sans risque.
+const PROJET_PRODUCTION = 'projet-test-d7cd9';
+
+function estProduction() {
+  const config = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
+  return (config.projectId || process.env.GCLOUD_PROJECT) === PROJET_PRODUCTION;
+}
+
 /**
  * Par ou verser a ce chauffeur, ou null si aucun canal n'est ouvert.
  *
@@ -978,6 +991,10 @@ function canalDeVersement(profile) {
   }
   const mobile = waveMobile(profile.mobile);
   if (mobile && mobile.startsWith('+221')) {
+    if (!estProduction()) {
+      logger.info(`Versement Wave ignoré hors production pour ${mobile.slice(0, 7)}…`);
+      return null;
+    }
     return { nom: 'wave', devise: WAVE_CURRENCY, minimum: WAVE_MIN_PAYOUT, mobile };
   }
   return null;
