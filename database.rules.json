@@ -49,6 +49,7 @@
       ".write": "auth != null"
     },
     "users": {
+      ".indexOn": ["usertype"],
       ".read": "auth != null",
       "$uid": {
         ".write": "auth != null",
