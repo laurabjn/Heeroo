@@ -1321,6 +1321,28 @@ exports.weeklyDriverPayouts = onSchedule(
   }
 );
 
+// ---------------------------------------------------------------------------
+// waveBalance — solde du portefeuille Wave de la societe.
+//
+// Un versement Wave est refuse si le portefeuille ne couvre pas le montant plus
+// les frais. Jusqu'ici ce portefeuille ne faisait qu'encaisser les recharges des
+// chauffeurs ; il doit desormais aussi les payer, et personne n'avait de moyen
+// de savoir ce qu'il contient sans ouvrir le tableau de bord de Wave.
+//
+// Sert accessoirement de preuve que la cle API fonctionne et porte bien les
+// droits attendus — sans deplacer un centime.
+// ---------------------------------------------------------------------------
+exports.waveBalance = httpEndpoint(async (req, res) => {
+  await requireAdmin(req);
+  const solde = await waveRequest('GET', '/balance');
+  const montant = Number(solde.amount);
+  res.json({
+    amount: Number.isFinite(montant) ? montant : null,
+    currency: solde.currency || WAVE_CURRENCY,
+    raw: solde.amount,
+  });
+}, { secrets: [WAVE_API_KEY] });
+
 exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_SECRET] })
   .https.onRequest(async (req, res) => {
     if (!waveSignatureValid(req.headers['wave-signature'], req.rawBody, WAVE_WEBHOOK_SECRET.value())) {
