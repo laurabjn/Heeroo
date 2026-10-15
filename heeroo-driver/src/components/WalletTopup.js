@@ -209,21 +209,23 @@ export default class WalletTopup extends React.Component {
     return (
       <View style={styles.card}>
         <View style={styles.row}>
-          <View>
+          <View style={styles.soldeBloc}>
             <Text style={styles.label}>{languageJSON.credit_balance}</Text>
             <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
           </View>
-          <View style={styles.actions}>
-            {this.canWithdraw() ? null : (
-              <TouchableOpacity style={[styles.button, styles.buttonGhost]} onPress={this.startBankSetup} disabled={this.state.loading}>
-                <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_setup}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
-              <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
+            <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
+          </TouchableOpacity>
         </View>
+        {/* Deux boutons cote a cote debordaient de l'ecran et recouvraient le
+            libelle du solde : « Recevoir mes gains » est long, et la largeur
+            d'un telephone ne se negocie pas. L'inscription bancaire prend donc
+            sa propre ligne, pleine largeur. */}
+        {this.canWithdraw() ? null : (
+          <TouchableOpacity style={[styles.button, styles.buttonGhost, styles.buttonWide]} onPress={this.startBankSetup} disabled={this.state.loading}>
+            <Text style={[styles.buttonText, styles.buttonGhostText]}>{languageJSON.payout_setup}</Text>
+          </TouchableOpacity>
+        )}
         <Text style={styles.pending}>{languageJSON.credit_commission_note}</Text>
         {this.canWithdraw() ? <Text style={styles.pending}>{languageJSON.payout_weekly}</Text> : null}
         {this.state.apercu && this.state.apercu.available > 0 ? (
@@ -291,7 +293,7 @@ const styles = StyleSheet.create({
   balance: { fontFamily: 'Montserrat-Bold', fontSize: 22, color: colors.PRIMARY, marginTop: 2 },
   button: { backgroundColor: colors.PRIMARY, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   buttonWide: { marginTop: 14 },
-  actions: { flexDirection: 'row', gap: 8 },
+  soldeBloc: { flex: 1, marginRight: 12 },
   buttonGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.PRIMARY },
   buttonGhostText: { color: colors.PRIMARY },
   buttonText: { fontFamily: 'Montserrat-SemiBold', fontSize: 14, color: colors.WHITE },
