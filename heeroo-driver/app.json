@@ -50,7 +50,7 @@
           "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 6
+      "versionCode": 7
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
