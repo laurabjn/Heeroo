@@ -1026,6 +1026,37 @@ async function verserParWave(canal, profile, montant, reference) {
 }
 
 /**
+ * Relit l'etat du dossier bancaire directement chez Stripe.
+ *
+ * Le webhook reste le chemin normal, mais il n'est pas sur : un evenement emis
+ * avant que l'endpoint existe est perdu pour toujours, et le chauffeur resterait
+ * bloque sur « en verification » alors que Stripe l'a valide depuis longtemps.
+ *
+ * On interroge donc Stripe quand le chauffeur consulte son credit, tant que ses
+ * versements ne sont pas autorises. L'appel cesse des que le dossier est bon :
+ * il n'y a plus rien a apprendre.
+ */
+async function rafraichirDossierStripe(driverRef, profile) {
+  if (!profile.stripe_account_id || profile.stripe_payouts_enabled === true) return profile;
+  try {
+    const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+    const compte = await stripe.accounts.retrieve(profile.stripe_account_id);
+    const manquant = (compte.requirements && compte.requirements.currently_due) || [];
+    const etat = compte.payouts_enabled === true ? 'actif'
+      : manquant.length ? 'pieces_manquantes' : 'en_verification';
+    if (compte.payouts_enabled === true || etat !== profile.stripe_account_status) {
+      await driverRef.update({ stripe_payouts_enabled: compte.payouts_enabled === true, stripe_account_status: etat });
+      logger.info(`Dossier Stripe relu pour ${driverRef.key} : versements ${compte.payouts_enabled ? 'autorisés' : 'bloqués'} (${etat})`);
+    }
+    return { ...profile, stripe_payouts_enabled: compte.payouts_enabled === true, stripe_account_status: etat };
+  } catch (error) {
+    // Stripe injoignable ne doit pas empecher d'afficher le credit.
+    logger.warn(`Relecture du dossier Stripe impossible pour ${driverRef.key} : ${error.message}`);
+    return profile;
+  }
+}
+
+/**
  * Verse a un chauffeur ce qui lui est du. Coeur commun au versement
  * hebdomadaire et a la demande ponctuelle d'un administrateur.
  *
@@ -1036,8 +1067,9 @@ async function verserParWave(canal, profile, montant, reference) {
  */
 async function effectuerVersement(cible, demandeur) {
   const driverRef = admin.database().ref(`users/${cible}`);
-  const profile = (await driverRef.once('value')).val();
-  if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+  const brut = (await driverRef.once('value')).val();
+  if (!brut || brut.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+  const profile = await rafraichirDossierStripe(driverRef, brut);
 
   const canal = canalDeVersement(profile);
   if (!canal) return { verse: false, motif: 'aucun moyen de versement' };
@@ -1139,8 +1171,11 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
 
   if (apercu) {
     const driverRef = admin.database().ref(`users/${cible}`);
-    const profile = (await driverRef.once('value')).val();
-    if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+    const brut = (await driverRef.once('value')).val();
+    if (!brut || brut.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+    // Le chauffeur consulte : c'est le bon moment pour rattraper un evenement
+    // Stripe manque. Sans cela, un webhook perdu le bloquerait indefiniment.
+    const profile = await rafraichirDossierStripe(driverRef, brut);
     const canal = canalDeVersement(profile);
     if (!canal) {
       res.json({ preview: true, channel: null, holdDays: PAYOUT_HOLD_DAYS });
