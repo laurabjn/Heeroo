@@ -1196,6 +1196,15 @@ exports.requestDriverPayout = httpEndpoint(async (req, res) => {
 // ---------------------------------------------------------------------------
 const BOOKING_EXPIRY_MINUTES = 10;
 
+// Au-dela, une course en NEW n'attend plus personne : c'est un residu laisse par
+// une ancienne version, un plantage, un compte efface. L'annuler ne rendrait
+// service a personne et enverrait une notification « course annulee » a
+// quelqu'un qui a oublie jusqu'a l'existence de cette course — la production en
+// comptait 65, dont la plus ancienne remontait a mars 2022.
+//
+// La fenetre delimite donc ce que cette fonction considere comme vivant.
+const BOOKING_EXPIRY_MAX_AGE_HOURS = 24;
+
 exports.expireUnansweredBookings = onSchedule(
   {
     schedule: 'every 2 minutes',
@@ -1205,6 +1214,7 @@ exports.expireUnansweredBookings = onSchedule(
   },
   async () => {
     const limite = Date.now() - BOOKING_EXPIRY_MINUTES * 60 * 1000;
+    const plancher = Date.now() - BOOKING_EXPIRY_MAX_AGE_HOURS * 60 * 60 * 1000;
     const attente = (await admin.database().ref('bookings').orderByChild('status').equalTo('NEW').once('value')).val() || {};
 
     let expirees = 0;
@@ -1212,6 +1222,7 @@ exports.expireUnansweredBookings = onSchedule(
       if (!booking) continue;
       const depuis = Number(booking.tripdate);
       if (!Number.isFinite(depuis) || depuis > limite) continue;
+      if (depuis < plancher) continue;   // residu, pas une course en attente
 
       // On passe par le statut : onBookingStatusChanged libere l'empreinte et
       // previent le passager, exactement comme pour une annulation manuelle.
