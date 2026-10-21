@@ -28,6 +28,9 @@
 # Firebase (firebase.json et .firebaserc sont versionnés : ils décrivent le déploiement)
 **/firebase-debug.log
 **/firebase-debug.*
+# Caches du deploiement hosting : regeneres a chaque `firebase deploy`,
+# propres a la machine, et sans interet pour qui relit le depot.
+.firebase/hosting.*.cache
 **/functions/node_modules/
 
 # Bundler output files
