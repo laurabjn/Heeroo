@@ -4,7 +4,26 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, driverShare, heldShare, waveMobile } = require('../lib/helpers');
+
+describe('compteStripePour', () => {
+  test('rend la monnaie du pays', () => {
+    assert.deepEqual(compteStripePour('FR'), { pays: 'FR', devise: 'EUR' });
+    assert.deepEqual(compteStripePour('GB'), { pays: 'GB', devise: 'GBP' });
+    assert.deepEqual(compteStripePour('BE'), { pays: 'BE', devise: 'EUR' });
+  });
+  test('accepte un code mal saisi', () => {
+    assert.deepEqual(compteStripePour(' gb '), { pays: 'GB', devise: 'GBP' });
+  });
+  test('rend null pour un pays que Stripe ne sert pas', () => {
+    // Le Senegal passe par Wave : lui ouvrir un compte Stripe donnerait un
+    // compte que rien n'alimente.
+    assert.equal(compteStripePour('SN'), null);
+    assert.equal(compteStripePour('XX'), null);
+    assert.equal(compteStripePour(''), null);
+    assert.equal(compteStripePour(undefined), null);
+  });
+});
 
 describe('toStripeAmount', () => {
   test('convertit les euros en centimes', () => {

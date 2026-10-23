@@ -145,4 +145,32 @@ function heldShare(entries, now, delai) {
   return Math.max(0, Math.round(total * 100) / 100);
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+/**
+ * Pays ou un compte Stripe Connect peut etre ouvert pour un chauffeur, et la
+ * monnaie dans laquelle ce compte est regle.
+ *
+ * Le pays etait fige a 'FR' a la creation du compte, et la devise du virement
+ * a 'EUR' au versement. Tant que les chauffeurs etaient francais ou senegalais
+ * cela passait inapercu : les premiers recevaient des euros, les seconds
+ * passaient par Wave. Un chauffeur britannique, lui, se verrait ouvrir un
+ * compte francais et recevrait des euros sur un compte en livres — Stripe
+ * refuse, ou convertit a ses conditions.
+ *
+ * La liste est volontairement courte. Y ajouter un pays sans verifier que
+ * Stripe y ouvre des comptes Express produirait des comptes qu'aucun virement
+ * n'atteindrait jamais, et le chauffeur ne le saurait qu'au premier lundi.
+ */
+const COMPTES_STRIPE = {
+  FR: 'EUR', BE: 'EUR', DE: 'EUR', ES: 'EUR', IT: 'EUR',
+  IE: 'EUR', LU: 'EUR', NL: 'EUR', PT: 'EUR', AT: 'EUR',
+  GB: 'GBP',
+};
+
+/** { pays, devise } pour un compte Stripe, ou null si le pays n'est pas servi. */
+function compteStripePour(country) {
+  const pays = String(country || '').trim().toUpperCase();
+  const devise = COMPTES_STRIPE[pays];
+  return devise ? { pays, devise } : null;
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, compteStripePour, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };

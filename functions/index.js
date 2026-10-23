@@ -31,7 +31,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { compteStripePour, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -902,9 +902,16 @@ exports.startDriverStripeOnboarding = httpEndpoint(async (req, res) => {
   }
 
   if (!accountId) {
+    // Le pays decide de la monnaie du compte : un compte francais est regle en
+    // euros, un compte britannique en livres. L'ouvrir dans le mauvais pays ne
+    // se rattrape pas ensuite — Stripe ne change pas le pays d'un compte.
+    const compte = compteStripePour(profile.country) || { pays: 'FR', devise: 'EUR' };
+    if (!compteStripePour(profile.country)) {
+      logger.warn(`Pays ${profile.country || 'absent'} non servi par Stripe pour ${user.uid} : compte ouvert en France`);
+    }
     const account = await stripe.accounts.create({
       type: 'express',
-      country: 'FR',
+      country: compte.pays,
       email: user.email || profile.email || undefined,
       business_type: 'individual',
       // Seul le virement est demande : la societe encaisse le passager, le
@@ -914,7 +921,14 @@ exports.startDriverStripeOnboarding = httpEndpoint(async (req, res) => {
       metadata: { uid: user.uid },
     });
     accountId = account.id;
-    await driverRef.update({ stripe_account_id: accountId, stripe_payouts_enabled: false, stripe_account_status: 'en_verification' });
+    await driverRef.update({
+      stripe_account_id: accountId,
+      stripe_payouts_enabled: false,
+      stripe_account_status: 'en_verification',
+      // Retenue a la creation : c'est la seule occasion de la connaitre sans
+      // reinterroger Stripe, et le versement du lundi en a besoin.
+      stripe_payout_currency: compte.devise,
+    });
   }
 
   const lien = await stripe.accountLinks.create({
@@ -944,7 +958,8 @@ exports.startDriverStripeOnboarding = httpEndpoint(async (req, res) => {
 // Des deux erreurs possibles, retenir un montant quelques secondes de trop vaut
 // infiniment mieux que de le payer deux fois.
 const WAVE_MIN_PAYOUT = 500;      // FCFA : en dessous, les frais Wave n'ont plus de sens
-const STRIPE_MIN_PAYOUT = 5;     // euros
+// Minimum par devise : en dessous, les frais du virement mangent la somme.
+const STRIPE_MIN_PAYOUT = { EUR: 5, GBP: 5 };
 
 // Delai de securite avant qu'une part de course payee par carte devienne
 // retirable. Un impayé peut tomber des semaines plus tard, et si le chauffeur a
@@ -987,7 +1002,9 @@ function estProduction() {
  */
 function canalDeVersement(profile) {
   if (profile.stripe_account_id && profile.stripe_payouts_enabled === true) {
-    return { nom: 'stripe', devise: 'EUR', minimum: STRIPE_MIN_PAYOUT };
+    // Les comptes ouverts avant que la devise soit retenue sont tous francais.
+    const devise = String(profile.stripe_payout_currency || 'EUR').toUpperCase();
+    return { nom: 'stripe', devise, minimum: STRIPE_MIN_PAYOUT[devise] || STRIPE_MIN_PAYOUT.EUR };
   }
   const mobile = waveMobile(profile.mobile);
   if (mobile && mobile.startsWith('+221')) {
@@ -1059,6 +1076,12 @@ async function rafraichirDossierStripe(driverRef, profile) {
     const stripe = new Stripe(STRIPE_SECRET_KEY.value());
     const compte = await stripe.accounts.retrieve(profile.stripe_account_id);
     const manquant = (compte.requirements && compte.requirements.currently_due) || [];
+    // Rattrape la devise des comptes ouverts avant qu'elle soit retenue.
+    const devise = String(compte.default_currency || '').toUpperCase();
+    if (devise && devise !== String(profile.stripe_payout_currency || '').toUpperCase()) {
+      await driverRef.update({ stripe_payout_currency: devise });
+      profile = { ...profile, stripe_payout_currency: devise };
+    }
     const etat = compte.payouts_enabled === true ? 'actif'
       : manquant.length ? 'pieces_manquantes' : 'en_verification';
     if (compte.payouts_enabled === true || etat !== profile.stripe_account_status) {

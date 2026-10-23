@@ -3,6 +3,7 @@
 //   node tools/ouvrir-pays.js tarifs-actuels.json                  # aperçu
 //   node tools/ouvrir-pays.js tarifs-actuels.json --ecrire out.json
 //   node tools/ouvrir-pays.js tarifs-actuels.json --pays CI,ML,BF
+//   node tools/ouvrir-pays.js tarifs-actuels.json --pays GB --tarifs-locaux gb.json
 //
 // L'application cherche le tarif par correspondance stricte du pays
 // (FareScreen : `car_type[i].name == carType && car_type[i].country == country`).
@@ -18,10 +19,23 @@
 const fs = require('fs');
 const path = require('path');
 
-// Seules ces monnaies sont converties, faute de quoi les tarifs saisis en euros
-// s'appliqueraient tels quels (voir FareCalculator). Le franc CFA est arrimé à
-// l'euro à parité fixe : aucun taux de change en ligne n'est nécessaire.
-const MONNAIES_SUPPORTEES = new Set(['EUR', 'XOF', 'XAF']);
+// Monnaies converties depuis l'euro. Le franc CFA est arrimé à l'euro à parité
+// fixe et légale : aucun taux de change en ligne n'est nécessaire, et un tarif
+// saisi en euros donne le bon prix en francs.
+const MONNAIES_CONVERTIES = new Set(['EUR', 'XOF', 'XAF']);
+
+// Monnaies à tarification locale : rien ne les arrime à l'euro, donc rien ne
+// les convertit. FareCalculator leur applique un taux de 1, et les tarifs
+// stockés s'affichent tels quels dans la monnaie du pays.
+//
+// Ce n'est pas un pis-aller : aucun VTC ne re-tarife ses courses chaque fois
+// que la livre bouge, les prix se fixent marché par marché. Mais cela veut dire
+// qu'une grille recopiée depuis la France y serait fausse — une course à 20 €
+// deviendrait 20 £, soit un quart plus cher. D'où l'avertissement à l'ouverture
+// et l'option --tarifs-locaux pour y poser de vrais prix.
+const MONNAIES_LOCALES = new Set(['GBP']);
+
+const MONNAIES_SUPPORTEES = new Set([...MONNAIES_CONVERTIES, ...MONNAIES_LOCALES]);
 
 const CURRENCIES = require(path.join(__dirname, '..', 'heeroo-rider', 'src', 'constants', 'countryCurrency.json'));
 
@@ -41,7 +55,8 @@ function paysOuvrables() {
  * départ cohérent, à ajuster ensuite pays par pays dans le back-office.
  */
 function modelePour(pays) {
-  return CURRENCIES[pays] === 'EUR' ? 'FR' : 'SN';
+  const monnaie = CURRENCIES[pays];
+  return monnaie === 'XOF' || monnaie === 'XAF' ? 'SN' : 'FR';
 }
 
 // Parité fixe et légale du franc CFA, identique pour l'UEMOA et la CEMAC.
@@ -77,8 +92,53 @@ function appliquerGrilleCfa(lignes, grille) {
   return touchees;
 }
 
+/**
+ * Applique une grille exprimée dans la monnaie du pays, sans conversion.
+ *
+ * Format attendu, un bloc par pays :
+ *   { "GB": { "Green": { "min": 6, "km": 0.80, "heure": 9, "commission": 15 }, … } }
+ *
+ * À la différence de la grille franc CFA, rien n'est divisé : ces monnaies ne
+ * sont pas converties à l'affichage, donc ce qui est écrit ici est exactement
+ * ce que le passager verra.
+ */
+function appliquerGrilleLocale(lignes, grilles) {
+  const touchees = [];
+  for (const ligne of lignes) {
+    const pays = String(ligne.country).toUpperCase();
+    const grille = grilles[pays];
+    if (!grille) continue;
+    const prix = grille[ligne.name];
+    if (!prix) continue;
+
+    ligne.min_fare = String(prix.min);
+    ligne.rate_per_kilometer = prix.km;
+    ligne.rate_per_hour = prix.heure;
+    if (prix.commission !== undefined) ligne.convenience_fees = prix.commission;
+    touchees.push(`${pays}/${ligne.name}`);
+  }
+  return touchees;
+}
+
+/**
+ * Lit un export, quel que soit l'encodage qu'il a recu.
+ *
+ * `firebase-tools database:get > fichier.json` sous PowerShell ecrit de
+ * l'UTF-16 avec marque d'ordre : JSON.parse s'y casse les dents sur le premier
+ * caractere, avec un message qui ne dit pas pourquoi. On reconnait la marque et
+ * on decode en consequence plutot que d'exiger de l'utilisateur qu'il sache
+ * quel encodage son terminal a choisi.
+ */
+function lireTexte(fichier) {
+  const octets = fs.readFileSync(fichier);
+  if (octets[0] === 0xff && octets[1] === 0xfe) return octets.toString('utf16le').slice(1);
+  if (octets[0] === 0xfe && octets[1] === 0xff) return octets.swap16().toString('utf16le').slice(1);
+  if (octets[0] === 0xef && octets[1] === 0xbb && octets[2] === 0xbf) return octets.toString('utf8').slice(1);
+  return octets.toString('utf8');
+}
+
 function lire(fichier) {
-  const brut = JSON.parse(fs.readFileSync(fichier, 'utf8'));
+  const brut = JSON.parse(lireTexte(fichier));
   // La base rend tantôt un tableau, tantôt un objet indexé selon les trous.
   const lignes = Array.isArray(brut) ? brut : Object.values(brut || {});
   return lignes.filter(Boolean);
@@ -164,6 +224,14 @@ function main() {
   }
   const retenus = cibles.filter((p) => MONNAIES_SUPPORTEES.has(CURRENCIES[p]));
 
+  const locaux = retenus.filter((p) => MONNAIES_LOCALES.has(CURRENCIES[p]));
+  if (locaux.length) {
+    console.error(`\nATTENTION — ${locaux.join(', ')} : monnaie non convertie.`);
+    console.error('Les gammes y sont recopiées depuis la France pour exister, mais leurs prix');
+    console.error('seraient appliqués tels quels dans la monnaie du pays. Posez une vraie');
+    console.error('grille avec --tarifs-locaux avant d\'écrire quoi que ce soit en base.\n');
+  }
+
   // Gammes à décliner, prises sur chaque modèle.
   const modeles = {};
   for (const modele of ['FR', 'SN']) {
@@ -201,7 +269,7 @@ function main() {
 
   const fichierGrille = valeur('--tarifs-cfa');
   if (fichierGrille) {
-    const grille = JSON.parse(fs.readFileSync(fichierGrille, 'utf8'));
+    const grille = JSON.parse(lireTexte(fichierGrille));
     const touchees = appliquerGrilleCfa(final, grille);
     console.log(`Grille franc CFA appliquée à ${touchees.length} lignes, pays déjà ouverts compris.\n`);
     console.log('GAMME       MINIMUM        AU KM        A L\'HEURE   COMMISSION');
@@ -221,6 +289,32 @@ function main() {
       const [nom, p] = exemple;
       const course = 10 * p.km + (25 / 60) * p.heure;
       console.log(`\nExemple : ${nom}, 10 km en 25 minutes = ${Math.round(Math.max(course, p.min)).toLocaleString('fr-FR')} FCFA.\n`);
+    }
+  }
+
+  const fichierLocal = valeur('--tarifs-locaux');
+  if (fichierLocal) {
+    const grilles = JSON.parse(lireTexte(fichierLocal));
+    const touchees = appliquerGrilleLocale(final, grilles);
+    console.log(`Grille locale appliquée à ${touchees.length} lignes : ${Object.keys(grilles).join(', ')}.\n`);
+    for (const [pays, grille] of Object.entries(grilles)) {
+      console.log(`${pays} — ${CURRENCIES[pays] || '?'}`);
+      console.log('GAMME       MINIMUM     AU KM   A L\'HEURE   COMMISSION');
+      for (const [nom, prix] of Object.entries(grille)) {
+        console.log(
+          nom.padEnd(11),
+          String(prix.min).padStart(7), '  ',
+          String(prix.km).padStart(6), '  ',
+          String(prix.heure).padStart(8), '  ',
+          prix.commission !== undefined ? `${prix.commission} %` : 'inchangée'
+        );
+      }
+      const exemple = Object.entries(grille)[0];
+      if (exemple) {
+        const [nom, prix] = exemple;
+        const course = 10 * prix.km + (25 / 60) * prix.heure;
+        console.log(`\nExemple : ${nom}, 10 km en 25 minutes = ${Math.max(course, prix.min).toFixed(2)} ${CURRENCIES[pays]}.\n`);
+      }
     }
   }
 

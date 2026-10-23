@@ -21,6 +21,10 @@ import { DrawerToggle, NotificationBtn, Path } from '../components';
 import { Icon } from '@rneui/themed';
 import { Pin, Car } from '../icons'
 import countryCurrency from './../constants/countryCurrency.json'
+
+// Symbole affiche au chauffeur. Une monnaie absente s'affiche par son code :
+// « 12 MGA » est moins elegant que « 12 Ar », mais reste juste.
+const SYMBOLES = { EUR: '€', XOF: 'FCFA', XAF: 'FCFA', GBP: '£' };
 import { checkLocationPermission } from '../common/permission';
 import Geolocation from '../common/geolocation';
 import { setRideAlert, stopRideAlert } from '../common/rideAlert';
@@ -314,8 +318,15 @@ export default class DriverTripAccept extends React.Component {
         const rideCountry = item.pickup && item.pickup.country;
         const rideCurrency = countryCurrency[rideCountry] || 'EUR';
         const reglages = this.state.creditSettings || {};
+        // Un reglage par monnaie : minDriverBalanceEUR, minDriverBalanceGBP, et
+        // minDriverBalance pour le franc CFA, nomme ainsi avant que la question
+        // des autres monnaies se pose. Choisir sur « euro ou pas » revenait a
+        // appliquer le seuil senegalais, exprime en milliers de francs, a tout
+        // pays nouvellement ouvert.
         const minBalance = Number(
-            rideCurrency === 'EUR' ? reglages.minDriverBalanceEUR : reglages.minDriverBalance
+            reglages['minDriverBalance' + rideCurrency] !== undefined
+                ? reglages['minDriverBalance' + rideCurrency]
+                : reglages.minDriverBalance
         ) || 0;
         const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
         if (minBalance > 0 && balance < minBalance) {
@@ -324,7 +335,7 @@ export default class DriverTripAccept extends React.Component {
                 languageJSON.credit_insufficient_msg
                     .replace(/\{balance\}/g, balance.toLocaleString('fr-FR'))
                     .replace(/\{min\}/g, minBalance.toLocaleString('fr-FR'))
-                    .replace(/\{currency\}/g, rideCurrency === 'EUR' ? '€' : 'FCFA')
+                    .replace(/\{currency\}/g, SYMBOLES[rideCurrency] || rideCurrency)
             );
             return;
         }
