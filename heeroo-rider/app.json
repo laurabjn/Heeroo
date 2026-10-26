@@ -2,7 +2,7 @@
   "expo": {
     "name": "Heeroo",
     "slug": "heeroo-rider",
-    "version": "1.8.1",
+    "version": "1.8.2",
     "orientation": "portrait",
     "icon": "./assets/images/appIcon.png",
     "userInterfaceStyle": "light",
@@ -12,7 +12,7 @@
     "ios": {
       "bundleIdentifier": "org.Terence.HeerooRider",
       "supportsTablet": false,
-      "buildNumber": "9",
+      "buildNumber": "10",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo utilise votre position pour suivre votre course en temps réel.",
@@ -45,7 +45,7 @@
           "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 6
+      "versionCode": 7
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
