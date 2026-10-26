@@ -282,12 +282,20 @@ exports.push_notifications = httpEndpoint(async (req, res) => {
 // que la course est marquée payée.
 // ---------------------------------------------------------------------------
 
-/** Champs de paiement recopiés sur la course et sur les deux copies utilisateur. */
-async function markBookingPaid(bookingId, booking, paymentIntent) {
+/**
+ * Champs de paiement recopiés sur la course et sur les deux copies utilisateur.
+ *
+ * Le moyen et le prestataire sont des paramètres depuis que Wave règle aussi
+ * des courses : ils valaient « Card » et « stripe » en dur, ce qui aurait fait
+ * passer un paiement Wave pour un paiement par carte dans tous les écrans et
+ * tous les rapports.
+ */
+async function markBookingPaid(bookingId, booking, paymentIntent, options) {
+  const { mode = 'Card', gateway = 'stripe' } = options || {};
   const paid = {
     payment_status: 'PAID',
-    payment_mode: 'Card',
-    getway: 'stripe',
+    payment_mode: mode,
+    getway: gateway,
     transaction_id: paymentIntent.id,
     customer_paid: Number(booking.trip_cost) || 0,
     cardPaymentAmount: Number(booking.trip_cost) || 0,
@@ -742,6 +750,126 @@ function creditWaveTopup(sessionId, session) {
     reason: 'wave_topup',
   });
 }
+
+// ---------------------------------------------------------------------------
+// Wave — règlement d'une course.
+//
+// Au Sénégal, Wave est le moyen de paiement courant : la carte y est rare et
+// l'espèce oblige le chauffeur à rendre la monnaie. Le passager choisit Wave à
+// la réservation, et paie à la fin de la course.
+//
+// Wave ne connaît pas l'empreinte bancaire : rien ne peut être bloqué à la
+// commande, et le montant n'est connu qu'une fois la course terminée. Le
+// circuit est donc celui des espèces pour le déroulé, et celui de la carte
+// pour l'argent — c'est la société qui encaisse, puis porte au crédit du
+// chauffeur la part qui lui revient.
+// ---------------------------------------------------------------------------
+
+/**
+ * Règle une course à partir d'une session Wave payée. Idempotent par
+ * waveRidePayments/{sessionId}/status : le webhook et la vérification de
+ * secours peuvent tous deux arriver.
+ *
+ * Le montant annoncé par Wave est confronté à celui enregistré à l'ouverture
+ * de la session. Une divergence interrompt le règlement plutôt que de marquer
+ * payée une course dont on n'a pas reçu le prix.
+ */
+async function settleWaveRide(sessionId, session) {
+  const ref = admin.database().ref(`waveRidePayments/${sessionId}`);
+  const demande = (await ref.once('value')).val();
+  if (!demande) return 'inconnue';
+  if (demande.status === 'completed') return 'deja-reglee';
+
+  const recu = Math.round(Number(session.amount));
+  if (!Number.isFinite(recu) || recu !== Math.round(Number(demande.amount))) {
+    logger.error(`Wave course ${demande.bookingId} : attendu ${demande.amount}, reçu ${session.amount}`);
+    await ref.update({ status: 'failed', error: 'montant_divergent', failed_at: admin.database.ServerValue.TIMESTAMP });
+    return 'montant-divergent';
+  }
+
+  const bookingRef = admin.database().ref(`bookings/${demande.bookingId}`);
+  const booking = (await bookingRef.once('value')).val();
+  if (!booking) {
+    logger.warn(`Paiement Wave ${sessionId} reçu pour une course inconnue (${demande.bookingId})`);
+    await ref.update({ status: 'failed', error: 'course_inconnue' });
+    return 'inconnue';
+  }
+
+  if (booking.payment_status !== 'PAID') {
+    await markBookingPaid(demande.bookingId, booking, { id: session.transaction_id || sessionId }, { mode: 'Wave', gateway: 'wave' });
+  }
+  await ref.update({
+    status: 'completed',
+    transaction_id: session.transaction_id || null,
+    completed_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  logger.info(`Course ${demande.bookingId} réglée par Wave : ${recu} ${WAVE_CURRENCY}`);
+  return 'reglee';
+}
+
+/** Ouvre une page de paiement Wave pour une course terminée. */
+exports.createWaveRidePayment = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { bookingId } = req.body || {};
+  if (!bookingId) throw httpError(400, 'Paramètre bookingId requis');
+
+  const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
+  if (!booking) throw httpError(404, 'Course introuvable');
+  if (booking.customer !== user.uid) throw httpError(403, 'Course d\'un autre passager');
+  if (booking.payment_status === 'PAID') throw httpError(409, 'Course déjà payée');
+
+  // Le montant vient de la base, jamais de l'application : c'est le prix de la
+  // course telle qu'elle s'est deroulee.
+  const montant = Math.round(Number(booking.trip_cost));
+  if (!Number.isFinite(montant) || montant <= 0) throw httpError(409, 'Montant de la course indisponible');
+
+  const pays = (booking.pickup && booking.pickup.country) || '';
+  const devise = String(booking.currency || '').toUpperCase();
+  if (devise && devise !== WAVE_CURRENCY) {
+    throw httpError(409, `Wave ne règle que des courses en ${WAVE_CURRENCY}`);
+  }
+
+  const session = await waveRequest('POST', '/checkout/sessions', {
+    amount: String(montant),
+    currency: WAVE_CURRENCY,
+    success_url: hostingUrl('/wave/succes.html'),
+    error_url: hostingUrl('/wave/echec.html'),
+    client_reference: bookingId,
+  });
+
+  await admin.database().ref(`waveRidePayments/${session.id}`).set({
+    bookingId,
+    uid: user.uid,
+    amount: montant,
+    currency: WAVE_CURRENCY,
+    country: pays,
+    status: 'pending',
+    created_at: admin.database.ServerValue.TIMESTAMP,
+  });
+  res.json({ sessionId: session.id, launchUrl: session.wave_launch_url, amount: montant, currency: WAVE_CURRENCY });
+}, { secrets: [WAVE_API_KEY] });
+
+/** Secours si le webhook tarde : l'app demande à vérifier au retour. */
+exports.confirmWaveRidePayment = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { sessionId } = req.body || {};
+  if (!sessionId) throw httpError(400, 'Paramètre sessionId requis');
+
+  const demande = (await admin.database().ref(`waveRidePayments/${sessionId}`).once('value')).val();
+  if (!demande || demande.uid !== user.uid) throw httpError(404, 'Paiement introuvable');
+  if (demande.status === 'completed') {
+    res.json({ status: 'completed' });
+    return;
+  }
+
+  const session = await waveRequest('GET', `/checkout/sessions/${encodeURIComponent(sessionId)}`);
+  if (session.checkout_status === 'complete' && session.payment_status === 'succeeded') {
+    await settleWaveRide(sessionId, session);
+    res.json({ status: 'completed' });
+  } else {
+    res.json({ status: session.payment_status === 'processing' ? 'pending' : 'failed', wave: session.checkout_status });
+  }
+}, { secrets: [WAVE_API_KEY] });
 
 exports.createWaveCheckout = httpEndpoint(async (req, res) => {
   const user = await requireUser(req);
@@ -1377,14 +1505,22 @@ exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_
     }
     const event = req.body || {};
     const session = event.data || {};
-    if (event.type === 'checkout.session.completed' && session.id) {
-      await creditWaveTopup(session.id, session);
-    } else if (event.type === 'checkout.session.payment_failed' && session.id) {
-      await admin.database().ref(`walletTopups/${session.id}`).update({
-        status: 'failed',
-        error: (session.last_payment_error && session.last_payment_error.code) || 'payment_failed',
-        failed_at: admin.database.ServerValue.TIMESTAMP,
-      });
+    // Wave envoie le meme evenement pour une recharge de credit et pour le
+    // reglement d'une course : c'est la demande enregistree a l'ouverture de la
+    // session qui dit laquelle, et elle ne peut pas etre dans les deux noeuds.
+    if (session.id) {
+      const course = (await admin.database().ref(`waveRidePayments/${session.id}`).once('value')).val();
+      if (event.type === 'checkout.session.completed') {
+        if (course) await settleWaveRide(session.id, session);
+        else await creditWaveTopup(session.id, session);
+      } else if (event.type === 'checkout.session.payment_failed') {
+        const noeud = course ? 'waveRidePayments' : 'walletTopups';
+        await admin.database().ref(`${noeud}/${session.id}`).update({
+          status: 'failed',
+          error: (session.last_payment_error && session.last_payment_error.code) || 'payment_failed',
+          failed_at: admin.database.ServerValue.TIMESTAMP,
+        });
+      }
     }
     res.json({ received: true });
   });
@@ -1601,10 +1737,13 @@ exports.onBookingCompleted = onValueUpdated(
       ? Math.round(billed * 100) / 100
       : Math.round(tripCost * rate) / 100;
 
-    // Course réglée par carte : l'argent est encaissé par la plateforme, qui
-    // retient déjà sa part — débiter le crédit du chauffeur prélèverait la
-    // commission une seconde fois. On enregistre le montant sans le débiter.
-    const paidByCard = booking.payment_mode === 'Card' || !!booking.payment_intent_id;
+    // Course encaissée par la plateforme — carte ou Wave : elle retient déjà sa
+    // part, débiter le crédit du chauffeur prélèverait la commission une
+    // seconde fois. On enregistre le montant sans le débiter. Seules les
+    // espèces, que le chauffeur a en main, justifient un débit.
+    const paidByCard = booking.payment_mode === 'Card'
+      || booking.payment_mode === 'Wave'
+      || !!booking.payment_intent_id;
 
     // Marquage d'abord (idempotence), puis débit atomique du crédit chauffeur.
     await bookingRef.update({

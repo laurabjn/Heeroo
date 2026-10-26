@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Modal,
   Alert,
+  AppState,
 } from 'react-native';
 
 import { Header, CheckBox } from '@rneui/themed';
@@ -24,6 +25,7 @@ import 'firebase/compat/database';
 import { PromoComp } from "../components";
 import languageJSON from '../common/language';
 import { isCardPaymentAvailable, payBookingWithCard } from '../common/stripePayment';
+import { isWaveAvailable, payForRideWithWave, confirmWaveRide } from '../common/wavePayment';
 import { DrawerToggle, CloseBtn } from '../components';
 import countryCurrency from '../constants/countryCurrency.json';
 import currencySymbols from '../constants/currencySymbols.json';
@@ -48,6 +50,8 @@ export default class CardDetailsScreen extends React.Component {
       useWalletCash: false,
       walletBalance: 0,
       promodalVisible: false,
+      // Session Wave ouverte, en attente du retour du passager.
+      wavePending: null,
       settings: {
         code: '',
         symbol: '',
@@ -105,6 +109,9 @@ export default class CardDetailsScreen extends React.Component {
     // Si la course est réglée autrement pendant qu'on est ici (le chauffeur a
     // confirmé les espèces), on passe directement à la notation.
     const booking = this.props.route.params.data;
+    this.appStateSub = AppState.addEventListener('change', (etat) => {
+      if (etat === 'active') this.verifierWave();
+    });
     if (booking && booking.bookingKey) {
       this.paymentStatusRef = firebase.database().ref('bookings/' + booking.bookingKey + '/payment_status');
       this.paymentStatusRef.on('value', (snap) => {
@@ -118,7 +125,46 @@ export default class CardDetailsScreen extends React.Component {
 
   componentWillUnmount() {
     if (this.paymentStatusRef) this.paymentStatusRef.off();
+    if (this.appStateSub) this.appStateSub.remove();
   }
+
+  /**
+   * Regle la course dans l'application Wave.
+   *
+   * Le passager quitte Heeroo. Le webhook Wave marquera la course payee, et
+   * l'ecouteur de payment_status ci-dessus le conduira a la notation sans qu'il
+   * ait rien a faire. La verification au retour n'est la que pour les fois ou
+   * le webhook tarde : sans elle, le passager fixerait un ecran immobile en se
+   * demandant s'il a paye deux fois.
+   */
+  wavePayment = async () => {
+    const booking = this.props.route.params.data;
+    try {
+      const { sessionId } = await payForRideWithWave(booking.bookingKey);
+      this.setState({ wavePending: sessionId });
+    } catch (error) {
+      Alert.alert(languageJSON.error, error.message || String(error));
+    }
+  };
+
+  verifierWave = async () => {
+    const sessionId = this.state.wavePending;
+    if (!sessionId) return;
+    try {
+      const statut = await confirmWaveRide(sessionId);
+      if (statut === 'completed') {
+        this.setState({ wavePending: null });
+        // L'ecouteur de payment_status prend le relais et ouvre la notation.
+      } else if (statut === 'failed') {
+        this.setState({ wavePending: null });
+        Alert.alert(languageJSON.error, languageJSON.wave_failed);
+      } else {
+        Alert.alert(languageJSON.payment_by_wave, languageJSON.wave_pending);
+      }
+    } catch (error) {
+      console.log('[wave] verification', error && error.message);
+    }
+  };
 
   async UNSAFE_componentWillMount() {
     var pdata = this.props.route.params.data;
@@ -523,6 +569,18 @@ export default class CardDetailsScreen extends React.Component {
 
                   }}>
                   <Text style={styles.buttonTitle}>{languageJSON.pay_cash}</Text>
+                </TouchableOpacity>
+                : null}
+              {/* Wave la ou la societe a un compte marchand. Le passager paie
+                  dans l'application Wave, puis revient : la course passe a
+                  PAID par le webhook, et l'ecouteur ouvre la notation. */}
+              {isWaveAvailable(this.props.route.params.data.pickup.country) ?
+                <TouchableOpacity
+                  style={styles.cardPayBtn}
+                  onPress={() => {
+                    this.wavePayment()
+                  }}>
+                  <Text style={styles.buttonTitle}>{languageJSON.payWithWave}</Text>
                 </TouchableOpacity>
                 : null}
               {/* Le paiement par carte est engagé à la réservation (empreinte) et

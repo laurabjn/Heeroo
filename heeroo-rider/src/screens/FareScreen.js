@@ -28,6 +28,7 @@ import { getDistance } from 'geolib';
 
 import { farehelper } from '../common/FareCalculator';
 import { isCardPaymentAvailable, authorizeRideWithCard } from '../common/stripePayment';
+import { isWaveAvailable } from '../common/wavePayment';
 import countryCurrency from '../constants/countryCurrency.json';
 import { PromoComp } from "../components";
 import { RequestPushMsg } from '../common/RequestPushMsg';
@@ -80,6 +81,20 @@ export default class FareScreen extends React.Component {
                 wallet: false
             },
         }
+    }
+
+    /**
+     * Les moyens proposes au depart de ce pays.
+     *
+     * Wave n'apparait qu'au Senegal, ou la societe a un compte marchand ; la
+     * carte, seulement si l'application embarque une cle Stripe. Les especes
+     * sont toujours la : c'est le seul moyen qui ne depende de personne.
+     */
+    moyensDePaiement() {
+        const moyens = [{ key: 'Cash', label: languageJSON.pay_cash }];
+        if (isWaveAvailable(this.state.country)) moyens.push({ key: 'Wave', label: languageJSON.payWithWave });
+        if (isCardPaymentAvailable()) moyens.push({ key: 'Card', label: languageJSON.payWithCard });
+        return moyens;
     }
 
     _retrieveSettings(countryCode) {
@@ -385,7 +400,7 @@ export default class FareScreen extends React.Component {
                         estimateDistance: this.state.distance,
                         serviceType: 'pickUp',
                         status: "NEW",
-                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_mode: this.state.paymentMode || 'Cash',
                         payment_intent_id: this.authorizedIntentId || null,
                         total_trip_time: 0,
                         trip_cost: 0,
@@ -408,7 +423,7 @@ export default class FareScreen extends React.Component {
                         estimateDistance: this.state.distance,
                         serviceType: 'pickUp',
                         status: "NEW",
-                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_mode: this.state.paymentMode || 'Cash',
                         payment_intent_id: this.authorizedIntentId || null,
                         total_trip_time: 0,
                         trip_cost: 0,
@@ -507,7 +522,7 @@ export default class FareScreen extends React.Component {
                     estimateDistance: this.state.distance,
                     serviceType: 'pickUp',
                     status: "NEW",
-                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_mode: this.state.paymentMode || 'Cash',
                         payment_intent_id: this.authorizedIntentId || null,
                     total_trip_time: 0,
                     trip_cost: 0,
@@ -530,7 +545,7 @@ export default class FareScreen extends React.Component {
                     estimateDistance: this.state.distance,
                     serviceType: 'pickUp',
                     status: "NEW",
-                        payment_mode: this.state.paymentMode === 'Card' ? 'Card' : 'Cash',
+                        payment_mode: this.state.paymentMode || 'Cash',
                         payment_intent_id: this.authorizedIntentId || null,
                     total_trip_time: 0,
                     trip_cost: 0,
@@ -738,6 +753,7 @@ export default class FareScreen extends React.Component {
                             <Text style={[styles.priceText]}>{languageJSON.payment}</Text>
                             <Text style={[styles.priceText, { color: colors.TEXT_DARK }]}>
                                 {this.state.paymentMode === 'Card' ? languageJSON.payment_by_card
+                                    : this.state.paymentMode === 'Wave' ? languageJSON.payment_by_wave
                                     : this.state.paymentMode === 'Cash' ? languageJSON.paymentCash
                                         : languageJSON.payment_to_choose}
                             </Text>
@@ -766,12 +782,12 @@ export default class FareScreen extends React.Component {
                         />
                         <Text style={[styles.cancelButtonText]}>{languageJSON.Annulerlacourse}</Text>
                     </TouchableOpacity>
-                    {isCardPaymentAvailable() &&
+                    {this.moyensDePaiement().length > 1 &&
                         <Text style={styles.payChoiceTitle}>{languageJSON.choose_payment}</Text>
                     }
-                    {isCardPaymentAvailable() &&
+                    {this.moyensDePaiement().length > 1 &&
                         <View style={styles.payChoiceRow}>
-                            {[{ key: 'Cash', label: languageJSON.pay_cash }, { key: 'Card', label: languageJSON.payWithCard }].map((option) => (
+                            {this.moyensDePaiement().map((option) => (
                                 <TouchableOpacity
                                     key={option.key}
                                     onPress={() => this.setState({ paymentMode: option.key })}

@@ -89,6 +89,12 @@
         }
       }
     },
+    "waveRidePayments": {
+      "$sessionId": {
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+      }
+    },
     "walletTopups": {
       "$sessionId": {
         ".read": "auth != null && data.child('uid').val() === auth.uid",
