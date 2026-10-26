@@ -329,7 +329,23 @@ export default class DriverTripAccept extends React.Component {
                 : reglages.minDriverBalance
         ) || 0;
         const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
-        if (minBalance > 0 && balance < minBalance) {
+
+        // Seules les courses en especes justifient le blocage : ce sont les
+        // seules ou le chauffeur encaisse l'argent et doit la commission. Une
+        // course reglee par carte ou par Wave est encaissee par la societe, qui
+        // retient sa part au passage — la refuser reviendrait a interdire de
+        // travailler a qui ne doit rien.
+        //
+        // Sans cette distinction, un chauffeur francais nouvellement inscrit,
+        // credit a zero, ne pouvait accepter aucune course : il lui fallait
+        // recharger avant sa premiere, dans un pays ou presque tout se paie par
+        // carte et ou son credit n'aurait fait que monter.
+        //
+        // Un moyen de paiement absent — les courses anterieures a ce champ —
+        // compte comme des especes : c'est le defaut prudent.
+        const paiementSociete = item.payment_mode === 'Card' || item.payment_mode === 'Wave';
+
+        if (!paiementSociete && minBalance > 0 && balance < minBalance) {
             Alert.alert(
                 languageJSON.credit_insufficient_title,
                 languageJSON.credit_insufficient_msg
