@@ -12,7 +12,7 @@
     "ios": {
       "bundleIdentifier": "org.Terence.HeerooDriver",
       "supportsTablet": false,
-      "buildNumber": "12",
+      "buildNumber": "13",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo Driver suit votre position pendant les courses pour guider le passager, même quand l'application est en arrière-plan.",
@@ -50,7 +50,7 @@
           "apiKey": "AIzaSyAxK4BcBZAQ0d-o1OFkB2fz4TjFDbOeLqc"
         }
       },
-      "versionCode": 8
+      "versionCode": 9
     },
     "plugins": [
       "./plugins/withRNFirebaseDisableSPM.js",
