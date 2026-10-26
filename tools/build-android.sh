@@ -70,6 +70,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # ni dans un fichier, ni dans l'historique du terminal. S'ils ne sont pas deja
 # dans l'environnement, on les demande, masques, au moment ou l'on en a besoin.
 if [ "$FORMAT" = "aab" ]; then
+  # Les identifiants sont ranges a cote de la cle, dans un fichier que
+  # .gitignore exclut. S'il est la, on l'emploie ; sinon on demande.
+  if [ -f "$CREDENTIALS/cle-de-signature.env" ]; then
+    set -a
+    . "$CREDENTIALS/cle-de-signature.env"
+    set +a
+  fi
+
   _demander() {
     local nom="$1" invite="$2"
     if [ -z "${!nom:-}" ]; then
