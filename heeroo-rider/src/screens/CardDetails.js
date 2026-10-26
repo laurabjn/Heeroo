@@ -25,6 +25,8 @@ import { PromoComp } from "../components";
 import languageJSON from '../common/language';
 import { isCardPaymentAvailable, payBookingWithCard } from '../common/stripePayment';
 import { DrawerToggle, CloseBtn } from '../components';
+import countryCurrency from '../constants/countryCurrency.json';
+import currencySymbols from '../constants/currencySymbols.json';
 
 export default class CardDetailsScreen extends React.Component {
 
@@ -60,8 +62,13 @@ export default class CardDetailsScreen extends React.Component {
     firebase.database().ref('settings/').once('value', value => {
       if (value.val()) {
 
-        let symbol = " €"
-        let code = " EUR"
+        // Repli sur la monnaie du pays et non sur l'euro : un pays absent
+        // de settings/ affichait « 10 818 € » sur un prix en francs CFA.
+        // Un symbole inconnu s'affiche par son code — moins joli qu'un
+        // sigle, mais jamais faux.
+        const monnaie = countryCurrency[countryCode] || 'EUR';
+        let code = ' ' + monnaie;
+        let symbol = ' ' + (currencySymbols[monnaie] || monnaie);
         const data = Array.isArray(value) ? value : Object.values(value || {});
 
         const dataList = Array.isArray(data) ? data : Object.values(data || {});

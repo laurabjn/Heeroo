@@ -35,6 +35,7 @@ import { google_map_key } from '../common/key';
 import languageJSON from '../common/language';
 import { Car, Pin } from '../icons';
 import { DrawerToggle, NotificationBtn, CloseBtn } from '../components';
+import currencySymbols from '../constants/currencySymbols.json';
 
 const { width, height } = Dimensions.get('window');
 const size = height / 812;
@@ -85,8 +86,13 @@ export default class FareScreen extends React.Component {
         firebase.database().ref('settings/').once('value', value => {
             if (value.val()) {
 
-                let symbol = " €"
-                let code = " EUR"
+                // Repli sur la monnaie du pays et non sur l'euro : un pays absent
+                // de settings/ affichait « 10 818 € » sur un prix en francs CFA.
+                // Un symbole inconnu s'affiche par son code — moins joli qu'un
+                // sigle, mais jamais faux.
+                const monnaie = countryCurrency[countryCode] || 'EUR';
+                let code = ' ' + monnaie;
+                let symbol = ' ' + (currencySymbols[monnaie] || monnaie);
                 let data = value
 
                 const dataList = Array.isArray(data) ? data : Object.values(data || {});
