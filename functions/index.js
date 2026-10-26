@@ -31,7 +31,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { compteStripePour, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { compteStripePour, reglagePays, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -1110,10 +1110,11 @@ const PAYOUT_HOLD_MS = PAYOUT_HOLD_DAYS * 24 * 60 * 60 * 1000;
  * Une valeur absente ou aberrante retombe sur les sept jours : on ne supprime
  * pas une protection sur une faute de frappe.
  */
-async function delaiDeRetenue() {
+async function delaiDeRetenue(pays) {
   try {
     const valeur = (await admin.database().ref('credit_settings/payoutHoldDays').once('value')).val();
-    const jours = Number(valeur);
+    const brut = reglagePays(valeur, pays);
+    const jours = Number(brut);
     if (Number.isFinite(jours) && jours >= 0 && jours <= 90) return jours * 24 * 60 * 60 * 1000;
   } catch (error) {
     logger.warn(`Delai de retenue illisible, sept jours appliques : ${error.message}`);
@@ -1121,10 +1122,11 @@ async function delaiDeRetenue() {
   return PAYOUT_HOLD_MS;
 }
 
+
 /** Solde, part retenue et part retirable d'un chauffeur. */
 async function soldeDisponible(driverRef, profile, devise) {
   const brut = Number(profile.walletBalance) || 0;
-  const delai = await delaiDeRetenue();
+  const delai = await delaiDeRetenue(profile.country);
   const depuis = Date.now() - delai;
   const recent = (await driverRef.child('walletHistory').orderByChild('date').startAt(depuis).once('value')).val();
   const retenu = heldShare(recent, Date.now(), delai);
@@ -1775,12 +1777,12 @@ exports.payoutOnRideEnd = onValueUpdated(
   async (event) => {
     if (event.data.after.val() !== 'PAID') return;
 
-    const actif = (await admin.database().ref('credit_settings/payoutOnRideEnd').once('value')).val();
-    if (actif !== true) return;
-
     const bookingId = event.params.bookingId;
     const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
     if (!booking || !booking.driver) return;
+
+    const reglage = (await admin.database().ref('credit_settings/payoutOnRideEnd').once('value')).val();
+    if (reglagePays(reglage, booking.pickup && booking.pickup.country) !== true) return;
 
     // Les especes n'ont rien a verser : le chauffeur a deja l'argent en main,
     // et c'est sa commission qui lui est debitee.

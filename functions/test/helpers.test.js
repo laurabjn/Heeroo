@@ -4,7 +4,31 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, driverShare, heldShare, waveMobile } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile } = require('../lib/helpers');
+
+describe('reglagePays', () => {
+  test('une valeur simple vaut pour tous les pays', () => {
+    assert.equal(reglagePays(7, 'FR'), 7);
+    assert.equal(reglagePays(7, 'SN'), 7);
+    assert.equal(reglagePays(true, 'FR'), true);
+  });
+  test('un objet choisit pays par pays', () => {
+    assert.equal(reglagePays({ FR: 0, SN: 7 }, 'FR'), 0);
+    assert.equal(reglagePays({ FR: 0, SN: 7 }, 'SN'), 7);
+    // Pays absent : rien, donc l'appelant retombe sur sa valeur de securite.
+    assert.equal(reglagePays({ FR: 0 }, 'GB'), undefined);
+  });
+  test('une liste designe les pays concernes', () => {
+    assert.equal(reglagePays(['FR'], 'FR'), true);
+    assert.equal(reglagePays(['FR'], 'SN'), false);
+    assert.equal(reglagePays(['fr'], 'FR'), true);
+  });
+  test('un pays mal saisi ou absent ne fait rien passer', () => {
+    assert.equal(reglagePays({ FR: 0 }, ' fr '), 0);
+    assert.equal(reglagePays({ FR: 0 }, null), undefined);
+    assert.equal(reglagePays(['FR'], undefined), false);
+  });
+});
 
 describe('compteStripePour', () => {
   test('rend la monnaie du pays', () => {

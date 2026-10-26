@@ -173,4 +173,25 @@ function compteStripePour(country) {
   return devise ? { pays, devise } : null;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, compteStripePour, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+/**
+ * Lit un reglage qui vaut soit partout, soit pays par pays.
+ *
+ * Les deux formes sont acceptees parce que les marches ne se ressemblent pas :
+ * en France un virement Stripe entre la plateforme et le compte du chauffeur ne
+ * coute rien, au Senegal chaque versement Wave a des frais et un minimum de
+ * 500 FCFA. Verser a chaque course au Senegal reviendrait a payer des frais sur
+ * des sommes qui ne les justifient pas.
+ *
+ *   7                  sept jours partout
+ *   { FR: 0, SN: 7 }   zero en France, sept au Senegal
+ *   true               partout (pour un reglage booleen)
+ *   ["FR"]             la France seulement
+ */
+function reglagePays(valeur, pays) {
+  const code = String(pays || '').trim().toUpperCase();
+  if (Array.isArray(valeur)) return valeur.map((v) => String(v).toUpperCase()).includes(code);
+  if (valeur && typeof valeur === 'object') return code ? valeur[code] : undefined;
+  return valeur;
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
