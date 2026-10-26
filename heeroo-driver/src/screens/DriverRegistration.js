@@ -103,9 +103,8 @@ export default class DriverRegistrationPage extends React.Component {
     firebase.auth().signOut();
   }
 
-  clickRegister = async (fname, lname, mobile, email, vehicleNum, vehicleName, image, companyName, companyAddress, file_identity_front,
-    file_identity_back, carteGrise, permis, carteVTC, rir, attestation, carteVerte, assuranceRC, photoAvantVehicule, photoChauffeur
-  ) => {
+  clickRegister = async (infos, pieces) => {
+    const { fname, lname, mobile, email, vehicleNum, vehicleName, image, companyName, companyAddress } = infos;
     // Chaque échec était silencieux (paramètres absents, session expirée,
     // écriture refusée) : le bouton « S'inscrire » paraissait sans effet.
     try {
@@ -127,17 +126,9 @@ export default class DriverRegistrationPage extends React.Component {
         createdAt: firebase.database.ServerValue.TIMESTAMP,
         companyAddress,
         companyName,
-        file_identity_front,
-        file_identity_back,
-        carteGrise,
-        permis,
-        carteVTC,
-        rir,
-        attestation,
-        carteVerte,
-        assuranceRC,
-        photoAvantVehicule,
-        photoChauffeur,
+        // Les pieces demandees dans ce pays, et elles seules : ecrire les
+        // autres a null encombrerait le dossier affiche au back-office.
+        ...pieces,
         country: this.checkIfCountryAvailable(snapshot.val()),
       };
 
@@ -193,7 +184,7 @@ export default class DriverRegistrationPage extends React.Component {
     const registrationData = this.props.route.params.requireData
     return (
       <View style={styles.containerView}>
-        <DiverReg reqData={registrationData ? registrationData : ""} onPressRegister={this.clickRegister} onBack={() => this.cancelRegistration()} navigation={this.props.navigation} loading={this.state.loading}></DiverReg>
+        <DiverReg reqData={registrationData ? registrationData : ""} country={this.state.country} onPressRegister={this.clickRegister} onBack={() => this.cancelRegistration()} navigation={this.props.navigation} loading={this.state.loading}></DiverReg>
       </View>
     );
   }

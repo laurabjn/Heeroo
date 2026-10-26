@@ -14,6 +14,7 @@ import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import 'firebase/compat/storage';
 import { checkCameraPermission } from "../common/permission";
+import { documentsPour, TOUS_LES_DOCUMENTS } from '../common/documents';
 var { height } = Dimensions.get('window');
 
 export default class DiverReg extends React.Component {
@@ -40,39 +41,9 @@ export default class DiverReg extends React.Component {
             imageValid: true,
             companyNameValid: true,
             companyAddressValid: true,
-            file_identity_frontValid: true,
-            file_identity_front: null,
-
-            //  not implemented yet
-            file_identity_backValid: true,
-            file_identity_back: null,
-
-            carteGriseValid: true,
-            carteGrise: null,
-
-            permisValid: true,
-            permis: null,
-
-            carteVTCValid: true,
-            carteVTC: null,
-
-            rirValid: true,
-            rir: null,
-
-            attestationValid: true,
-            attestation: null,
-
-            carteVerteValid: true,
-            carteVerte: null,
-
-            assuranceRCValid: true,
-            assuranceRC: null,
-
-            photoAvantVehiculeValid: true,
-            photoAvantVehicule: null,
-
-            photoChauffeurValid: true,
-            photoChauffeur: null,
+            // Une entree par piece, pour toutes les pieces connues : la position
+            // arrive apres le premier rendu, et l'etat doit exister avant elle.
+            ...TOUS_LES_DOCUMENTS.reduce((etat, cle) => ({ ...etat, [cle]: null, [cle + 'Valid']: true }), {}),
 
         }
     }
@@ -287,70 +258,32 @@ export default class DiverReg extends React.Component {
         const vehicleNameValid = this.validateVehicleName();
         const comanyNameValid = this.validateCompanyName();
         const companyAddressValid = this.validateCompanyAddress();
-        const file_identity_frontValid = this.validateFile("file_identity_front");
-        const file_identity_backValid = this.validateFile("file_identity_back");
+        // Seules les pieces demandees dans ce pays sont exigees. Celles des
+        // autres pays restent dans l'etat mais ne bloquent pas l'inscription.
+        const attendus = documentsPour(this.props.country);
+        const piecesValides = attendus.map((cle) => this.validateFile(cle)).every(Boolean);
 
-        const carteGriseValid = this.validateFile("carteGrise");
-        const permisValid = this.validateFile("permis");
-        const carteVTCValid = this.validateFile("carteVTC");
-        const rirValid = this.validateFile("rir");
-        const attestationValid = this.validateFile("attestation");
-        const carteVerteValid = this.validateFile("carteVerte");
-        const assuranceRCValid = this.validateFile("assuranceRC");
-        const photoAvantVehiculeValid = this.validateFile("photoAvantVehicule");
-        const photoChauffeurValid = this.validateFile("photoChauffeur");
-
-
-
-        if (fnameValid && lnameValid && mobileValid && emailValid && vehicleNameValid && comanyNameValid && companyAddressValid && file_identity_frontValid && file_identity_backValid
-            && carteGriseValid && permisValid && carteVTCValid && rirValid && attestationValid && carteVerteValid && assuranceRCValid && photoAvantVehiculeValid && photoChauffeurValid) {
-            console.log('success')
+        if (fnameValid && lnameValid && mobileValid && emailValid && vehicleNameValid
+            && comanyNameValid && companyAddressValid && piecesValides) {
 
             onPressRegister(
-
-                this.state.fname,
-                this.state.lname,
-                this.state.mobile,
-                this.state.email,
-                this.state.vehicleNum,
-                this.state.vehicleName,
-                this.state.image,
-                this.state.companyName,
-                this.state.companyAddress,
-                this.state.file_identity_front,
-                this.state.file_identity_back,
-                this.state.carteGrise,
-                this.state.permis,
-                this.state.carteVTC,
-                this.state.rir,
-                this.state.attestation,
-                this.state.carteVerte,
-                this.state.assuranceRC,
-                this.state.photoAvantVehicule,
-                this.state.photoChauffeur,
-
+                {
+                    fname: this.state.fname,
+                    lname: this.state.lname,
+                    mobile: this.state.mobile,
+                    email: this.state.email,
+                    vehicleNum: this.state.vehicleNum,
+                    vehicleName: this.state.vehicleName,
+                    image: this.state.image,
+                    companyName: this.state.companyName,
+                    companyAddress: this.state.companyAddress,
+                },
+                attendus.reduce((pieces, cle) => ({ ...pieces, [cle]: this.state[cle] }), {}),
             );
 
         } else {
-            console.log('error ')
-            console.log('fnameValid' + fnameValid)
-            console.log('lnameValid' + lnameValid)
-            console.log('mobileValid' + mobileValid)
-            console.log('emailValid' + emailValid)
-            console.log('vehicleNameValid' + vehicleNameValid)
-            console.log('comanyNameValid' + comanyNameValid)
-            console.log('companyAddressValid' + companyAddressValid)
-            console.log('file_identity_frontValid' + file_identity_frontValid)
-            console.log('file_identity_backValid' + file_identity_backValid)
-            console.log('carteGriseValid' + carteGriseValid)
-            console.log('permisValid' + permisValid)
-            console.log('carteVTCValid' + carteVTCValid)
-            console.log('rirValid' + rirValid)
-            console.log('attestationValid' + attestationValid)
-            console.log('carteVerteValid' + carteVerteValid)
-            console.log('assuranceRCValid' + assuranceRCValid)
-            console.log('photoAvantVehiculeValid' + photoAvantVehiculeValid)
-            console.log('photoChauffeurValid' + photoChauffeurValid)
+            const manquantes = attendus.filter((cle) => !this.state[cle]);
+            if (manquantes.length) console.log('pieces manquantes :', manquantes.join(', '));
             Alert.alert(languageJSON.error, languageJSON.verify_informations);
         }
     }
@@ -546,38 +479,13 @@ export default class DiverReg extends React.Component {
                                 containerStyle={styles.textInputStyle}
                             />
                         </View>
-                        {this.renderFile("file_identity_front", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.file_identity_frontValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
+                        {documentsPour(this.props.country).map((cle) => (
+                            <View key={cle}>
+                                {this.renderFile(cle, { borderColor: "#e2e6ec", borderBottomWidth: 1 })}
+                                {!this.state[cle + "Valid"] && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
+                            </View>
+                        ))}
 
-                        {this.renderFile("file_identity_back", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.file_identity_backValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("carteGrise", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.carteGriseValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("permis", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.permisValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("carteVTC", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.carteVTCValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("rir", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.rirValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("attestation", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.attestationValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("carteVerte", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.carteVerteValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("assuranceRC", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.assuranceRCValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("photoAvantVehicule", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.photoAvantVehiculeValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
-
-                        {this.renderFile("photoChauffeur", { borderBottomWidth: 0, borderColor: "#e2e6ec", borderBottomWidth: 1 })}
-                        {!this.state.photoChauffeurValid && <Text style={styles.errorText}>{languageJSON.valid_identityfront_check}</Text>}
 
                         <Button
                             onPress={() => this.onPressRegister()}

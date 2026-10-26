@@ -257,6 +257,7 @@ export default {
     assuranceRC: "Assurance Responsabilité Civile",
     photoAvantVehicule: "Photo avant du véhicule",
     photoChauffeur: "Photo du chauffeur",
+    visiteTechnique: "Visite technique",
     emailExistInPhoneAccountTitle: "Erreur",
     emailExistInPhoneAccount: "Merci d'utiliser la connexion via N° de téléphone, utilisée lors de l'inscription",
     resetEmailExistInPhoneAccount: "Cet email est utilisé pour un compte inscrit via N° de téléphone. Vous ne pouvez pas réinitialiser votre mot de passe"
