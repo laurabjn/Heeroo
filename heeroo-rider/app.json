@@ -12,7 +12,7 @@
     "ios": {
       "bundleIdentifier": "org.Terence.HeerooRider",
       "supportsTablet": false,
-      "buildNumber": "10",
+      "buildNumber": "11",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo utilise votre position pour suivre votre course en temps réel.",
