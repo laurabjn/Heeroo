@@ -1098,12 +1098,36 @@ const STRIPE_MIN_PAYOUT = { EUR: 5, GBP: 5 };
 const PAYOUT_HOLD_DAYS = 7;
 const PAYOUT_HOLD_MS = PAYOUT_HOLD_DAYS * 24 * 60 * 60 * 1000;
 
+/**
+ * Le delai reellement applique, en millisecondes.
+ *
+ * Reglable depuis credit_settings/payoutHoldDays, parce que c'est un arbitrage
+ * commercial et non technique : raccourcir le delai paie les chauffeurs plus
+ * vite et expose davantage la societe aux impayes. Le mettre a zero rend la
+ * part retirable des l'encaissement — c'est ce qu'il faut pour un versement
+ * immediat, et c'est une decision qui appartient a l'exploitant.
+ *
+ * Une valeur absente ou aberrante retombe sur les sept jours : on ne supprime
+ * pas une protection sur une faute de frappe.
+ */
+async function delaiDeRetenue() {
+  try {
+    const valeur = (await admin.database().ref('credit_settings/payoutHoldDays').once('value')).val();
+    const jours = Number(valeur);
+    if (Number.isFinite(jours) && jours >= 0 && jours <= 90) return jours * 24 * 60 * 60 * 1000;
+  } catch (error) {
+    logger.warn(`Delai de retenue illisible, sept jours appliques : ${error.message}`);
+  }
+  return PAYOUT_HOLD_MS;
+}
+
 /** Solde, part retenue et part retirable d'un chauffeur. */
 async function soldeDisponible(driverRef, profile, devise) {
   const brut = Number(profile.walletBalance) || 0;
-  const depuis = Date.now() - PAYOUT_HOLD_MS;
+  const delai = await delaiDeRetenue();
+  const depuis = Date.now() - delai;
   const recent = (await driverRef.child('walletHistory').orderByChild('date').startAt(depuis).once('value')).val();
-  const retenu = heldShare(recent, Date.now(), PAYOUT_HOLD_MS);
+  const retenu = heldShare(recent, Date.now(), delai);
   const arrondi = (v) => (devise === WAVE_CURRENCY ? Math.floor(v) : Math.round(v * 100) / 100);
   return { solde: arrondi(brut), retenu: arrondi(retenu), disponible: Math.max(0, arrondi(brut - retenu)) };
 }
@@ -1440,6 +1464,73 @@ exports.expireUnansweredBookings = onSchedule(
     }
 
     if (expirees) logger.info(`Expiration : ${expirees} course(s) annulée(s) faute de chauffeur`);
+  }
+);
+
+
+// ---------------------------------------------------------------------------
+// payoutOnRideEnd — verser au chauffeur des la course payee.
+//
+// Le client souhaite que le passager paie et que la commission soit defalquee
+// dans la foulee, plutot que d'attendre le versement du lundi.
+//
+// Rien n'est reparti par Stripe au moment de l'encaissement : le chauffeur
+// n'est pas connu quand l'empreinte est prise, et le prix definitif ne l'est
+// qu'a la fin de la course. La societe encaisse donc la totalite, comme
+// aujourd'hui, puis verse immediatement la part du chauffeur. Le resultat est
+// le meme pour lui, et le circuit reste celui qui a fait ses preuves.
+//
+// Deux reglages commandent ce comportement, et ils se combinent :
+//
+//   credit_settings/payoutOnRideEnd   true declenche un versement a chaque
+//                                     course payee par carte ou par Wave.
+//   credit_settings/payoutHoldDays    le delai avant qu'une part devienne
+//                                     retirable. Tant qu'il vaut sept jours,
+//                                     le versement immediat ne trouve rien a
+//                                     verser : c'est voulu. Le mettre a zero
+//                                     paie le chauffeur dans la minute, et
+//                                     expose la societe aux impayes.
+//
+// Le versement passe par le chemin habituel : reservation du solde avant
+// l'appel au prestataire, cle d'idempotence, et distinction entre refus
+// definitif et incident passager.
+// ---------------------------------------------------------------------------
+
+exports.payoutOnRideEnd = onValueUpdated(
+  {
+    ref: '/bookings/{bookingId}/payment_status',
+    instance: target.instance,
+    region: target.region,
+    secrets: [STRIPE_SECRET_KEY, WAVE_API_KEY],
+  },
+  async (event) => {
+    if (event.data.after.val() !== 'PAID') return;
+
+    const actif = (await admin.database().ref('credit_settings/payoutOnRideEnd').once('value')).val();
+    if (actif !== true) return;
+
+    const bookingId = event.params.bookingId;
+    const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
+    if (!booking || !booking.driver) return;
+
+    // Les especes n'ont rien a verser : le chauffeur a deja l'argent en main,
+    // et c'est sa commission qui lui est debitee.
+    const encaisseParLaPlateforme = booking.payment_mode === 'Card'
+      || booking.payment_mode === 'Wave'
+      || !!booking.payment_intent_id;
+    if (!encaisseParLaPlateforme) return;
+
+    try {
+      const resultat = await effectuerVersement(booking.driver, `course_${bookingId}`);
+      if (resultat.verse) {
+        logger.info(`Course ${bookingId} : ${resultat.amount} ${resultat.currency} versés à ${shortName(booking.driver_name)} par ${resultat.channel}`);
+      } else {
+        logger.info(`Course ${bookingId} : rien a verser (${resultat.motif})`);
+      }
+    } catch (error) {
+      // Un versement manque n'annule pas la course : le lundi le rattrapera.
+      logger.warn(`Course ${bookingId} : versement immediat impossible — ${error.message}`);
+    }
   }
 );
 
