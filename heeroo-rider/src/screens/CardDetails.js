@@ -143,7 +143,7 @@ export default class CardDetailsScreen extends React.Component {
       const { sessionId } = await payForRideWithWave(booking.bookingKey);
       this.setState({ wavePending: sessionId });
     } catch (error) {
-      Alert.alert(languageJSON.error, error.message || String(error));
+      Alert.alert(languageJSON.Error, error.message || String(error));
     }
   };
 
@@ -157,7 +157,7 @@ export default class CardDetailsScreen extends React.Component {
         // L'ecouteur de payment_status prend le relais et ouvre la notation.
       } else if (statut === 'failed') {
         this.setState({ wavePending: null });
-        Alert.alert(languageJSON.error, languageJSON.wave_failed);
+        Alert.alert(languageJSON.Error, languageJSON.wave_failed);
       } else {
         Alert.alert(languageJSON.payment_by_wave, languageJSON.wave_pending);
       }
