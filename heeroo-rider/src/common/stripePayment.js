@@ -55,7 +55,12 @@ export async function payBookingWithCard({ bookingId, email, merchantCountryCode
     customerSessionClientSecret: data.customerSessionClientSecret,
     defaultBillingDetails: email ? { email } : undefined,
     googlePay: { merchantCountryCode, testEnv: Constants.expoConfig.extra.appEnv !== 'production' },
-    applePay: { merchantCountryCode },
+    // Pas d'applePay : le compte Apple du client n'a ni la capacite Apple Pay
+    // ni d'identifiant marchand. Le reclamer ici faisait echouer
+    // initPaymentSheet sur « merchantIdentifier is required », et la feuille
+    // ne s'ouvrait pas du tout — donc aucun paiement par carte sur iPhone.
+    // Le jour ou Apple Pay sera active, il faudra AUSSI poser merchantIdentifier
+    // sur le StripeProvider d'App.js, sans quoi la meme erreur reviendra.
     returnURL: 'heeroo://stripe-redirect',
   });
   if (init.error) throw new Error(init.error.message);
@@ -112,7 +117,12 @@ export async function authorizeRideWithCard({ estimate, currency = 'EUR', carTyp
     customerSessionClientSecret: data.customerSessionClientSecret,
     defaultBillingDetails: email ? { email } : undefined,
     googlePay: { merchantCountryCode, testEnv: Constants.expoConfig.extra.appEnv !== 'production' },
-    applePay: { merchantCountryCode },
+    // Pas d'applePay : le compte Apple du client n'a ni la capacite Apple Pay
+    // ni d'identifiant marchand. Le reclamer ici faisait echouer
+    // initPaymentSheet sur « merchantIdentifier is required », et la feuille
+    // ne s'ouvrait pas du tout — donc aucun paiement par carte sur iPhone.
+    // Le jour ou Apple Pay sera active, il faudra AUSSI poser merchantIdentifier
+    // sur le StripeProvider d'App.js, sans quoi la meme erreur reviendra.
     returnURL: 'heeroo://stripe-redirect',
   });
   if (init.error) throw new Error(init.error.message);
