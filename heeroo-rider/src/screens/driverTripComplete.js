@@ -57,7 +57,8 @@ export default class DriverTripComplete extends React.Component {
                 const monnaie = countryCurrency[countryCode] || 'EUR';
                 let code = ' ' + monnaie;
                 let symbol = ' ' + (currencySymbols[monnaie] || monnaie);
-                let data = value
+                // value est l'instantane Firebase, pas son contenu.
+                let data = value.val()
 
                 const dataList = Array.isArray(data) ? data : Object.values(data || {});
                 dataList.forEach(element => {

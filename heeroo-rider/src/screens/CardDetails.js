@@ -73,7 +73,9 @@ export default class CardDetailsScreen extends React.Component {
         const monnaie = countryCurrency[countryCode] || 'EUR';
         let code = ' ' + monnaie;
         let symbol = ' ' + (currencySymbols[monnaie] || monnaie);
-        const data = Array.isArray(value) ? value : Object.values(value || {});
+        // value est l'instantane Firebase, pas son contenu.
+        const contenu = value.val();
+        const data = Array.isArray(contenu) ? contenu : Object.values(contenu || {});
 
         const dataList = Array.isArray(data) ? data : Object.values(data || {});
         dataList.forEach(element => {

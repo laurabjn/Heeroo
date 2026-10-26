@@ -108,7 +108,10 @@ export default class FareScreen extends React.Component {
                 const monnaie = countryCurrency[countryCode] || 'EUR';
                 let code = ' ' + monnaie;
                 let symbol = ' ' + (currencySymbols[monnaie] || monnaie);
-                let data = value
+                // value est l'instantane Firebase, pas son contenu : sans .val()
+                // on parcourt les proprietes de l'objet Firebase, aucune ligne ne
+                // correspond jamais, et tout pays retombe sur la monnaie par defaut.
+                let data = value.val()
 
                 const dataList = Array.isArray(data) ? data : Object.values(data || {});
                 dataList.forEach(element => {
