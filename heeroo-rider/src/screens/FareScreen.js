@@ -84,16 +84,24 @@ export default class FareScreen extends React.Component {
     }
 
     /**
-     * Les moyens proposes au depart de ce pays.
+     * Les moyens proposes au depart de ce pays : les especes, et un moyen
+     * electronique.
      *
-     * Wave n'apparait qu'au Senegal, ou la societe a un compte marchand ; la
-     * carte, seulement si l'application embarque une cle Stripe. Les especes
-     * sont toujours la : c'est le seul moyen qui ne depende de personne.
+     * Wave et la carte ne cohabitent pas. La ou Wave opere, c'est lui le moyen
+     * electronique : la carte y est rare, et le franc CFA n'est pas sur d'etre
+     * accepte par un acquereur Stripe. Proposer les deux donnerait un bouton
+     * qui echoue sans que le passager comprenne pourquoi.
+     *
+     * Les especes sont toujours la : c'est le seul moyen qui ne depende de
+     * personne.
      */
     moyensDePaiement() {
         const moyens = [{ key: 'Cash', label: languageJSON.pay_cash }];
-        if (isWaveAvailable(this.state.country)) moyens.push({ key: 'Wave', label: languageJSON.payWithWave });
-        if (isCardPaymentAvailable()) moyens.push({ key: 'Card', label: languageJSON.payWithCard });
+        if (isWaveAvailable(this.state.country)) {
+            moyens.push({ key: 'Wave', label: languageJSON.payWithWave });
+        } else if (isCardPaymentAvailable()) {
+            moyens.push({ key: 'Card', label: languageJSON.payWithCard });
+        }
         return moyens;
     }
 
