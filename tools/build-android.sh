@@ -19,6 +19,17 @@
 # une app de production pointant sur la base de développement.
 set -euo pipefail
 
+# Lance depuis PowerShell, « bash » resout vers C:\WINDOWS\system32ash.exe,
+# c'est-a-dire WSL — et non Git Bash. WSL ne recoit pas les variables
+# d'environnement de Windows et ne connait pas les chemins /c/..., si bien que
+# le script echoue sur « LOCALAPPDATA: unbound variable » sans dire pourquoi.
+if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+  echo "Ce script demande Git Bash, pas WSL." >&2
+  echo "Depuis PowerShell :" >&2
+  echo "  & \"C:\Program Files\Git\bin\bash.exe\" tools/build-android.sh $*" >&2
+  exit 1
+fi
+
 APP="${1:-heeroo-rider}"
 export APP_ENV="${2:-production}"
 FORMAT="${3:-apk}"
@@ -32,7 +43,7 @@ FORMAT="${3:-apk}"
 CREDENTIALS="${HEEROO_CREDENTIALS:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/heeroo-credentials}"
 
 export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Eclipse Adoptium/jdk-17.0.20.101-hotspot}"
-export ANDROID_HOME="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
+export ANDROID_HOME="${ANDROID_HOME:-${LOCALAPPDATA:-$HOME/AppData/Local}/Android/Sdk}"
 export PATH="$JAVA_HOME/bin:$PATH"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
