@@ -47,13 +47,50 @@ FORMAT="${3:-apk}"
 # Le chemin par défaut suppose le dossier voisin du dépôt ; depuis la copie de
 # build à chemin court, il faut donc passer HEEROO_CREDENTIALS explicitement :
 #   HEEROO_CREDENTIALS=/c/Users/.../heeroo-credentials tools/build-android.sh … aab
-CREDENTIALS="${HEEROO_CREDENTIALS:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/heeroo-credentials}"
+if [ -n "${HEEROO_CREDENTIALS:-}" ]; then
+  CREDENTIALS="$HEEROO_CREDENTIALS"
+else
+  # Deux emplacements se rencontrent : a cote du depot, et dedans (ou .gitignore
+  # l'exclut). Chercher les deux evite d'avoir a passer HEEROO_CREDENTIALS a
+  # chaque fois selon la machine.
+  _ICI="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  if [ -d "$_ICI/heeroo-credentials" ]; then
+    CREDENTIALS="$_ICI/heeroo-credentials"
+  else
+    CREDENTIALS="$(cd "$_ICI/.." && pwd)/heeroo-credentials"
+  fi
+fi
 
 export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Eclipse Adoptium/jdk-17.0.20.101-hotspot}"
 export ANDROID_HOME="${ANDROID_HOME:-${LOCALAPPDATA:-$HOME/AppData/Local}/Android/Sdk}"
 export PATH="$JAVA_HOME/bin:$PATH"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Les mots de passe de signature ne sont ecrits nulle part : ni dans le depot,
+# ni dans un fichier, ni dans l'historique du terminal. S'ils ne sont pas deja
+# dans l'environnement, on les demande, masques, au moment ou l'on en a besoin.
+if [ "$FORMAT" = "aab" ]; then
+  _demander() {
+    local nom="$1" invite="$2"
+    if [ -z "${!nom:-}" ]; then
+      if [ -t 0 ]; then
+        printf '%s : ' "$invite" >&2
+        read -rs _valeur
+        printf '
+' >&2
+        export "$nom=$_valeur"
+        unset _valeur
+      else
+        echo "Variable $nom absente, et pas de terminal pour la demander." >&2
+        exit 1
+      fi
+    fi
+  }
+  _demander HEEROO_UPLOAD_STORE_PASSWORD "Mot de passe du magasin de cles"
+  _demander HEEROO_UPLOAD_KEY_ALIAS      "Alias de la cle"
+  _demander HEEROO_UPLOAD_KEY_PASSWORD   "Mot de passe de la cle"
+fi
+
 if [ ! -d "$ROOT/$APP" ]; then
   echo "Application inconnue : $APP" >&2
   echo "Attendu : heeroo-rider ou heeroo-driver (rider et driver sont acceptes)." >&2
