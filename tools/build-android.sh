@@ -31,6 +31,13 @@ if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null
 fi
 
 APP="${1:-heeroo-rider}"
+# « rider » et « driver » sont acceptes : le prefixe heeroo- est evident pour
+# qui tape la commande, et l'oublier donnait un « No such file or directory »
+# sur un chemin qui ne ressemblait a rien.
+case "$APP" in
+  rider|passager)  APP="heeroo-rider" ;;
+  driver|chauffeur) APP="heeroo-driver" ;;
+esac
 export APP_ENV="${2:-production}"
 FORMAT="${3:-apk}"
 
@@ -47,6 +54,11 @@ export ANDROID_HOME="${ANDROID_HOME:-${LOCALAPPDATA:-$HOME/AppData/Local}/Androi
 export PATH="$JAVA_HOME/bin:$PATH"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ ! -d "$ROOT/$APP" ]; then
+  echo "Application inconnue : $APP" >&2
+  echo "Attendu : heeroo-rider ou heeroo-driver (rider et driver sont acceptes)." >&2
+  exit 1
+fi
 cd "$ROOT/$APP"
 
 echo "== $APP ($APP_ENV) =="
