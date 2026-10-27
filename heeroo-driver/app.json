@@ -2,7 +2,7 @@
   "expo": {
     "name": "Heeroo Driver",
     "slug": "heeroo-driver",
-    "version": "1.5.1",
+    "version": "1.5.2",
     "orientation": "portrait",
     "icon": "./assets/images/appIcon.png",
     "userInterfaceStyle": "light",
@@ -12,7 +12,7 @@
     "ios": {
       "bundleIdentifier": "org.Terence.HeerooDriver",
       "supportsTablet": false,
-      "buildNumber": "13",
+      "buildNumber": "14",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Heeroo utilise votre position pour vous localiser sur la carte et vous proposer les chauffeurs à proximité.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Heeroo Driver suit votre position pendant les courses pour guider le passager, même quand l'application est en arrière-plan.",
