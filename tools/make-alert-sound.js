@@ -112,6 +112,33 @@ const SOUNDS = {
       beep(samples, Math.round(start * RATE), frequency, 0.3);
     });
   },
+  // Double bip serre, repete : le motif d'un camion qui recule. Le plus
+  // insistant du lot, difficile a ignorer et difficile a aimer — c'est le but.
+  'urgence': (samples) => {
+    for (let i = 0; i < 4; i++) {
+      const base = i * 0.6;
+      beep(samples, Math.round(base * RATE), 2794, 0.11);
+      beep(samples, Math.round((base + 0.17) * RATE), 2794, 0.11);
+    }
+  },
+  // Arpege montant, deux fois : annonce une bonne nouvelle plutot qu'un danger.
+  // Les quatre notes dessinent un accord majeur, d'ou son caractere avenant.
+  'montee': (samples) => {
+    [0, 1.5].forEach((start) => {
+      [[0, 1760], [0.14, 2217], [0.28, 2637], [0.42, 3520]].forEach(([decalage, frequence]) => {
+        beep(samples, Math.round((start + decalage) * RATE), frequence, decalage === 0.42 ? 0.34 : 0.15);
+      });
+    });
+  },
+  // Deux notes alternees tres rapidement, facon trille de telephone fixe. Se
+  // distingue des autres par son grain, pas par sa hauteur.
+  'trille': (samples) => {
+    [0, 1.2, 2.4].forEach((debut) => {
+      for (let i = 0; i < 10; i++) {
+        beep(samples, Math.round((debut + i * 0.05) * RATE), i % 2 ? 2349 : 3136, 0.055);
+      }
+    });
+  },
 };
 
 const LOOP_SECONDS = 2.8;
