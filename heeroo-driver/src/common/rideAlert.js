@@ -9,7 +9,7 @@
 // autoradio fort, et la boucle sans fin, qui dérange au volant. Il s'arrête
 // immédiatement dès que la demande n'attend plus de réponse.
 //
-// Le vibreur accompagne le carillon : un téléphone au fond d'une veste, ou un
+// Le vibreur accompagne la sonnerie : un téléphone au fond d'une veste, ou un
 // autoradio poussé, et le son ne suffit plus. Les deux se déclenchent et
 // s'arrêtent ensemble.
 //
@@ -18,10 +18,10 @@
 import { Vibration } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-const RINGTONE = require('../../assets/sounds/carillon.wav');
+const RINGTONE = require('../../assets/sounds/nouvelle-course.wav');
 
 const REPEATS = 3;      // nombre total de sonneries
-const RING_MS = 3200;   // durée du carillon, arrondie
+const RING_MS = 3200;   // durée d'une boucle, arrondie
 const GAP_MS = 2000;    // silence entre deux sonneries
 
 // Calé sur le carillon, qui compte deux groupes de notes séparés d'un demi-tour
