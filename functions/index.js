@@ -31,7 +31,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
-const { compteStripePour, reglagePays, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { compteStripePour, reglagePays, seuilDeCredit, monnaieDuPays, montantLisible, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -1738,6 +1738,38 @@ exports.onAdminFlagChanged = onValueWritten(
 // débitée qu'une fois (champ commission_charged_at).
 // ---------------------------------------------------------------------------
 
+/**
+ * Prévient le chauffeur quand la commission qu'on vient de lui prélever fait
+ * passer son crédit sous la limite, au-delà de laquelle l'application cesse de
+ * lui proposer des courses en espèces.
+ *
+ * Envoyée au franchissement seulement : sans cette condition, un chauffeur
+ * déjà dans le rouge recevrait la même alerte après chaque course, et
+ * cesserait de la lire.
+ *
+ * Sans limite configurée, le passage en négatif en tient lieu. Le crédit ne
+ * bloque alors rien, mais le chauffeur a tout de même intérêt à savoir qu'il
+ * doit de l'argent : c'est autant qui sera retenu sur son prochain versement.
+ */
+async function previenirSiCreditEpuise(driver, debit, commission, pays) {
+  if (!driver || !debit || !debit.committed) return;
+  const apres = Number(debit.snapshot.val()) || 0;
+  const avant = apres + commission;
+
+  const reglages = (await admin.database().ref('credit_settings').once('value')).val();
+  const seuil = seuilDeCredit(reglages, pays);
+  const limite = seuil === null ? 0 : seuil;
+  if (avant < limite || apres >= limite) return;
+
+  const monnaie = monnaieDuPays(pays);
+  const solde = montantLisible(apres, monnaie);
+  const titre = seuil === null ? 'Crédit négatif' : 'Crédit épuisé';
+  const corps = seuil === null
+    ? `Votre crédit est de ${solde}. Votre prochaine course réglée par carte le remontera.`
+    : `Votre crédit est de ${solde}. Les courses en espèces s'arrêtent sous ${montantLisible(seuil, monnaie)} : votre prochaine course réglée par carte le remontera, ou rechargez-le depuis « Mes revenus ».`;
+  await notifyUser(driver, titre, corps, { type: 'credit' });
+}
+
 
 // ---------------------------------------------------------------------------
 // payoutOnRideEnd — verser au chauffeur des la course payee.
@@ -1881,7 +1913,7 @@ exports.onBookingCompleted = onValueUpdated(
     }
 
     const driverRef = admin.database().ref(`users/${booking.driver}`);
-    await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) - commission);
+    const debit = await driverRef.child('walletBalance').transaction((balance) => (Number(balance) || 0) - commission);
     await driverRef.child('walletHistory').push({
       type: 'Debit',
       reason: 'commission',
@@ -1890,6 +1922,14 @@ exports.onBookingCompleted = onValueUpdated(
       txRef: bookingId,
     });
     logger.info(`Course ${bookingId} : commission ${commission} (${rate} % de ${tripCost}) débitée du chauffeur ${booking.driver}`);
+    // Le débit est acquis : une notification qui échoue ne doit pas faire
+    // échouer la fonction, dont la reprise ne referait de toute façon rien
+    // (commission_charged_at est déjà posé) et masquerait le vrai résultat.
+    try {
+      await previenirSiCreditEpuise(booking.driver, debit, commission, booking.pickup && booking.pickup.country);
+    } catch (error) {
+      logger.warn(`Course ${bookingId} : crédit débité, notification impossible`, error);
+    }
   }
 );
 

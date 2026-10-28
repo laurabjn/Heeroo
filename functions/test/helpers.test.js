@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, monnaieDuPays, montantLisible, seuilDeCredit } = require('../lib/helpers');
 
 describe('reglagePays', () => {
   test('une valeur simple vaut pour tous les pays', () => {
@@ -263,5 +263,69 @@ describe('heldShare', () => {
   });
   test('une ligne pile a la limite est liberee', () => {
     assert.equal(heldShare([part(10, 7)], maintenant, 7 * JOUR), 0);
+  });
+});
+
+describe('monnaieDuPays', () => {
+  test('rend la monnaie du pays', () => {
+    assert.equal(monnaieDuPays('FR'), 'EUR');
+    assert.equal(monnaieDuPays('SN'), 'XOF');
+    assert.equal(monnaieDuPays('CM'), 'XAF');
+    assert.equal(monnaieDuPays('GB'), 'GBP');
+    assert.equal(monnaieDuPays('gb'), 'GBP');
+  });
+  test('un pays inconnu compte comme l\'euro, comme dans les apps', () => {
+    assert.equal(monnaieDuPays('ZZ'), 'EUR');
+    assert.equal(monnaieDuPays(undefined), 'EUR');
+  });
+  // La table est recopiee depuis les applications : si elle derive, le serveur
+  // previendrait un chauffeur sur un seuil que l'application n'applique pas.
+  test('la table est identique a celle des applications', () => {
+    const serveur = require('../lib/countryCurrency.json');
+    const app = require('../../heeroo-driver/src/constants/countryCurrency.json');
+    assert.deepEqual(serveur, app);
+  });
+});
+
+describe('seuilDeCredit', () => {
+  test('lit le seuil de la monnaie du pays', () => {
+    const reglages = { minDriverBalance: 5000, minDriverBalanceEUR: -20, minDriverBalanceGBP: -15 };
+    assert.equal(seuilDeCredit(reglages, 'SN'), 5000);
+    assert.equal(seuilDeCredit(reglages, 'FR'), -20);
+    assert.equal(seuilDeCredit(reglages, 'GB'), -15);
+  });
+  test('un seuil negatif est un decouvert tolere, pas une regle desactivee', () => {
+    assert.equal(seuilDeCredit({ minDriverBalanceEUR: -20 }, 'FR'), -20);
+  });
+  test('zero et absent desactivent la regle', () => {
+    assert.equal(seuilDeCredit({ minDriverBalanceEUR: 0 }, 'FR'), null);
+    assert.equal(seuilDeCredit({}, 'FR'), null);
+    assert.equal(seuilDeCredit(null, 'FR'), null);
+    assert.equal(seuilDeCredit({ minDriverBalanceEUR: '' }, 'FR'), null);
+    assert.equal(seuilDeCredit({ minDriverBalanceEUR: 'beaucoup' }, 'FR'), null);
+  });
+  // Le seuil sans suffixe date de l'epoque ou seul le Senegal existait. Herite
+  // partout, il exigeait 5 000 livres d'un chauffeur britannique.
+  test('le seuil sans suffixe ne vaut que pour le franc CFA', () => {
+    const reglages = { minDriverBalance: 5000 };
+    assert.equal(seuilDeCredit(reglages, 'SN'), 5000);
+    assert.equal(seuilDeCredit(reglages, 'CM'), 5000);
+    assert.equal(seuilDeCredit(reglages, 'GB'), null);
+    assert.equal(seuilDeCredit(reglages, 'FR'), null);
+  });
+  test('le seuil de la monnaie prime sur celui sans suffixe', () => {
+    assert.equal(seuilDeCredit({ minDriverBalance: 5000, minDriverBalanceXOF: 2000 }, 'SN'), 2000);
+  });
+});
+
+describe('montantLisible', () => {
+  test('le franc CFA n\'a pas de centimes', () => {
+    assert.equal(montantLisible(5000, 'XOF').replace(/\u00a0|\u202f/g, ' '), '5 000 FCFA');
+  });
+  test('un solde negatif se lit avec son signe', () => {
+    assert.equal(montantLisible(-22.5, 'EUR'), '-22,50 \u20ac');
+  });
+  test('une monnaie inconnue s\'affiche par son code', () => {
+    assert.equal(montantLisible(10, 'MGA'), '10 MGA');
   });
 });

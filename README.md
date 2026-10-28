@@ -72,9 +72,58 @@ Le déploiement des fonctions et la création du stockage exigent le plan Blaze 
 - Clé API : `firebase functions:secrets:set WAVE_API_KEY` (créée sur business.wave.com → Développeurs).
 - Webhook à déclarer sur business.wave.com → Développeurs → Webhooks : `https://us-central1-<projet>.cloudfunctions.net/waveWebhook`, événements `checkout.session.completed` et `checkout.session.payment_failed` ; le secret affiché va dans `WAVE_WEBHOOK_SECRET`.
 - Pages de retour après paiement : `heeroo-admin/public/wave/succes.html` et `echec.html`, servies par le Hosting du projet (`firebase deploy --only hosting`).
-- Activation côté app : la carte « crédit / recharger » de l'écran Revenus du chauffeur n'apparaît que si `settings/waveEnabled` vaut `true` en base (à poser une fois la clé Wave configurée et les fonctions déployées ; aucun nouveau build nécessaire). Tant que Wave n'est pas prêt, l'app fonctionne sans.
-- Crédit minimum pour accepter une course **au départ du Sénégal** : `settings/minDriverBalance` (FCFA, décision client : 5 000). Absent ou 0 = aucune règle ; sinon l'app chauffeur refuse l'acceptation sous ce seuil et renvoie vers la recharge. Les courses hors Sénégal ne sont pas concernées. Le taux de commission par type de véhicule se règle dans l'admin (`rates/car_type[].convenience_fees`, en %) ; à 0 le crédit ne bouge pas.
+- Activation côté app : la carte « crédit / recharger » de l'écran Revenus du chauffeur n'apparaît que si `credit_settings/waveEnabled` vaut `true` en base (à poser une fois la clé Wave configurée et les fonctions déployées ; aucun nouveau build nécessaire). Tant que Wave n'est pas prêt, l'app fonctionne sans.
+- Crédit minimum pour accepter une course : voir « Crédit du chauffeur » ci-dessous.
 - Flux : app chauffeur → `createWaveCheckout` → app Wave → webhook crédite `users/<uid>/walletBalance` (+ `walletHistory`, `walletTopups/<session>`) ; `confirmWaveCheckout` vérifie la session au retour dans l'app si le webhook tarde.
+
+### Crédit du chauffeur
+
+Le crédit est le compte où tout se compense. Une course en espèces **débite** la
+commission — le chauffeur a déjà l'argent en main ; une course encaissée par la
+société (carte ou Wave) **crédite** la part du chauffeur, commission déjà
+retenue. Le taux se règle dans l'admin, par catégorie de véhicule et par pays
+(`rates/car_type[].convenience_fees`, en %) ; à 0 le crédit ne bouge pas.
+
+Un chauffeur qui ne ferait que des espèces verrait son crédit descendre sans
+jamais remonter. C'est ce que borne le seuil : sous cette valeur, l'application
+cesse de lui proposer des courses en espèces. Les courses encaissées par la
+société restent accessibles — ce sont elles qui le ramènent au-dessus, et les
+refuser reviendrait à interdire de travailler à qui ne doit rien.
+
+Le seuil se règle sous `credit_settings`, une clé par monnaie, parce que
+5 000 FCFA et 5 000 euros ne sont pas le même ordre de grandeur :
+
+| Clé | Monnaie | Valeur en production |
+|---|---|---|
+| `minDriverBalance` | franc CFA (XOF et XAF) | 5 000 |
+| `minDriverBalanceEUR` | euro | 0 |
+| `minDriverBalanceGBP` | livre | absente |
+
+`minDriverBalance`, sans suffixe, est l'ancien nom du seuil sénégalais : il ne
+vaut que pour le franc CFA. Les autres monnaies lisent leur propre clé, et un
+pays nouvellement ouvert démarre donc sans blocage tant que l'exploitant n'a
+rien décidé.
+
+**Un seuil négatif est un découvert toléré** : à `-20`, le chauffeur n'avance
+rien, travaille jusqu'à devoir vingt euros de commission, puis ses courses en
+espèces s'arrêtent. C'est le réglage à poser en France, où exiger un crédit
+positif ferait payer d'avance un chauffeur dont le crédit ne fait que monter.
+Absente ou à 0, la clé désactive la règle pour cette monnaie.
+
+Au moment où une commission fait franchir le seuil, le serveur envoie une
+notification au chauffeur (`previenirSiCreditEpuise`). Elle part au
+franchissement seulement : sans cela, un chauffeur déjà dans le rouge la
+recevrait après chaque course et cesserait de la lire. Sans seuil configuré, le
+passage en négatif en tient lieu.
+
+La règle est écrite deux fois, `seuilDeCredit` dans `functions/lib/helpers.js`
+et dans `heeroo-driver/src/common/credit.js` : l'application bloque, le serveur
+prévient, et les deux doivent dire la même chose. Un test vérifie que la table
+pays-monnaie recopiée dans `functions/lib/` reste identique à celle des apps.
+
+**Changer le seuil ne demande aucun nouveau build** tant qu'il reste du même
+signe qu'aujourd'hui ; passer au découvert exige la version de l'app chauffeur
+qui sait lire une valeur négative.
 
 ## Intégration et déploiement continus (GitHub Actions)
 

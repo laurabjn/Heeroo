@@ -20,11 +20,7 @@ import languageJSON from '../common/language';
 import { DrawerToggle, NotificationBtn, Path } from '../components';
 import { Icon } from '@rneui/themed';
 import { Pin, Car } from '../icons'
-import countryCurrency from './../constants/countryCurrency.json'
-
-// Symbole affiche au chauffeur. Une monnaie absente s'affiche par son code :
-// « 12 MGA » est moins elegant que « 12 Ar », mais reste juste.
-const SYMBOLES = { EUR: '€', XOF: 'FCFA', XAF: 'FCFA', GBP: '£' };
+import { monnaieDuPays, seuilDeCredit, symboleMonnaie } from '../common/credit';
 import { checkLocationPermission } from '../common/permission';
 import Geolocation from '../common/geolocation';
 import { setRideAlert, stopRideAlert } from '../common/rideAlert';
@@ -315,19 +311,14 @@ export default class DriverTripAccept extends React.Component {
         // desactive la regle pour cette monnaie — c'est ainsi qu'un pays
         // nouvellement ouvert demarre sans blocage tant que l'exploitant n'a rien
         // decide.
+        //
+        // Il peut etre negatif : c'est alors un decouvert tolere, le reglage
+        // retenu pour la France. Le chauffeur n'avance rien, travaille jusqu'a
+        // devoir la somme fixee, et c'est sa prochaine course encaissee par la
+        // societe qui efface la dette.
         const rideCountry = item.pickup && item.pickup.country;
-        const rideCurrency = countryCurrency[rideCountry] || 'EUR';
-        const reglages = this.state.creditSettings || {};
-        // Un reglage par monnaie : minDriverBalanceEUR, minDriverBalanceGBP, et
-        // minDriverBalance pour le franc CFA, nomme ainsi avant que la question
-        // des autres monnaies se pose. Choisir sur « euro ou pas » revenait a
-        // appliquer le seuil senegalais, exprime en milliers de francs, a tout
-        // pays nouvellement ouvert.
-        const minBalance = Number(
-            reglages['minDriverBalance' + rideCurrency] !== undefined
-                ? reglages['minDriverBalance' + rideCurrency]
-                : reglages.minDriverBalance
-        ) || 0;
+        const rideCurrency = monnaieDuPays(rideCountry);
+        const seuil = seuilDeCredit(this.state.creditSettings, rideCountry);
         const balance = Number(this.state.driverDetails && this.state.driverDetails.walletBalance) || 0;
 
         // Seules les courses en especes justifient le blocage : ce sont les
@@ -345,13 +336,18 @@ export default class DriverTripAccept extends React.Component {
         // compte comme des especes : c'est le defaut prudent.
         const paiementSociete = item.payment_mode === 'Card' || item.payment_mode === 'Wave';
 
-        if (!paiementSociete && minBalance > 0 && balance < minBalance) {
+        if (!paiementSociete && seuil !== null && balance < seuil) {
+            // Deux messages, parce qu'un decouvert ne se repare pas comme un
+            // credit vide : « il faut au moins 5 000 FCFA » n'a pas de sens
+            // quand le chauffeur ne doit pas recharger mais rembourser ce qu'il
+            // a encaisse.
+            const decouvert = seuil < 0;
             Alert.alert(
-                languageJSON.credit_insufficient_title,
-                languageJSON.credit_insufficient_msg
+                decouvert ? languageJSON.credit_overdrawn_title : languageJSON.credit_insufficient_title,
+                (decouvert ? languageJSON.credit_overdrawn_msg : languageJSON.credit_insufficient_msg)
                     .replace(/\{balance\}/g, balance.toLocaleString('fr-FR'))
-                    .replace(/\{min\}/g, minBalance.toLocaleString('fr-FR'))
-                    .replace(/\{currency\}/g, SYMBOLES[rideCurrency] || rideCurrency)
+                    .replace(/\{min\}/g, seuil.toLocaleString('fr-FR'))
+                    .replace(/\{currency\}/g, symboleMonnaie(rideCurrency))
             );
             return;
         }

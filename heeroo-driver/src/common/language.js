@@ -24,6 +24,8 @@ export default {
     topup_title: 'Recharger mon crédit',
     credit_insufficient_title: 'Crédit insuffisant',
     credit_insufficient_msg: 'Votre crédit est de {balance} {currency}. Il faut au moins {min} {currency} pour accepter une course : rechargez-le depuis « Mes revenus ».',
+    credit_overdrawn_title: 'Crédit épuisé',
+    credit_overdrawn_msg: 'Votre crédit est de {balance} {currency}, et les courses en espèces s\'arrêtent sous {min} {currency}. Votre prochaine course réglée par carte le remontera, ou rechargez-le depuis « Mes revenus ».',
     topup_hint: 'Choisissez un montant, puis payez avec Wave. La commission de chaque course est prélevée sur ce crédit.',
     topup_amount_placeholder: 'Autre montant ({devise})',
     topup_confirm: 'Payer avec Wave',

@@ -8,6 +8,64 @@ const crypto = require('crypto');
 // Devises sans sous-unité chez Stripe (montant envoyé tel quel, pas en centimes).
 const ZERO_DECIMAL_CURRENCIES = new Set(['XOF', 'XAF', 'JPY', 'KRW', 'CLP', 'VND', 'UGX', 'RWF', 'GNF', 'BIF', 'DJF', 'KMF', 'MGA', 'PYG', 'VUV', 'XPF']);
 
+// Monnaie de chaque pays, meme table que les applications
+// (`src/constants/countryCurrency.json`). Recopiee ici parce que les fonctions
+// se deploient seules, sans le reste du depot — les deux applications en
+// portent deja chacune un exemplaire, pour la meme raison.
+const COUNTRY_CURRENCY = require('./countryCurrency.json');
+
+// Symbole affiche au chauffeur. Une monnaie absente s'affiche par son code.
+const SYMBOLES_MONNAIE = { EUR: '\u20ac', XOF: 'FCFA', XAF: 'FCFA', GBP: '\u00a3', GMD: 'D' };
+
+/** Monnaie d'un pays. Un pays inconnu compte comme l'euro, comme dans les apps. */
+function monnaieDuPays(country) {
+  return COUNTRY_CURRENCY[String(country || '').toUpperCase()] || 'EUR';
+}
+
+/** Montant lisible dans une notification : « -22,50 \u20ac », « 5 000 FCFA ». */
+function montantLisible(value, currency) {
+  const monnaie = String(currency || 'EUR').toUpperCase();
+  const decimales = ZERO_DECIMAL_CURRENCIES.has(monnaie) ? 0 : 2;
+  const montant = (Number(value) || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales,
+  });
+  return `${montant} ${SYMBOLES_MONNAIE[monnaie] || monnaie}`;
+}
+
+/**
+ * Seuil de credit sous lequel un chauffeur ne peut plus accepter de course en
+ * especes, dans la monnaie du pays de depart. Rend null quand aucune regle ne
+ * s'applique.
+ *
+ * Un seuil negatif est un decouvert tolere : le chauffeur n'avance rien, son
+ * credit descend au fil des commissions qu'il doit sur ses courses en especes,
+ * et celles-ci s'arretent une fois la limite atteinte. Les courses encaissees
+ * par la societe, elles, restent disponibles — ce sont elles qui le ramenent
+ * au-dessus, puisque sa part vient s'ajouter a son credit.
+ *
+ * Zero reste la facon documentee de desactiver la regle pour une monnaie, et ne
+ * devient pas « bloquer des le premier centime de dette » : des pays ont ce
+ * reglage a 0 aujourd'hui, et le sens d'une valeur deja en base ne doit pas
+ * changer sous les pieds de l'exploitant.
+ */
+function seuilDeCredit(reglages, country) {
+  const valeurs = reglages && typeof reglages === 'object' ? reglages : {};
+  const monnaie = monnaieDuPays(country);
+  // `minDriverBalance` sans suffixe est l'ancien nom du seuil senegalais, pose
+  // avant que d'autres monnaies existent : il ne vaut donc que pour le franc
+  // CFA. S'en servir de valeur par defaut partout appliquerait 5 000 — des
+  // milliers de francs — a un pays qui compte en livres ou en euros.
+  const herite = monnaie === 'XOF' || monnaie === 'XAF' ? valeurs.minDriverBalance : undefined;
+  const brut = valeurs['minDriverBalance' + monnaie] !== undefined
+    ? valeurs['minDriverBalance' + monnaie]
+    : herite;
+  if (brut === undefined || brut === null || brut === '') return null;
+  const seuil = Number(brut);
+  if (!Number.isFinite(seuil) || seuil === 0) return null;
+  return seuil;
+}
+
 /** Montant au format Stripe : centimes pour EUR, unité entière pour XOF… */
 function toStripeAmount(amount, currency) {
   const value = Number(amount) || 0;
@@ -194,4 +252,4 @@ function reglagePays(valeur, pays) {
   return valeur;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+module.exports = { ZERO_DECIMAL_CURRENCIES, monnaieDuPays, montantLisible, seuilDeCredit, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
