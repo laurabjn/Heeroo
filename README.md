@@ -37,8 +37,64 @@ eas build --platform android --profile preview    # projet EAS : @laurabjns-team
 ```bash
 node tools/check-sources.js heeroo-rider heeroo-driver   # identifiants non déclarés, styles/couleurs/textes inexistants, imports et assets introuvables, écrans de navigation inconnus
 node tools/compile-sources.js heeroo-rider heeroo-driver # compilation Babel de tous les fichiers
+node tools/verifie-dictionnaires.js                       # concordance des dictionnaires français et anglais
 cd functions && npm test                                  # tests unitaires des fonctions serveur
 ```
+
+## Langues des applications
+
+Les deux applications sont **bilingues depuis la 1.6.0** : la langue de
+l'appareil choisit le dictionnaire, français pour un appareil francophone,
+anglais partout ailleurs. Il n'y a pas de sélecteur de langue dans l'app, et le
+choix n'est pas mémorisé : il suit les réglages du téléphone.
+
+| Fichier | Rôle |
+|---|---|
+| `src/common/language.fr.js` | le dictionnaire français, **référence** |
+| `src/common/language.en.js` | le dictionnaire anglais, mêmes clés, même ordre |
+| `src/common/language.js` | le sélecteur, qui lit la langue de l'appareil |
+
+Le sélecteur garde le nom et l'export par défaut de l'ancien fichier : les
+69 écrans qui font `import languageJSON from '../common/language'` n'ont rien à
+changer.
+
+`expo-localization` est un module natif. S'il manque — Expo Go, ou un binaire
+compilé avant son ajout — le sélecteur retombe sur le français plutôt que de
+faire planter l'app au démarrage.
+
+**Une clé ajoutée d'un seul côté ne se voit pas en développement**, puisque le
+français est complet et sert de défaut : l'écran afficherait `undefined` en
+anglais seulement. `node tools/verifie-dictionnaires.js` compare les deux
+fichiers et sort en erreur au premier écart. `tools/check-sources.js` vérifie de
+son côté que chaque `languageJSON.X` existe, en lisant `language.fr.js`.
+
+### Ce qui reste en français, volontairement
+
+- **Le back-office.** Son unique utilisateur est français.
+- **Les commentaires et les traces de `console`.** Ils s'adressent au développeur.
+- **Le texte de loi du billet collectif** (`ticket_rules`), qui cite deux
+  arrêtés français. Un texte réglementaire ne se traduit pas.
+- **Les pièces administratives françaises** (carte VTC, RIR, carte grise,
+  attestation à titre onéreux, carte verte). Le dictionnaire anglais en donne la
+  traduction utile et garde le nom français entre parenthèses, puisque c'est ce
+  nom qui figure sur le document demandé. Les pièces exigées varient déjà par
+  pays (nœud `settings`) : ouvrir un pays non francophone demandera de nouvelles
+  clés, pas une refonte.
+
+### Ce qui reste à faire
+
+- **Une quarantaine de chaines par application sont encore écrites en dur dans
+  les écrans** et s'afficheront en français même en anglais : les statuts de
+  course (`components/ridelist.js`), « Payé / Non payé » (`screens/RideDetails.js`),
+  « Déconnexion » (`components/SideMenu.js`), les messages d'erreur de
+  géolocalisation, de paiement et d'inscription. Elles doivent remonter dans les
+  dictionnaires.
+- **Les notifications push partent en français pour tout le monde.** Les 96
+  chaines de `functions/index.js` ne peuvent pas être choisies sans connaître la
+  langue du destinataire, et **aucun champ de langue n'existe sur les comptes**.
+  Il faut l'ajouter, le faire écrire par les apps à la connexion, et le faire
+  lire par `notifyUser`.
+- Le format de date de `screens/RideListScreen.js` contient un « à » français.
 
 ## Environnements Firebase
 

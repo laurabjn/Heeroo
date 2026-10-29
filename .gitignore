@@ -98,6 +98,11 @@ heeroo-credentials/
 # Livrables de build et éléments des magasins : lourds, régénérables, et sans
 # intérêt dans l'historique (près d'un gigaoctet à eux deux).
 heeroo-bundles/
-heeroo-store/
+# On ignore le contenu de heeroo-store, pas le dossier lui-même : sans cela
+# l'exception ci-dessous serait sans effet, git refusant de réinclure quoi que
+# ce soit sous un dossier exclu.
+heeroo-store/*
+# Les fiches des magasins sont du texte, pas des binaires : à conserver.
+!heeroo-store/fiches/
 *.aab
 *.apk

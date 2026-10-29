@@ -45,6 +45,13 @@ jobs:
         working-directory: .
         run: node tools/compile-sources.js ${{ matrix.app }}
 
+      # Le script compare les deux applications d'un coup : la matrice le
+      # lance donc deux fois, pour quatre fichiers lus. On garde la
+      # simplicite plutot qu'un job separe.
+      - name: Concordance des dictionnaires français et anglais
+        working-directory: .
+        run: node tools/verifie-dictionnaires.js
+
       # Le contrôle complet est conservé, mais une dérive de versions purement
       # correctives devient un avertissement : Expo en publie plusieurs par
       # semaine, et la CI tombait sur des commits n'ayant touché aucune

@@ -195,7 +195,7 @@ function checkApp(app) {
   };
   const files = [path.join(appDir, 'App.js'), ...listSources(path.join(appDir, 'src')), ...listSources(path.join(appDir, 'plugins'))].filter(fs.existsSync);
   const themeKeys = exportedObjectKeys(path.join(appDir, 'src', 'common', 'theme.js'), 'colors', babel);
-  const langKeys = exportedObjectKeys(path.join(appDir, 'src', 'common', 'language.js'), 'language', babel);
+  const langKeys = exportedObjectKeys(path.join(appDir, 'src', 'common', 'language.fr.js'), 'language', babel);
   const screens = screenNames(files.filter((f) => f.includes(path.sep + 'navigation' + path.sep)), babel);
   for (const [label, set] of [['thème (colors)', themeKeys], ['langue (languageJSON)', langKeys], ['écrans', screens]]) {
     if (set.size === 0) console.warn(`  !! référentiel ${label} vide pour ${app} : les vérifications correspondantes sont inactives`);
