@@ -254,4 +254,29 @@ function reglagePays(valeur, pays) {
   return valeur;
 }
 
-module.exports = { ZERO_DECIMAL_CURRENCIES, monnaieDuPays, montantLisible, seuilDeCredit, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount };
+// Moyens de paiement encaisses par la societe, par opposition aux especes que
+// le chauffeur garde en main. La distinction commande deux decisions d'argent :
+// la commission n'est pas debitee de son credit, puisque la societe l'a deja
+// retenue, et sa part lui est portee au credit.
+//
+// Inscrire ici tout nouveau prestataire. L'oublier ferait traiter la course
+// comme des especes : le chauffeur serait debite de la commission d'une course
+// dont il n'a jamais touche le prix, et sa part ne lui serait jamais creditee.
+// Il perdrait deux fois, et la societe garderait tout. C'est la raison de ce
+// test unique plutot que d'une comparaison repetee a chaque endroit.
+const MOYENS_ENCAISSES = new Set(['Card', 'Wave', 'OrangeMoney']);
+
+/**
+ * La societe a-t-elle encaisse le prix de cette course ?
+ *
+ * Un moyen de paiement absent — les courses anterieures a ce champ — compte
+ * comme des especes : c'est le defaut prudent, celui qui ne credite personne
+ * par erreur.
+ */
+function encaissePlateforme(booking) {
+  if (!booking) return false;
+  if (booking.payment_intent_id) return true;
+  return MOYENS_ENCAISSES.has(String(booking.payment_mode || ''));
+}
+
+module.exports = { ZERO_DECIMAL_CURRENCIES, monnaieDuPays, montantLisible, seuilDeCredit, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, MOYENS_ENCAISSES, encaissePlateforme };

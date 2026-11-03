@@ -95,6 +95,16 @@
         ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
       }
     },
+    "orangeRidePayments": {
+      "$reference": {
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+      }
+    },
+    "orangeTokens": {
+      ".read": false,
+      ".write": false
+    },
     "walletTopups": {
       "$sessionId": {
         ".read": "auth != null && data.child('uid').val() === auth.uid",

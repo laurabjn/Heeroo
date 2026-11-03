@@ -4,7 +4,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, monnaieDuPays, montantLisible, seuilDeCredit } = require('../lib/helpers');
+const { toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, compteStripePour, reglagePays, driverShare, heldShare, waveMobile, monnaieDuPays, montantLisible, seuilDeCredit, MOYENS_ENCAISSES, encaissePlateforme } = require('../lib/helpers');
 
 describe('reglagePays', () => {
   test('une valeur simple vaut pour tous les pays', () => {
@@ -327,5 +327,53 @@ describe('montantLisible', () => {
   });
   test('une monnaie inconnue s\'affiche par son code', () => {
     assert.equal(montantLisible(10, 'MGA'), '10 MGA');
+  });
+});
+
+describe('encaissePlateforme', () => {
+  test('les moyens encaisses par la societe', () => {
+    assert.equal(encaissePlateforme({ payment_mode: 'Card' }), true);
+    assert.equal(encaissePlateforme({ payment_mode: 'Wave' }), true);
+    assert.equal(encaissePlateforme({ payment_mode: 'OrangeMoney' }), true);
+  });
+
+  // Le defaut prudent : sans preuve d'encaissement, c'est de l'espece.
+  test('les especes, et tout ce qui ne se reconnait pas', () => {
+    assert.equal(encaissePlateforme({ payment_mode: 'Cash' }), false);
+    assert.equal(encaissePlateforme({ payment_mode: 'Especes' }), false);
+    assert.equal(encaissePlateforme({}), false);
+    assert.equal(encaissePlateforme(null), false);
+    assert.equal(encaissePlateforme(undefined), false);
+  });
+
+  // Une empreinte bancaire prouve l'encaissement, quel que soit le libelle.
+  test('une empreinte de paiement suffit', () => {
+    assert.equal(encaissePlateforme({ payment_intent_id: 'pi_123' }), true);
+    assert.equal(encaissePlateforme({ payment_mode: 'Cash', payment_intent_id: 'pi_123' }), true);
+  });
+
+  test("ne se laisse pas confondre par une cle heritee d'Object", () => {
+    assert.equal(encaissePlateforme({ payment_mode: 'constructor' }), false);
+    assert.equal(encaissePlateforme({ payment_mode: 'toString' }), false);
+  });
+
+  // Le serveur decide de la commission, l'application chauffeur decide qui peut
+  // accepter une course. Les deux listes divergeraient en silence : l'une
+  // crediterait le chauffeur quand l'autre lui interdirait de travailler.
+  test("la liste de l'application chauffeur est identique", () => {
+    const chemin = require('path').join(__dirname, '..', '..', 'heeroo-driver', 'src', 'common', 'paiement.js');
+    let source;
+    try {
+      source = require('fs').readFileSync(chemin, 'utf8');
+    } catch (error) {
+      // Les fonctions se deploient seules : hors du depot complet, ce fichier
+      // n'existe pas. Le test ne vaut que la ou il peut etre lu.
+      assert.equal(error.code, 'ENOENT');
+      return;
+    }
+    const trouve = source.match(/MOYENS_ENCAISSES = \[([^\]]*)\]/);
+    assert.ok(trouve, 'MOYENS_ENCAISSES introuvable dans heeroo-driver/src/common/paiement.js');
+    const liste = trouve[1].split(',').map((m) => m.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+    assert.deepEqual(liste.sort(), [...MOYENS_ENCAISSES].sort());
   });
 });

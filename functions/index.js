@@ -15,6 +15,11 @@
 //   POST /createWaveCheckout  { amount }                     — chauffeur authentifié
 //   POST /confirmWaveCheckout { sessionId }                  — chauffeur authentifié
 //   POST /waveWebhook        (appelée par Wave, signature vérifiée)
+//   POST /createOrangeRidePayment  { bookingId }             — passager authentifié
+//   POST /confirmOrangeRidePayment { sessionId }             — passager authentifié
+//   POST /createOrangeCheckout     { amount }                — chauffeur authentifié
+//   POST /confirmOrangeCheckout    { sessionId }             — chauffeur authentifié
+//   POST /orangeWebhook      (appelée par Orange, jeton de notification vérifié)
 //
 // Déclencheurs base de données :
 //   - notifications d'avancement de course (demande, acceptation, départ,
@@ -32,7 +37,8 @@ const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
 const { message, localeDe } = require('./lib/messages');
-const { compteStripePour, reglagePays, seuilDeCredit, monnaieDuPays, montantLisible, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
+const { creerClient: creerClientOrange, referenceCommande, jetonValide } = require('./lib/orange');
+const { compteStripePour, reglagePays, seuilDeCredit, monnaieDuPays, montantLisible, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, encaissePlateforme, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
 
@@ -50,6 +56,12 @@ const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const STRIPE_CONNECT_WEBHOOK_SECRET = defineSecret('STRIPE_CONNECT_WEBHOOK_SECRET');
 const WAVE_API_KEY = defineSecret('WAVE_API_KEY');
 const WAVE_WEBHOOK_SECRET = defineSecret('WAVE_WEBHOOK_SECRET');
+// Orange Money : l'en-tete « Basic … » et la clef marchande, tels que la
+// console Orange les donne. Il n'y a pas de secret de webhook ici — la
+// notification d'Orange n'est pas signee, elle porte un jeton rendu a
+// l'ouverture de chaque paiement.
+const ORANGE_AUTH_HEADER = defineSecret('ORANGE_AUTH_HEADER');
+const ORANGE_MERCHANT_KEY = defineSecret('ORANGE_MERCHANT_KEY');
 
 // ---------------------------------------------------------------------------
 // Utilitaires
@@ -678,6 +690,18 @@ function hostingUrl(path) {
   return `https://${config.projectId}.web.app${path}`;
 }
 
+/**
+ * Adresse publique d'une fonction HTTP de ce projet.
+ *
+ * Orange Money veut l'URL de notification dans le corps de chaque demande de
+ * paiement, contrairement a Wave et a Stripe qui la tiennent de leur console.
+ * La deduire du projet evite de la recopier a la main pour chaque environnement.
+ */
+function functionUrl(name) {
+  const config = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
+  return `https://${REGION}-${config.projectId}.cloudfunctions.net/${name}`;
+}
+
 async function waveRequest(method, path, body, options) {
   const { headers = {}, brut = false } = options || {};
   const response = await fetch(WAVE_API + path, {
@@ -767,23 +791,30 @@ function creditWaveTopup(sessionId, session) {
 // ---------------------------------------------------------------------------
 
 /**
- * Règle une course à partir d'une session Wave payée. Idempotent par
- * waveRidePayments/{sessionId}/status : le webhook et la vérification de
- * secours peuvent tous deux arriver.
+ * Règle une course payée, quel que soit le prestataire.
  *
- * Le montant annoncé par Wave est confronté à celui enregistré à l'ouverture
- * de la session. Une divergence interrompt le règlement plutôt que de marquer
- * payée une course dont on n'a pas reçu le prix.
+ * Idempotent par {noeud}/{reference}/status : la notification du prestataire et
+ * la vérification de secours peuvent tous deux arriver, la course n'est marquée
+ * payée qu'une fois. Même principe que creditTopup pour les recharges.
+ *
+ * Le montant annoncé est confronté à celui enregistré à l'ouverture de la
+ * session. Une divergence interrompt le règlement plutôt que de marquer payée
+ * une course dont on n'a pas reçu le prix.
+ *
+ * « mode » est le moyen de paiement inscrit sur la course. Il doit figurer dans
+ * MOYENS_ENCAISSES (lib/helpers.js), sans quoi la course sera traitée comme des
+ * espèces : le chauffeur serait débité d'une commission qu'il ne doit pas, et sa
+ * part ne lui serait jamais créditée.
  */
-async function settleWaveRide(sessionId, session) {
-  const ref = admin.database().ref(`waveRidePayments/${sessionId}`);
+async function settleRide(noeud, reference, { montant, transactionId, mode, gateway }) {
+  const ref = admin.database().ref(`${noeud}/${reference}`);
   const demande = (await ref.once('value')).val();
   if (!demande) return 'inconnue';
   if (demande.status === 'completed') return 'deja-reglee';
 
-  const recu = Math.round(Number(session.amount));
+  const recu = Math.round(Number(montant));
   if (!Number.isFinite(recu) || recu !== Math.round(Number(demande.amount))) {
-    logger.error(`Wave course ${demande.bookingId} : attendu ${demande.amount}, reçu ${session.amount}`);
+    logger.error(`${mode} course ${demande.bookingId} : attendu ${demande.amount}, reçu ${montant}`);
     await ref.update({ status: 'failed', error: 'montant_divergent', failed_at: admin.database.ServerValue.TIMESTAMP });
     return 'montant-divergent';
   }
@@ -791,21 +822,31 @@ async function settleWaveRide(sessionId, session) {
   const bookingRef = admin.database().ref(`bookings/${demande.bookingId}`);
   const booking = (await bookingRef.once('value')).val();
   if (!booking) {
-    logger.warn(`Paiement Wave ${sessionId} reçu pour une course inconnue (${demande.bookingId})`);
+    logger.warn(`Paiement ${mode} ${reference} reçu pour une course inconnue (${demande.bookingId})`);
     await ref.update({ status: 'failed', error: 'course_inconnue' });
     return 'inconnue';
   }
 
   if (booking.payment_status !== 'PAID') {
-    await markBookingPaid(demande.bookingId, booking, { id: session.transaction_id || sessionId }, { mode: 'Wave', gateway: 'wave' });
+    await markBookingPaid(demande.bookingId, booking, { id: transactionId || reference }, { mode, gateway });
   }
   await ref.update({
     status: 'completed',
-    transaction_id: session.transaction_id || null,
+    transaction_id: transactionId || null,
     completed_at: admin.database.ServerValue.TIMESTAMP,
   });
-  logger.info(`Course ${demande.bookingId} réglée par Wave : ${recu} ${WAVE_CURRENCY}`);
+  logger.info(`Course ${demande.bookingId} réglée par ${mode} : ${recu} ${demande.currency}`);
   return 'reglee';
+}
+
+/** Course réglée par Wave : le montant encaissé est annoncé par la session. */
+function settleWaveRide(sessionId, session) {
+  return settleRide('waveRidePayments', sessionId, {
+    montant: session.amount,
+    transactionId: session.transaction_id,
+    mode: 'Wave',
+    gateway: 'wave',
+  });
 }
 
 /** Ouvre une page de paiement Wave pour une course terminée. */
@@ -833,8 +874,8 @@ exports.createWaveRidePayment = httpEndpoint(async (req, res) => {
   const session = await waveRequest('POST', '/checkout/sessions', {
     amount: String(montant),
     currency: WAVE_CURRENCY,
-    success_url: hostingUrl('/wave/succes.html'),
-    error_url: hostingUrl('/wave/echec.html'),
+    success_url: hostingUrl('/paiement/course-ok.html'),
+    error_url: hostingUrl('/paiement/course-ko.html'),
     client_reference: bookingId,
   });
 
@@ -920,6 +961,303 @@ exports.confirmWaveCheckout = httpEndpoint(async (req, res) => {
     res.json({ status: session.payment_status === 'processing' ? 'pending' : 'failed', wave: session.checkout_status });
   }
 }, { secrets: [WAVE_API_KEY] });
+
+// ---------------------------------------------------------------------------
+// Orange Money — Senegal.
+//
+// Deuxieme moyen de paiement mobile aux cotes de Wave, pour les courses comme
+// pour la recharge du credit chauffeur. Le deroule est celui de Wave : page de
+// paiement hebergee par l'operateur, puis reglement par les memes fonctions
+// idempotentes, settleRide et creditTopup.
+//
+// Trois differences commandent le code qui suit.
+//
+// 1. La reference de commande est fabriquee par nous, et non rendue par
+//    l'operateur : c'est a la fois l'« order_id » envoye a Orange et la clef
+//    de l'enregistrement en base. Les applications la manipulent sous le nom de
+//    « sessionId », pour que les deux prestataires s'emploient pareil.
+//
+// 2. La notification d'Orange n'est pas signee : elle porte le jeton rendu a
+//    l'ouverture du paiement, et c'est le seul secret qui l'authentifie. Ce
+//    jeton est donc range a part, dans orangeTokens/{reference}, un noeud
+//    qu'aucun client ne peut lire. Le laisser dans l'enregistrement de la
+//    course le rendrait lisible par le passager lui-meme, qui pourrait alors
+//    forger une notification et declarer sa propre course payee.
+//
+// 3. Cette notification ne fait jamais foi. Elle declenche une verification
+//    aupres d'Orange, et c'est cette reponse qui regle la course. Un message
+//    non signe, et repute peu fiable, ne merite pas mieux que d'etre un signal.
+// ---------------------------------------------------------------------------
+
+const ORANGE_MIN_TOPUP = 1000;    // FCFA, meme plancher que Wave
+const ORANGE_MAX_TOPUP = 500000;  // FCFA
+const SECRETS_ORANGE = [ORANGE_AUTH_HEADER, ORANGE_MERCHANT_KEY];
+
+/**
+ * Client Orange Money, construit a l'appel : un secret n'est lisible qu'a
+ * l'interieur d'une fonction qui le declare.
+ *
+ * ORANGE_ENV vaut « senegal » en production, et « sandbox » par defaut. Un
+ * oubli de reglage fait donc echouer les paiements au lieu d'en encaisser dans
+ * le vide, et cela se voit tout de suite.
+ */
+function clientOrange() {
+  return creerClientOrange({
+    authHeader: ORANGE_AUTH_HEADER.value(),
+    merchantKey: ORANGE_MERCHANT_KEY.value(),
+    env: process.env.ORANGE_ENV,
+  });
+}
+
+/** Course reglee par Orange Money. */
+function settleOrangeRide(reference, { montant, txnid }) {
+  return settleRide('orangeRidePayments', reference, {
+    montant,
+    transactionId: txnid,
+    mode: 'OrangeMoney',
+    gateway: 'orange',
+  });
+}
+
+/** Recharge Orange Money : le montant est rendu tel quel, en francs CFA. */
+function creditOrangeTopup(reference, { montant, monnaie, txnid }) {
+  return creditTopup(reference, {
+    amount: montant,
+    currency: monnaie,
+    transactionId: txnid,
+    reason: 'orange_topup',
+  });
+}
+
+/**
+ * Demande a Orange ou en est un paiement, et le regle s'il a abouti.
+ *
+ * Chemin unique pour les deux declencheurs — la notification d'Orange et la
+ * verification au retour dans l'application — et pour les deux objets, course
+ * ou recharge. Rend 'completed', 'pending', 'failed' ou 'inconnu'.
+ */
+async function verifierPaiementOrange(reference) {
+  const [coursePrise, rechargePrise, jetonsPris] = await Promise.all([
+    admin.database().ref(`orangeRidePayments/${reference}`).once('value'),
+    admin.database().ref(`walletTopups/${reference}`).once('value'),
+    admin.database().ref(`orangeTokens/${reference}`).once('value'),
+  ]);
+  const course = coursePrise.val();
+  const demande = course || rechargePrise.val();
+  if (!demande) {
+    logger.warn(`Paiement Orange ${reference} inconnu`);
+    return 'inconnu';
+  }
+  if (demande.status === 'completed') return 'completed';
+
+  const payToken = (jetonsPris.val() || {}).pay_token;
+  if (!payToken) {
+    logger.error(`Paiement Orange ${reference} : jeton de paiement absent`);
+    return 'failed';
+  }
+
+  const resultat = await clientOrange().statut({
+    reference,
+    montant: demande.amount,
+    payToken,
+  });
+
+  const noeud = course ? 'orangeRidePayments' : 'walletTopups';
+  if (resultat.issue !== 'completed') {
+    // Un « pending » ne s'inscrit pas : la demande est deja dans cet etat, et
+    // un statut qu'on ne sait pas lire y est ramene plutot que declare perdu.
+    if (resultat.issue === 'failed') {
+      await admin.database().ref(`${noeud}/${reference}`).update({
+        status: 'failed',
+        error: resultat.brut || 'orange_failed',
+        failed_at: admin.database.ServerValue.TIMESTAMP,
+      });
+    }
+    return resultat.issue;
+  }
+
+  // Orange prend le montant en entree : un SUCCESS signifie qu'il a lui-meme
+  // rapproche la reference et la somme. Quand il nous renvoie le montant, on le
+  // confronte quand meme — settleRide et creditTopup s'en chargent. Sinon on
+  // s'en tient a celui enregistre, faute d'un second chiffre a comparer.
+  const montant = resultat.montant === null ? demande.amount : resultat.montant;
+
+  if (course) {
+    await settleOrangeRide(reference, { montant, txnid: resultat.txnid });
+  } else {
+    await creditOrangeTopup(reference, {
+      montant,
+      monnaie: demande.currency,
+      txnid: resultat.txnid,
+    });
+  }
+  return 'completed';
+}
+
+/**
+ * Enregistre une demande de paiement Orange.
+ *
+ * Les deux ecritures vont ensemble : l'enregistrement metier, lisible par son
+ * proprietaire, et le couple de jetons, qui ne l'est par personne.
+ */
+function enregistrerDemandeOrange(noeud, reference, enregistrement, ouvert) {
+  return Promise.all([
+    admin.database().ref(`${noeud}/${reference}`).set({
+      ...enregistrement,
+      status: 'pending',
+      created_at: admin.database.ServerValue.TIMESTAMP,
+    }),
+    admin.database().ref(`orangeTokens/${reference}`).set({
+      pay_token: ouvert.payToken,
+      notif_token: ouvert.notifToken,
+    }),
+  ]);
+}
+
+/** Ouvre une page de paiement Orange Money pour une course terminee. */
+exports.createOrangeRidePayment = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { bookingId } = req.body || {};
+  if (!bookingId) throw httpError(400, 'Paramètre bookingId requis');
+
+  const booking = (await admin.database().ref(`bookings/${bookingId}`).once('value')).val();
+  if (!booking) throw httpError(404, 'Course introuvable');
+  if (booking.customer !== user.uid) throw httpError(403, 'Course d\'un autre passager');
+  if (booking.payment_status === 'PAID') throw httpError(409, 'Course déjà payée');
+
+  // Le montant vient de la base, jamais de l'application : c'est le prix de la
+  // course telle qu'elle s'est deroulee.
+  const montant = Math.round(Number(booking.trip_cost));
+  if (!Number.isFinite(montant) || montant <= 0) throw httpError(409, 'Montant de la course indisponible');
+
+  const client = clientOrange();
+  const devise = String(booking.currency || '').toUpperCase();
+  if (devise && devise !== client.monnaie) {
+    throw httpError(409, `Orange Money ne règle que des courses en ${client.monnaie}`);
+  }
+
+  const reference = referenceCommande('course');
+  const langue = (await admin.database().ref(`users/${user.uid}/language`).once('value')).val();
+  const ouvert = await client.ouvrirPaiement({
+    montant,
+    reference,
+    retourUrl: hostingUrl('/paiement/course-ok.html'),
+    annulUrl: hostingUrl('/paiement/course-ko.html'),
+    notifUrl: functionUrl('orangeWebhook'),
+    langue,
+  });
+
+  await enregistrerDemandeOrange('orangeRidePayments', reference, {
+    bookingId,
+    uid: user.uid,
+    amount: montant,
+    currency: client.monnaie,
+    country: (booking.pickup && booking.pickup.country) || '',
+  }, ouvert);
+
+  res.json({ sessionId: reference, launchUrl: ouvert.paymentUrl, amount: montant, currency: client.monnaie });
+}, { secrets: SECRETS_ORANGE });
+
+/** Ou en est le paiement d'une course ? Appele au retour dans l'application. */
+exports.confirmOrangeRidePayment = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { sessionId } = req.body || {};
+  if (!sessionId) throw httpError(400, 'Paramètre sessionId requis');
+
+  const demande = (await admin.database().ref(`orangeRidePayments/${sessionId}`).once('value')).val();
+  if (!demande || demande.uid !== user.uid) throw httpError(404, 'Paiement introuvable');
+  if (demande.status === 'completed') {
+    res.json({ status: 'completed' });
+    return;
+  }
+
+  res.json({ status: await verifierPaiementOrange(sessionId) });
+}, { secrets: SECRETS_ORANGE });
+
+/** Recharge du credit chauffeur par Orange Money. */
+exports.createOrangeCheckout = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const profile = (await admin.database().ref(`users/${user.uid}`).once('value')).val();
+  if (!profile || profile.usertype !== 'driver') throw httpError(403, 'Réservé aux chauffeurs');
+
+  const amount = Math.round(Number(req.body && req.body.amount));
+  if (!(amount >= ORANGE_MIN_TOPUP && amount <= ORANGE_MAX_TOPUP)) {
+    throw httpError(400, `Montant entre ${ORANGE_MIN_TOPUP} et ${ORANGE_MAX_TOPUP} FCFA`);
+  }
+
+  const client = clientOrange();
+  const reference = referenceCommande('recharge');
+  const ouvert = await client.ouvrirPaiement({
+    montant: amount,
+    reference,
+    retourUrl: hostingUrl('/wave/succes.html'),
+    annulUrl: hostingUrl('/wave/echec.html'),
+    notifUrl: functionUrl('orangeWebhook'),
+    langue: profile.language,
+  });
+
+  await enregistrerDemandeOrange('walletTopups', reference, {
+    uid: user.uid,
+    amount,
+    currency: client.monnaie,
+    provider: 'orange',
+  }, ouvert);
+
+  res.json({ sessionId: reference, launchUrl: ouvert.paymentUrl, amount, currency: client.monnaie });
+}, { secrets: SECRETS_ORANGE });
+
+/** Ou en est une recharge ? Appele au retour dans l'application. */
+exports.confirmOrangeCheckout = httpEndpoint(async (req, res) => {
+  const user = await requireUser(req);
+  const { sessionId } = req.body || {};
+  if (!sessionId) throw httpError(400, 'Paramètre sessionId requis');
+
+  const topup = (await admin.database().ref(`walletTopups/${sessionId}`).once('value')).val();
+  if (!topup || topup.uid !== user.uid) throw httpError(404, 'Recharge introuvable');
+  if (topup.status === 'completed') {
+    res.json({ status: 'completed' });
+    return;
+  }
+
+  res.json({ status: await verifierPaiementOrange(sessionId) });
+}, { secrets: SECRETS_ORANGE });
+
+/**
+ * Notification d'Orange Money.
+ *
+ * Authentifiee par le jeton rendu a l'ouverture du paiement, faute de
+ * signature. Son contenu n'est pas cru : elle ne sert qu'a declencher une
+ * verification aupres d'Orange.
+ *
+ * On repond 200 meme en cas d'incident, comme pour Wave : la verification au
+ * retour dans l'application reste le filet, et faire reessayer un operateur
+ * dont les notifications sont de toute facon incertaines n'apporterait rien.
+ */
+exports.orangeWebhook = functions.region(REGION).runWith({ secrets: SECRETS_ORANGE })
+  .https.onRequest(async (req, res) => {
+    const corps = req.body || {};
+    const reference = String(corps.order_id || corps.orderId || '');
+    if (!reference) {
+      logger.warn('Notification Orange sans reference');
+      res.status(400).send('Référence absente');
+      return;
+    }
+
+    const attendu = (await admin.database().ref(`orangeTokens/${reference}/notif_token`).once('value')).val();
+    if (!jetonValide(corps.notif_token, attendu)) {
+      logger.warn(`Notification Orange ${reference} : jeton de notification invalide`);
+      res.status(400).send('Jeton invalide');
+      return;
+    }
+
+    try {
+      const issue = await verifierPaiementOrange(reference);
+      logger.info(`Notification Orange ${reference} : ${issue}`);
+    } catch (error) {
+      logger.error(`Notification Orange ${reference}`, error);
+    }
+    res.json({ received: true });
+  });
 
 // ---------------------------------------------------------------------------
 // Recharge par carte bancaire — la ou Wave n'opere pas (France).
@@ -1823,11 +2161,9 @@ exports.payoutOnRideEnd = onValueUpdated(
     if (reglagePays(reglage, booking.pickup && booking.pickup.country) !== true) return;
 
     // Les especes n'ont rien a verser : le chauffeur a deja l'argent en main,
-    // et c'est sa commission qui lui est debitee.
-    const encaisseParLaPlateforme = booking.payment_mode === 'Card'
-      || booking.payment_mode === 'Wave'
-      || !!booking.payment_intent_id;
-    if (!encaisseParLaPlateforme) return;
+    // et c'est sa commission qui lui est debitee. La liste des moyens encaisses
+    // par la societe est tenue dans helpers.js, en un seul endroit.
+    if (!encaissePlateforme(booking)) return;
 
     try {
       const resultat = await effectuerVersement(booking.driver, `course_${bookingId}`);
@@ -1868,13 +2204,11 @@ exports.onBookingCompleted = onValueUpdated(
       ? Math.round(billed * 100) / 100
       : Math.round(tripCost * rate) / 100;
 
-    // Course encaissée par la plateforme — carte ou Wave : elle retient déjà sa
-    // part, débiter le crédit du chauffeur prélèverait la commission une
-    // seconde fois. On enregistre le montant sans le débiter. Seules les
-    // espèces, que le chauffeur a en main, justifient un débit.
-    const paidByCard = booking.payment_mode === 'Card'
-      || booking.payment_mode === 'Wave'
-      || !!booking.payment_intent_id;
+    // Course encaissée par la plateforme — carte, Wave, Orange Money : elle
+    // retient déjà sa part, débiter le crédit du chauffeur prélèverait la
+    // commission une seconde fois. On enregistre le montant sans le débiter.
+    // Seules les espèces, que le chauffeur a en main, justifient un débit.
+    const paidByCard = encaissePlateforme(booking);
 
     // Marquage d'abord (idempotence), puis débit atomique du crédit chauffeur.
     await bookingRef.update({
