@@ -10,7 +10,7 @@
 #   FIREBASE_SERVICE_ACCOUNT — clé JSON d'un compte de service du projet Firebase
 #   correspondant.
 #
-# Ce compte a besoin de SIX rôles, découverts un par un le 3 nov. 2026, chaque
+# Ce compte a besoin de SEPT rôles, découverts un par un le 3 nov. 2026, chaque
 # manque n'apparaissant qu'une fois le précédent réparé :
 #
 #   roles/editor                        les fonctions, le build, Artifact Registry, Cloud Run
@@ -19,6 +19,16 @@
 #   roles/serviceusage.serviceUsageAdmin  vérifier qu'une API est activée
 #   roles/firebasestorage.admin         firebasestorage.defaultBucket.get — absent de firebase.admin
 #   roles/secretmanager.admin           les secrets portés par les fonctions
+#   roles/cloudfunctions.admin          cloudfunctions.functions.setIamPolicy, pour ouvrir
+#                                       une fonction HTTPS *neuve* au public
+#
+# Le septième ne s'est montré que le 3 nov. 2026, en fin de journée, à
+# l'ajout des cinq points d'entrée d'Orange Money : les six premiers
+# suffisent à mettre à jour des fonctions existantes, mais pas à en publier
+# une nouvelle. Une fonction HTTPS doit être rendue appelable par tous, et
+# poser cette règle d'accès est un droit que roles/editor ne porte pas. Un
+# déploiement qui ne touche aucune fonction neuve passera donc sans lui, et
+# le prochain ajout échouera — d'où cette note plutôt qu'un rôle oublié.
 #
 # Toutes les erreurs de droits échouent en 19 à 23 secondes : la durée ne dit
 # donc pas si on a avancé. Seul le journal le dit, et « gh run view <id>
