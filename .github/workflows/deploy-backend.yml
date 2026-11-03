@@ -8,7 +8,21 @@
 #
 # Secret attendu dans chaque environnement GitHub (dev, prod) :
 #   FIREBASE_SERVICE_ACCOUNT — clé JSON d'un compte de service du projet Firebase
-#   correspondant (rôles : Éditeur + Utilisateur du compte de service).
+#   correspondant.
+#
+# Ce compte a besoin de SIX rôles, découverts un par un le 3 nov. 2026, chaque
+# manque n'apparaissant qu'une fois le précédent réparé :
+#
+#   roles/editor                        les fonctions, le build, Artifact Registry, Cloud Run
+#   roles/firebase.admin                la lecture du projet et des règles
+#   roles/iam.serviceAccountUser        « ActAs » sur le compte sous lequel tournent les fonctions
+#   roles/serviceusage.serviceUsageAdmin  vérifier qu'une API est activée
+#   roles/firebasestorage.admin         firebasestorage.defaultBucket.get — absent de firebase.admin
+#   roles/secretmanager.admin           les secrets portés par les fonctions
+#
+# Toutes les erreurs de droits échouent en 19 à 23 secondes : la durée ne dit
+# donc pas si on a avancé. Seul le journal le dit, et « gh run view <id>
+# --attempt <n> --log-failed » le donne en une commande.
 
 name: Déploiement backend
 
@@ -91,9 +105,12 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$RUNNER_TEMP/firebase-sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-sa.json" >> "$GITHUB_ENV"
 
+      # Version figée : « @latest » faisait dépendre chaque déploiement de ce que
+      # npm avait publié le matin même. 15.34.2 est celle du premier déploiement
+      # réussi, le 3 nov. 2026. À relever volontairement, jamais par surprise.
       - name: Déployer
         run: |
-          npx --yes firebase-tools@latest deploy \
+          npx --yes firebase-tools@15.34.2 deploy \
             --only "${{ inputs.only || 'functions,database,storage' }}" \
             --project "${{ inputs.environment || 'dev' }}" \
             --non-interactive --force
