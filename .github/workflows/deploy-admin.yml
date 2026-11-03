@@ -71,8 +71,12 @@ jobs:
         with:
           node-version: 22
 
+      # Version figée, pour la même raison que dans deploy-backend.yml :
+      # « @latest » faisait dépendre chaque déploiement de ce que npm avait
+      # publié le matin même. Les deux workflows portent le même numéro, pour
+      # qu'il n'y ait qu'une version à relever, et volontairement.
       - name: Déployer sur Firebase Hosting
-        run: npx --yes firebase-tools@latest deploy --only hosting --project "${{ inputs.environment || 'dev' }}" --non-interactive
+        run: npx --yes firebase-tools@15.34.2 deploy --only hosting --project "${{ inputs.environment || 'dev' }}" --non-interactive
 
       - name: Nettoyage des identifiants
         if: always()

@@ -50,9 +50,12 @@ const ENVIRONNEMENTS = {
   senegal: { chemin: 'sn', monnaie: 'XOF' },
 };
 
-// Le bac a sable par defaut. Un oubli de reglage en production fait donc echouer
-// les paiements au lieu d'en encaisser dans le vide, et cela se voit tout de
-// suite. La mise en service demande ORANGE_ENV=senegal.
+// Le bac a sable par defaut, pour qui appelle ce module sans rien preciser. Un
+// oubli de reglage fait donc echouer les paiements au lieu d'en encaisser dans
+// le vide, et cela se voit tout de suite.
+//
+// C'est un garde-fou, pas le reglage : index.js, lui, passe toujours un
+// environnement explicite, deduit du projet Firebase.
 const ENV_DEFAUT = 'sandbox';
 
 /** Reglages d'un environnement. Un nom inconnu est une erreur, jamais un defaut. */

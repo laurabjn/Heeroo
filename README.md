@@ -149,12 +149,67 @@ Le déploiement des fonctions et la création du stockage exigent le plan Blaze 
 - Crédit minimum pour accepter une course : voir « Crédit du chauffeur » ci-dessous.
 - Flux : app chauffeur → `createWaveCheckout` → app Wave → webhook crédite `users/<uid>/walletBalance` (+ `walletHistory`, `walletTopups/<session>`) ; `confirmWaveCheckout` vérifie la session au retour dans l'app si le webhook tarde.
 
+### Orange Money (courses et recharge, Sénégal)
+
+**Prérequis administratif, et c'est le chemin critique** : un compte marchand
+Orange Money s'ouvre chez Sonatel Business, qui exige le **NINEA** et le
+**RCCM** de la société sénégalaise. Comptez deux à six semaines, et 1 à 2,5 %
+de frais. Sans société au Sénégal, Orange Money n'est pas ouvrable.
+
+- Secrets : `firebase functions:secrets:set ORANGE_AUTH_HEADER` (l'en-tête
+  « Basic … » de la console Orange) et `ORANGE_MERCHANT_KEY`. Pas de secret de
+  webhook : **la notification d'Orange n'est pas signée.**
+- **Interrupteur de déploiement** : les deux secrets ne sont déclarés que si la
+  variable `ORANGE_ENABLED` vaut `true` dans l'environnement GitHub (Settings →
+  Environments, à côté du compte de service). Firebase refuse de déployer une
+  fonction qui déclare un secret absent de Secret Manager, et il refuse le
+  déploiement *entier* : sans cet interrupteur, Orange Money bloquerait la
+  livraison de toutes les autres fonctions et des règles de base. Absente, la
+  variable vaut « non » : les points d'entrée Orange sont déployés mais
+  répondent 503.
+- **Les trois URL d'Orange sont à confirmer** le jour de la mise en service :
+  elles sont rassemblées en tête de `functions/lib/orange.js`, seules et
+  commentées. Les sources publiques ne s'accordent pas sur deux d'entre elles ;
+  Orange livre ses chemins exacts avec le contrat marchand. Rien d'autre n'en
+  dépend.
+- Environnement : déduit du projet Firebase, comme le reste du fichier — bac à
+  sable et `OUV` sur dev, production et `XOF` sur le projet de production. Rien
+  à régler.
+- Webhook à déclarer : aucun. L'URL de notification part dans le corps de
+  chaque demande de paiement (`functionUrl('orangeWebhook')`).
+- Pages de retour : `heeroo-admin/public/paiement/course-ok.html` et
+  `course-ko.html` pour les courses (passager), `wave/succes.html` et
+  `echec.html` pour la recharge (chauffeur). Servies par le Hosting, donc
+  **déployer l'admin en même temps que le backend.**
+- Activation côté app : `credit_settings/orangeEnabled` à `true` en base, une
+  fois le compte marchand ouvert et les fonctions déployées. Aucun nouveau
+  build nécessaire.
+- Flux : app → `createOrangeRidePayment` / `createOrangeCheckout` → page
+  Orange → `orangeWebhook`, qui **ne croit pas son propre contenu** : il vérifie
+  le jeton de notification puis interroge Orange sur le statut, et c'est cette
+  réponse qui règle la course. `confirmOrangeRidePayment` /
+  `confirmOrangeCheckout` font la même vérification au retour dans l'app, et
+  c'est le chemin principal — les notifications d'Orange sont réputées peu
+  fiables. Les deux chemins passent par les mêmes fonctions idempotentes, de
+  sorte qu'ils peuvent arriver tous les deux sans créditer deux fois.
+- Le jeton de notification est rangé sous `orangeTokens/<référence>`, illisible
+  par tout client. Le laisser dans l'enregistrement de la course le rendrait
+  lisible par le passager, qui pourrait forger une notification et déclarer sa
+  propre course payée.
+
 ### Crédit du chauffeur
 
 Le crédit est le compte où tout se compense. Une course en espèces **débite** la
 commission — le chauffeur a déjà l'argent en main ; une course encaissée par la
-société (carte ou Wave) **crédite** la part du chauffeur, commission déjà
-retenue. Le taux se règle dans l'admin, par catégorie de véhicule et par pays
+société **crédite** la part du chauffeur, commission déjà retenue. La liste des
+moyens encaissés par la société tient en un seul endroit, `MOYENS_ENCAISSES`
+dans `functions/lib/helpers.js` (carte, Wave, Orange Money), et c'est
+`encaissePlateforme()` qui décide. **Tout nouveau prestataire s'inscrit là.**
+L'oublier ferait traiter la course comme des espèces : le chauffeur serait
+débité de la commission d'une course dont il n'a jamais touché le prix, et sa
+part ne lui serait jamais créditée — il perdrait deux fois, et la société
+garderait tout. `heeroo-driver/src/common/paiement.js` recopie la liste pour
+l'application, et un test compare les deux à chaque exécution. Le taux se règle dans l'admin, par catégorie de véhicule et par pays
 (`rates/car_type[].convenience_fees`, en %) ; à 0 le crédit ne bouge pas.
 
 Un chauffeur qui ne ferait que des espèces verrait son crédit descendre sans

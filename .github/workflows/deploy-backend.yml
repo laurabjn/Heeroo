@@ -109,6 +109,17 @@ jobs:
       # npm avait publié le matin même. 15.34.2 est celle du premier déploiement
       # réussi, le 3 nov. 2026. À relever volontairement, jamais par surprise.
       - name: Déployer
+        # ORANGE_ENABLED commande la déclaration des secrets d'Orange Money
+        # (voir functions/index.js). Absente, elle vaut « non » : les points
+        # d'entrée Orange sont déployés mais inertes, et tout le reste se
+        # déploie normalement. Firebase refuse en effet de déployer une
+        # fonction qui déclare un secret absent de Secret Manager, et il
+        # refuse le déploiement entier : sans ce garde-fou, une
+        # fonctionnalité pas encore commandée emporte les autres.
+        # À poser à « true » dans l'environnement GitHub (Settings →
+        # Environments) le jour où les deux secrets existent.
+        env:
+          ORANGE_ENABLED: ${{ vars.ORANGE_ENABLED }}
         run: |
           npx --yes firebase-tools@15.34.2 deploy \
             --only "${{ inputs.only || 'functions,database,storage' }}" \

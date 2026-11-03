@@ -56,12 +56,8 @@ const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const STRIPE_CONNECT_WEBHOOK_SECRET = defineSecret('STRIPE_CONNECT_WEBHOOK_SECRET');
 const WAVE_API_KEY = defineSecret('WAVE_API_KEY');
 const WAVE_WEBHOOK_SECRET = defineSecret('WAVE_WEBHOOK_SECRET');
-// Orange Money : l'en-tete « Basic … » et la clef marchande, tels que la
-// console Orange les donne. Il n'y a pas de secret de webhook ici — la
-// notification d'Orange n'est pas signee, elle porte un jeton rendu a
-// l'ouverture de chaque paiement.
-const ORANGE_AUTH_HEADER = defineSecret('ORANGE_AUTH_HEADER');
-const ORANGE_MERCHANT_KEY = defineSecret('ORANGE_MERCHANT_KEY');
+// Les secrets d'Orange Money sont declares plus bas, sous condition : voir
+// SECRETS_ORANGE.
 
 // ---------------------------------------------------------------------------
 // Utilitaires
@@ -991,21 +987,57 @@ exports.confirmWaveCheckout = httpEndpoint(async (req, res) => {
 
 const ORANGE_MIN_TOPUP = 1000;    // FCFA, meme plancher que Wave
 const ORANGE_MAX_TOPUP = 500000;  // FCFA
-const SECRETS_ORANGE = [ORANGE_AUTH_HEADER, ORANGE_MERCHANT_KEY];
+// Les deux secrets d'Orange Money — l'en-tete « Basic … » et la clef
+// marchande, tels que la console Orange les donne. Il n'y a pas de secret de
+// webhook : la notification d'Orange n'est pas signee, elle porte un jeton
+// rendu a l'ouverture de chaque paiement.
+//
+// Ils ne sont declares que si ORANGE_ENABLED vaut « true » au deploiement.
+// Firebase refuse de deployer une fonction qui declare un secret absent de
+// Secret Manager, et il refuse le deploiement *entier* : les autres fonctions,
+// les regles de base et celles de stockage tombent avec. Une fonctionnalite
+// dont le compte marchand n'existe pas encore bloquerait donc la livraison de
+// tout le reste. C'est arrive le 3 nov. 2026, et c'est la raison de ce
+// drapeau.
+//
+// Mise en service, le jour ou Sonatel livre les identifiants :
+//   1. creer les deux secrets (firebase functions:secrets:set ORANGE_AUTH_HEADER) ;
+//   2. poser la variable ORANGE_ENABLED=true dans l'environnement GitHub
+//      correspondant (onglet Settings → Environments), a cote du compte de
+//      service ;
+//   3. redeployer.
+// Rien a changer dans le code.
+const ORANGE_COMMANDE = process.env.ORANGE_ENABLED === 'true';
+const SECRETS_ORANGE = ORANGE_COMMANDE
+  ? [defineSecret('ORANGE_AUTH_HEADER'), defineSecret('ORANGE_MERCHANT_KEY')]
+  : [];
 
 /**
  * Client Orange Money, construit a l'appel : un secret n'est lisible qu'a
- * l'interieur d'une fonction qui le declare.
+ * l'interieur d'une fonction qui le declare, ou il arrive comme variable
+ * d'environnement a son nom.
  *
- * ORANGE_ENV vaut « senegal » en production, et « sandbox » par defaut. Un
- * oubli de reglage fait donc echouer les paiements au lieu d'en encaisser dans
- * le vide, et cela se voit tout de suite.
+ * Deux refus francs plutot qu'un echec sourd :
+ *
+ *  - sans secret lie, la fonction est deployee mais inerte, et un 503 dit
+ *    pourquoi. Appeler Orange avec un en-tete vide reviendrait en 401 et se
+ *    lirait comme une panne d'Orange ;
+ *
+ *  - l'environnement suit le projet Firebase, comme partout ailleurs dans ce
+ *    fichier (voir estProduction). Le bac a sable et la production d'Orange
+ *    ne partagent ni identifiants ni monnaie — XOF d'un cote, OUV de l'autre :
+ *    les lier au projet retire la variable qu'on aurait pu oublier de poser.
  */
 function clientOrange() {
+  const authHeader = process.env.ORANGE_AUTH_HEADER;
+  const merchantKey = process.env.ORANGE_MERCHANT_KEY;
+  if (!authHeader || !merchantKey) {
+    throw httpError(503, "Orange Money n'est pas encore activé");
+  }
   return creerClientOrange({
-    authHeader: ORANGE_AUTH_HEADER.value(),
-    merchantKey: ORANGE_MERCHANT_KEY.value(),
-    env: process.env.ORANGE_ENV,
+    authHeader,
+    merchantKey,
+    env: estProduction() ? 'senegal' : 'sandbox',
   });
 }
 
