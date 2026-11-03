@@ -126,7 +126,7 @@ export default class DiverReg extends React.Component {
         } catch (error) {
             console.log('[driverReg] upload document échoué', error);
             this.setState({ [key + "_loading"]: false });
-            Alert.alert(languageJSON.error || 'Erreur', "L'envoi du document a échoué. Réessayez.");
+            Alert.alert(languageJSON.error, languageJSON.upload_document_failed);
         }
     }
 

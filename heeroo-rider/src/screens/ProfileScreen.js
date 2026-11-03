@@ -125,7 +125,7 @@ export default function SideMenu(props) {
             setprofile_image(url);
         } catch (error) {
             console.log('[ProfileScreen] upload photo échoué', error && error.code, error && error.message);
-            Alert.alert(languageJSON.Error || 'Erreur', "L'envoi de la photo a échoué. Réessayez.");
+            Alert.alert(languageJSON.Error, languageJSON.upload_photo_failed);
         }
     }
 

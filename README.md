@@ -81,20 +81,37 @@ son côté que chaque `languageJSON.X` existe, en lisant `language.fr.js`.
   pays (nœud `settings`) : ouvrir un pays non francophone demandera de nouvelles
   clés, pas une refonte.
 
-### Ce qui reste à faire
+### Les notifications push
 
-- **Une quarantaine de chaines par application sont encore écrites en dur dans
-  les écrans** et s'afficheront en français même en anglais : les statuts de
-  course (`components/ridelist.js`), « Payé / Non payé » (`screens/RideDetails.js`),
-  « Déconnexion » (`components/SideMenu.js`), les messages d'erreur de
-  géolocalisation, de paiement et d'inscription. Elles doivent remonter dans les
-  dictionnaires.
-- **Les notifications push partent en français pour tout le monde.** Les 96
-  chaines de `functions/index.js` ne peuvent pas être choisies sans connaître la
-  langue du destinataire, et **aucun champ de langue n'existe sur les comptes**.
-  Il faut l'ajouter, le faire écrire par les apps à la connexion, et le faire
-  lire par `notifyUser`.
-- Le format de date de `screens/RideListScreen.js` contient un « à » français.
+Le serveur ne peut pas deviner la langue d'un destinataire. Les applications
+écrivent `users/{uid}/language` au démarrage, dans `common/GetPushToken.js`,
+**avant** de demander la permission de notifier : la langue est donc posée même
+si les notifications sont refusées.
+
+Les textes vivent dans `functions/lib/messages.js`, dans les deux langues, sous
+forme de gabarits à marques `{nom}`. `notifyUser(uid, clé, params, data)` lit le
+jeton push et la langue en parallèle — deux lectures ciblées, parce que le nœud
+`users/{uid}` porte aussi l'historique des courses — puis compose le message.
+
+**Un compte sans champ `language` reste en français**, ce qui couvre toute
+installation antérieure à la 1.6.0.
+
+Les montants suivent la même langue : `montantLisible(valeur, monnaie, locale)`
+accepte désormais une locale, `fr-FR` par défaut.
+
+`functions/test/messages.test.js` vérifie que les deux langues portent les mêmes
+clés, les mêmes marques de substitution et les mêmes valeurs par défaut : une
+traduction qui perdrait `{montant}` enverrait « Ride total: . Thank you ».
+
+### Ce qui reste en français dans le code, et pourquoi
+
+Trois écritures de `payment_mode: "Espèces"` — `driverTripComplete.js` côté
+chauffeur, `CardDetails.js` côté passager — sont des **valeurs écrites en base**,
+pas des libellés. Les traduire changerait la donnée.
+
+Au passage : `FareScreen.js` écrit `'Cash'` pour la même chose. La cohabitation
+est sans conséquence, le serveur ne testant que `'Card'` et `'Wave'` et rangeant
+tout le reste dans les espèces — mais elle n'est pas voulue pour autant.
 
 ## Environnements Firebase
 

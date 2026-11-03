@@ -110,7 +110,7 @@ export default class DriverRegistrationPage extends React.Component {
     try {
       this.setState({ loading: true });
       const snapshot = await firebase.database().ref('settings/').once('value');
-      if (!snapshot.exists()) throw new Error("paramètres de l'application indisponibles");
+      if (!snapshot.exists()) throw new Error(languageJSON.settings_unavailable);
 
       const regData = {
         firstName: fname,
@@ -133,7 +133,7 @@ export default class DriverRegistrationPage extends React.Component {
       };
 
       const user = firebase.auth().currentUser;
-      if (!user) throw new Error("session expirée, reconnectez-vous avant de finaliser l'inscription");
+      if (!user) throw new Error(languageJSON.session_expired_register);
       // Le nom affiché est accessoire (le profil en base fait foi) : son échec
       // ne doit pas empêcher l'enregistrement du compte. L'authentification est
       // initialisée avec l'API moderne, d'où l'appel via updateProfile(user, …)
@@ -153,7 +153,7 @@ export default class DriverRegistrationPage extends React.Component {
       console.log('[Inscription chauffeur] échec', error && error.code, error && error.message);
       this.setState({ loading: false });
       const where = ((error && error.stack) || '').split(String.fromCharCode(10)).slice(0, 3).join(' | ');
-      Alert.alert(languageJSON.error || 'Erreur', "L'inscription n'a pas pu être enregistrée : " + ((error && error.message) || 'erreur inconnue') + String.fromCharCode(10) + String.fromCharCode(10) + where);
+      Alert.alert(languageJSON.error, languageJSON.registration_failed + ((error && error.message) || languageJSON.error_unknown) + String.fromCharCode(10) + String.fromCharCode(10) + where);
     }
   }
 
@@ -176,7 +176,7 @@ export default class DriverRegistrationPage extends React.Component {
     } catch (error) {
       console.log('[DriverRegistration] upload licence échoué', error);
       this.setState({ loading: false });
-      Alert.alert(languageJSON.error || 'Erreur', "L'envoi de l'image a échoué. Réessayez.");
+      Alert.alert(languageJSON.error, languageJSON.upload_image_failed);
     }
   }
 

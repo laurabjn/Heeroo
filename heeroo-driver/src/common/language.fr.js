@@ -261,5 +261,46 @@ export default {
     visiteTechnique: "Visite technique",
     emailExistInPhoneAccountTitle: "Erreur",
     emailExistInPhoneAccount: "Merci d'utiliser la connexion via N° de téléphone, utilisée lors de l'inscription",
-    resetEmailExistInPhoneAccount: "Cet email est utilisé pour un compte inscrit via N° de téléphone. Vous ne pouvez pas réinitialiser votre mot de passe"
+    resetEmailExistInPhoneAccount: "Cet email est utilisé pour un compte inscrit via N° de téléphone. Vous ne pouvez pas réinitialiser votre mot de passe",
+    // --- Chaines remontees des ecrans (1.6.0) ---
+    // Locale des dates et des nombres : suit la langue choisie, pas l'appareil.
+    locale: 'fr-FR',
+    // Statuts d'une course dans « Mes reservations »
+    ride_status_new: 'Nouvelle demande',
+    ride_status_accepted: 'À prendre en charge',
+    ride_status_arrived: 'Sur place',
+    ride_status_start: 'Course en cours',
+    ride_status_done: 'Terminée',
+    ride_status_payment_pending: 'Paiement en attente',
+    ride_status_due: 'Règlement attendu',
+    ride_status_unpaid: 'Non réglée',
+    ride_status_cancelled: 'Annulée',
+    rides_ongoing: 'En cours',
+    rides_past: 'Passées',
+    // Statut de reglement sur le detail d'une course
+    payment_paid: 'Payé',
+    payment_unpaid: 'Non payé',
+    payment_in_progress: 'En cours',
+    payment_waiting: 'En attente',
+    // Geolocalisation
+    geoloc_timeout: 'Délai de localisation dépassé',
+    geoloc_denied: 'Permission de localisation refusée',
+    geoloc_denied_settings: "Localisation refusée : activez-la dans les réglages Android de l'application",
+    // Envois de fichiers
+    upload_document_failed: "L'envoi du document a échoué. Réessayez.",
+    upload_image_failed: "L'envoi de l'image a échoué. Réessayez.",
+    upload_photo_failed: "L'envoi de la photo a échoué. Réessayez.",
+    // Fin de course
+    trip_distance_failed: 'Impossible de calculer la distance de la course. Réessayez.',
+    trip_fare_failed: 'Impossible de calculer le prix de la course. Vérifiez votre connexion et réessayez.',
+    trip_position_failed: 'Position introuvable : impossible de terminer la course. Réessayez.',
+    // Inscription
+    settings_unavailable: "paramètres de l'application indisponibles",
+    session_expired_register: "session expirée, reconnectez-vous avant de finaliser l'inscription",
+    registration_failed: "L'inscription n'a pas pu être enregistrée : ",
+    error_unknown: 'erreur inconnue',
+    // Reglement de la course
+    rider_paid_by_card: 'Le passager a réglé la course par carte.',
+    ride_paid_by_card_auto: 'Cette course est réglée par carte : le paiement est automatique.',
+    no_payment_for_ride: 'Pas de règlement pour cette course',
 }

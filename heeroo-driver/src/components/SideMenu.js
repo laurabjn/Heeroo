@@ -4,6 +4,7 @@ import { Icon } from '@rneui/themed';
 import SideMenuHeader from './SideMenuHeader';
 
 import { colors } from '../common/theme';
+import languageJSON from '../common/language';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import firebase from 'firebase/compat/app';
@@ -47,7 +48,7 @@ export default function SideMenu(props) {
         <DrawerContentScrollView {...props} style={styles.mainViewStyle} >
             <SideMenuHeader userEmail={currentUser.email} userName={currentUser.firstName + ' ' + currentUser.lastName} />
             <DrawerItemList {...props} />
-            <DrawerItem style={styles.drawerStyle} labelStyle={styles.drawerLabelStyle} label='Déconnexion' onPress={() => signOut()} />
+            <DrawerItem style={styles.drawerStyle} labelStyle={styles.drawerLabelStyle} label={languageJSON.sign_out} onPress={() => signOut()} />
         </DrawerContentScrollView>
     )
 }

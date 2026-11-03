@@ -106,7 +106,7 @@ export default class ProfileScreen extends React.Component {
         } catch (error) {
             console.log('[ProfileScreen] upload photo échoué', error);
             this.setState({ loader: false });
-            Alert.alert(languageJSON.Error || 'Erreur', "L'envoi de la photo a échoué. Réessayez.");
+            Alert.alert(languageJSON.Error, languageJSON.upload_photo_failed);
         }
     }
 

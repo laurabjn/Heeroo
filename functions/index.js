@@ -31,6 +31,7 @@ const admin = require('firebase-admin');
 const cors = require('cors')({ origin: true });
 const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
+const { message, localeDe } = require('./lib/messages');
 const { compteStripePour, reglagePays, seuilDeCredit, monnaieDuPays, montantLisible, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
@@ -1565,15 +1566,22 @@ const target = databaseTarget();
 // ---------------------------------------------------------------------------
 
 /** Notifie un utilisateur par son uid (lit son pushToken). Silencieux si absent. */
-async function notifyUser(uid, title, body, data) {
+async function notifyUser(uid, cle, params, data) {
   if (!uid) return false;
-  const token = (await admin.database().ref(`users/${uid}/pushToken`).once('value')).val();
+  // Deux lectures ciblees plutot que le noeud entier : users/{uid} porte aussi
+  // l'historique des courses, qu'il serait absurde de charger pour un titre.
+  const [jeton, langue] = await Promise.all([
+    admin.database().ref(`users/${uid}/pushToken`).once('value'),
+    admin.database().ref(`users/${uid}/language`).once('value'),
+  ]);
+  const token = jeton.val();
   if (!token) {
-    logger.info(`Pas de jeton push pour ${uid} — notification « ${title} » non envoyée`);
+    logger.info(`Pas de jeton push pour ${uid} — notification « ${cle} » non envoyée`);
     return false;
   }
+  const { titre, corps } = message(langue.val(), cle, params);
   try {
-    await sendPush(token, title, body, data);
+    await sendPush(token, titre, corps, data);
     return true;
   } catch (error) {
     if (isInvalidTokenError(error)) {
@@ -1595,11 +1603,11 @@ exports.onBookingRequested = onValueCreated(
     const list = Array.isArray(drivers) ? drivers : Object.values(drivers || {});
     if (list.length === 0) return;
     const booking = (await admin.database().ref(`bookings/${event.params.bookingId}`).once('value')).val() || {};
-    const pickup = booking.pickup && booking.pickup.add ? ` — départ : ${booking.pickup.add}` : '';
+    const pickup = booking.pickup && booking.pickup.add ? ` — ${booking.pickup.add}` : '';
     await Promise.all(list.map((uid) => notifyUser(
       uid,
-      'Nouvelle demande de course',
-      `Un passager cherche un chauffeur${pickup}`,
+      'booking_request',
+      { depart: pickup },
       { type: 'booking_request', bookingId: event.params.bookingId }
     )));
     logger.info(`Course ${event.params.bookingId} : ${list.length} chauffeur(s) notifié(s)`);
@@ -1622,7 +1630,7 @@ exports.onChatMessage = onValueCreated(
     const senderName = fromCustomer ? shortName(booking, 'customer_name') : shortName(booking, 'driver_name');
     const text = String(message.message || '');
     const body = (senderName ? `${senderName} : ` : '') + (text.length > 120 ? text.slice(0, 117) + '…' : text);
-    await notifyUser(recipient, 'Nouveau message', body,
+    await notifyUser(recipient, 'chat_message', { texte: body },
       { type: 'chat', bookingId: event.params.bookingId });
   }
 );
@@ -1636,8 +1644,7 @@ exports.onDriverNear = onValueCreated(
     const booking = (await admin.database().ref(`bookings/${event.params.bookingId}`).once('value')).val();
     if (!booking) return;
     const driver = shortName(booking, 'driver_name');
-    await notifyUser(booking.customer, 'Votre chauffeur arrive',
-      `${driver || 'Votre chauffeur'} arrive au point de départ.`,
+    await notifyUser(booking.customer, 'driver_near', { chauffeur: driver },
       { type: 'driver_near', bookingId: event.params.bookingId });
   }
 );
@@ -1658,23 +1665,21 @@ exports.onBookingStatusChanged = onValueUpdated(
 
     switch (status) {
       case 'ACCEPTED':
-        await notifyUser(booking.customer, 'Chauffeur trouvé',
-          `${driver || 'Un chauffeur'} a accepté votre course et se met en route.`, data);
+        await notifyUser(booking.customer, 'booking_accepted', { chauffeur: driver }, data);
         break;
       case 'START':
-        await notifyUser(booking.customer, 'Course démarrée',
-          `Bonne route${driver ? ` avec ${driver}` : ''} ! Vous pouvez suivre le trajet dans l'application.`, data);
+        await notifyUser(booking.customer, 'booking_started',
+          { avec: driver ? ` avec ${driver}` : '' }, data);
         break;
       case 'END': {
         const amount = formatAmount(booking);
-        await notifyUser(booking.customer, 'Course terminée',
-          amount ? `Montant de la course : ${amount}. Merci d'avoir voyagé avec Heeroo.` : "Merci d'avoir voyagé avec Heeroo.", data);
+        await notifyUser(booking.customer,
+          amount ? 'booking_ended_amount' : 'booking_ended', { montant: amount }, data);
         break;
       }
       case 'NOT PAID':
       case 'DUE':
-        await notifyUser(booking.customer, 'Règlement attendu',
-          'Votre chauffeur attend le règlement de la course.', data);
+        await notifyUser(booking.customer, 'payment_due', null, data);
         break;
       case 'CANCELLED':
         // Course payée par carte : l'empreinte prise à la réservation est libérée.
@@ -1684,16 +1689,14 @@ exports.onBookingStatusChanged = onValueUpdated(
         // Celui qui annule n'est pas notifié ; l'autre partie reçoit le message adapté.
         if (booking.cancelledBy === 'rider') {
           if (booking.driver) {
-            await notifyUser(booking.driver, 'Course annulée',
-              `${customer || 'Le passager'} a annulé la course.`, data);
+            await notifyUser(booking.driver, 'cancelled_by_rider', { passager: customer }, data);
           }
         } else if (booking.cancelledBy === 'driver') {
-          await notifyUser(booking.customer, 'Course annulée',
-            "Le chauffeur n'a pas pu prendre en charge votre course. Vous pouvez relancer une réservation.", data);
+          await notifyUser(booking.customer, 'cancelled_by_driver', null, data);
         } else if (booking.driver) {
           // Origine inconnue (ancienne app) : on prévient les deux, prudemment.
-          await notifyUser(booking.driver, 'Course annulée', 'La course a été annulée.', data);
-          await notifyUser(booking.customer, 'Course annulée', 'Votre course a été annulée.', data);
+          await notifyUser(booking.driver, 'cancelled_driver', null, data);
+          await notifyUser(booking.customer, 'cancelled_customer', null, data);
         }
         break;
       default:
@@ -1761,13 +1764,16 @@ async function previenirSiCreditEpuise(driver, debit, commission, pays) {
   const limite = seuil === null ? 0 : seuil;
   if (avant < limite || apres >= limite) return;
 
+  // Les montants se mettent en forme dans la langue du chauffeur : il faut
+  // donc la lire ici, et non seulement dans notifyUser.
+  const langue = (await admin.database().ref(`users/${driver}/language`).once('value')).val();
+  const locale = localeDe(langue);
   const monnaie = monnaieDuPays(pays);
-  const solde = montantLisible(apres, monnaie);
-  const titre = seuil === null ? 'Crédit négatif' : 'Crédit épuisé';
-  const corps = seuil === null
-    ? `Votre crédit est de ${solde}. Votre prochaine course réglée par carte le remontera.`
-    : `Votre crédit est de ${solde}. Les courses en espèces s'arrêtent sous ${montantLisible(seuil, monnaie)} : votre prochaine course réglée par carte le remontera, ou rechargez-le depuis « Mes revenus ».`;
-  await notifyUser(driver, titre, corps, { type: 'credit' });
+  const params = {
+    solde: montantLisible(apres, monnaie, locale),
+    seuil: seuil === null ? '' : montantLisible(seuil, monnaie, locale),
+  };
+  await notifyUser(driver, seuil === null ? 'credit_negative' : 'credit_empty', params, { type: 'credit' });
 }
 
 

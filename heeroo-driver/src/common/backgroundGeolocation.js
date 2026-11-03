@@ -107,7 +107,7 @@ const BackgroundGeolocation = {
     if (running) return;
     const fg = await Location.requestForegroundPermissionsAsync();
     if (fg.status !== 'granted') {
-      emit('error', { code: 1, message: 'Permission de localisation refusée' });
+      emit('error', { code: 1, message: languageJSON.geoloc_denied });
       return;
     }
     running = true;

@@ -311,7 +311,7 @@ export default class CardDetailsScreen extends React.Component {
       this.leftScreen = true;
       this.setState({ loadingModal: false });
       if (result.outcome === 'refunded') {
-        Alert.alert(languageJSON.payment, 'Cette course avait déjà été réglée : votre paiement par carte est remboursé.');
+        Alert.alert(languageJSON.payment, languageJSON.ride_already_paid_refunded);
       }
       this.props.navigation.navigate('Map', { screen: 'ratingPage', params: { data: booking } });
     } catch (error) {

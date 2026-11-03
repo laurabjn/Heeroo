@@ -186,16 +186,16 @@ export default class RideDetails extends React.Component {
         let payment_status = this.state.paramData ? this.state.paramData.payment_status : "";
         switch (payment_status) {
             case "PAID":
-                payment_status = "Payé"
+                payment_status = languageJSON.payment_paid
                 break;
             case "NOT PAID":
-                payment_status = "Non payé"
+                payment_status = languageJSON.payment_unpaid
                 break;
             case "IN_PROGRESS":
-                payment_status = "En cours"
+                payment_status = languageJSON.payment_in_progress
                 break;
             case "WAITING":
-                payment_status = "En attente"
+                payment_status = languageJSON.payment_waiting
                 break;
         }
         return (
@@ -376,7 +376,7 @@ export default class RideDetails extends React.Component {
                                 <View style={styles.billOptions}>
                                     <View style={styles.billItem}>
                                         <Text style={styles.billName}>{languageJSON.payment_status}</Text>
-                                        <Text style={styles.billAmount}>{this.state.paramData.payment_status == "IN_PROGRESS" || this.state.paramData.payment_status == "WAITING" ? "Non payé" : (this.state.paramData.payment_status == "PAID" ? "Payé" : this.state.paramData.payment_status)}</Text>
+                                        <Text style={styles.billAmount}>{this.state.paramData.payment_status == "IN_PROGRESS" || this.state.paramData.payment_status == "WAITING" ? languageJSON.payment_unpaid : (this.state.paramData.payment_status == "PAID" ? languageJSON.payment_paid : this.state.paramData.payment_status)}</Text>
                                     </View>
 
                                     <View style={[styles.billItem, styles.lastStatus]}>

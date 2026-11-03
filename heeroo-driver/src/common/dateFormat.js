@@ -1,9 +1,12 @@
-// Dates et heures affichées en français.
+// Dates et heures affichées dans la langue de l'application.
 //
 // `toLocaleString()` sans argument suit la locale de l'appareil, pas celle de
 // l'application : un téléphone en anglais affichait « 9/20/2026, 2:07:56 PM »
-// dans une interface entièrement française. La locale est donc imposée ici.
-const LOCALE = 'fr-FR';
+// dans une interface entièrement française. La locale est donc imposée ici,
+// et c'est le dictionnaire actif qui la porte.
+import languageJSON from './language';
+
+const LOCALE = languageJSON.locale;
 
 const DATE_TIME = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
 

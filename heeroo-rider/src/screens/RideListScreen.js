@@ -50,7 +50,7 @@ export default class RideListPage extends React.Component {
                 var allRides = [];
                 for (let key in ridesOBJ) {
                     ridesOBJ[key].bookingId = key;
-                    var Bdate = moment(ridesOBJ[key].tripdate).format("DD/MM/YYYY [à] HH:mm");
+                    var Bdate = moment(ridesOBJ[key].tripdate).format(languageJSON.date_format_long);
                     ridesOBJ[key].bookingDate = Bdate;
                     allRides.push(ridesOBJ[key]);
                 }

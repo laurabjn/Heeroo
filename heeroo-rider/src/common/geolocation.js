@@ -6,6 +6,7 @@
 // récente (réponse immédiate), sinon position courante avec délai maximal,
 // puis repli sur la dernière position connue quel que soit son âge.
 import * as Location from 'expo-location';
+import languageJSON from './language';
 
 const watchers = {};
 let nextWatchId = 1;
@@ -21,7 +22,7 @@ function accuracyFor(options) {
 function withTimeout(promise, ms) {
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(Object.assign(new Error('Délai de localisation dépassé'), { code: 3 })), ms);
+    timer = setTimeout(() => reject(Object.assign(new Error(languageJSON.geoloc_timeout), { code: 3 })), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
@@ -30,8 +31,8 @@ async function ensurePermission() {
   const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
     const error = new Error(canAskAgain
-      ? 'Permission de localisation refusée'
-      : 'Localisation refusée : activez-la dans les réglages Android de l\'application');
+      ? languageJSON.geoloc_denied
+      : languageJSON.geoloc_denied_settings);
     error.code = 1; // PERMISSION_DENIED, comme l'ancienne API
     throw error;
   }

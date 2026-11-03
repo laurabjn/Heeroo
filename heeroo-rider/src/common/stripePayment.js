@@ -8,6 +8,7 @@
 // bancaires restent chez Stripe : l'app ne les voit jamais, et n'en conserve
 // rien.
 import Constants from 'expo-constants';
+import languageJSON from './language';
 import { initPaymentSheet, presentPaymentSheet, resetPaymentSheetCustomer } from '@stripe/stripe-react-native';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -45,7 +46,7 @@ export async function payBookingWithCard({ bookingId, email, merchantCountryCode
   });
   const data = await response.json();
   if (!response.ok || !data.clientSecret) {
-    throw new Error(data.error || 'Impossible de préparer le paiement');
+    throw new Error(data.error || languageJSON.stripe_prepare_failed);
   }
 
   const init = await initPaymentSheet({
@@ -107,7 +108,7 @@ export async function authorizeRideWithCard({ estimate, currency = 'EUR', carTyp
   });
   const data = await response.json();
   if (!response.ok || !data.clientSecret) {
-    throw new Error(data.error || "Impossible de préparer l'empreinte bancaire");
+    throw new Error(data.error || languageJSON.stripe_hold_failed);
   }
 
   const init = await initPaymentSheet({

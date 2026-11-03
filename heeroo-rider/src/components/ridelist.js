@@ -11,18 +11,18 @@ import countryCurrency from './../constants/countryCurrency.json'
 function rideStatus(item) {
     const paid = item.payment_status == 'PAID';
     switch (item.status) {
-        case 'NEW': return { label: "Recherche d'un chauffeur", color: '#fdd42c', done: false };
-        case 'ACCEPTED': return { label: "Chauffeur en route", color: '#00aced', done: false };
-        case 'ARRIVED': return { label: "Chauffeur arrivé", color: '#00aced', done: false };
-        case 'START': return { label: "Course en cours", color: '#00aced', done: false };
+        case 'NEW': return { label: languageJSON.ride_status_new, color: '#fdd42c', done: false };
+        case 'ACCEPTED': return { label: languageJSON.ride_status_accepted, color: '#00aced', done: false };
+        case 'ARRIVED': return { label: languageJSON.ride_status_arrived, color: '#00aced', done: false };
+        case 'START': return { label: languageJSON.ride_status_start, color: '#00aced', done: false };
         case 'END': return paid
-            ? { label: "Terminée", color: '#00df8f', done: true }
-            : { label: "Paiement en attente", color: '#ff9f43', done: false };
+            ? { label: languageJSON.ride_status_done, color: '#00df8f', done: true }
+            : { label: languageJSON.ride_status_payment_pending, color: '#ff9f43', done: false };
         case 'NOT PAID':
-        case 'DUE': return { label: "Règlement attendu", color: '#ff9f43', done: false };
-        case 'WAITING': return { label: "Non réglée", color: '#ff9f43', done: true };
-        case 'PAID': return { label: "Terminée", color: '#00df8f', done: true };
-        case 'CANCELLED': return { label: "Annulée", color: '#ff6a66', done: true };
+        case 'DUE': return { label: languageJSON.ride_status_due, color: '#ff9f43', done: false };
+        case 'WAITING': return { label: languageJSON.ride_status_unpaid, color: '#ff9f43', done: true };
+        case 'PAID': return { label: languageJSON.ride_status_done, color: '#00df8f', done: true };
+        case 'CANCELLED': return { label: languageJSON.ride_status_cancelled, color: '#ff6a66', done: true };
         default: return { label: String(item.status || ''), color: '#9b9b9b', done: true };
     }
 }
@@ -96,8 +96,8 @@ export default class RideList extends React.Component {
         const ongoing = rides.filter((r) => !rideStatus(r).done);
         const past = rides.filter((r) => rideStatus(r).done);
         const sections = [];
-        if (ongoing.length) sections.push({ title: 'En cours', data: ongoing });
-        if (past.length) sections.push({ title: 'Passées', data: past });
+        if (ongoing.length) sections.push({ title: languageJSON.rides_ongoing, data: ongoing });
+        if (past.length) sections.push({ title: languageJSON.rides_past, data: past });
 
         return (
             <View style={styles.container}>

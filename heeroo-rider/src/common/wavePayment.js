@@ -17,6 +17,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import { Linking } from 'react-native';
 import { base_url } from './key';
+import languageJSON from './language';
 
 // Les pays où Wave opère et où la société a un compte marchand. Y ajouter un
 // pays sans ce compte afficherait un bouton qui échoue à l'ouverture.
@@ -29,7 +30,7 @@ export function isWaveAvailable(country) {
 
 async function callFunction(name, body) {
     const user = firebase.auth().currentUser;
-    if (!user) throw new Error('session expirée, reconnectez-vous');
+    if (!user) throw new Error(languageJSON.session_expired);
     const idToken = await user.getIdToken();
     const response = await fetch(base_url + name, {
         method: 'post',
@@ -37,7 +38,7 @@ async function callFunction(name, body) {
         body: JSON.stringify(body || {}),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `Wave a répondu ${response.status}`);
+    if (!response.ok) throw new Error(data.error || languageJSON.wave_responded.replace('{status}', response.status));
     return data;
 }
 
@@ -51,7 +52,7 @@ async function callFunction(name, body) {
  */
 export async function payForRideWithWave(bookingId) {
     const data = await callFunction('createWaveRidePayment', { bookingId });
-    if (!data.launchUrl) throw new Error("Wave n'a pas renvoyé de page de paiement");
+    if (!data.launchUrl) throw new Error(languageJSON.wave_no_checkout);
     await Linking.openURL(data.launchUrl);
     return { sessionId: data.sessionId, amount: data.amount, currency: data.currency };
 }

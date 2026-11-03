@@ -179,19 +179,19 @@ export default class RideDetails extends React.Component {
         switch (payment_status) {
 
             case "PAID":
-                payment_status = "Payé"
+                payment_status = languageJSON.payment_paid
                 break;
 
             case "NOT PAID":
-                payment_status = "Non payé"
+                payment_status = languageJSON.payment_unpaid
                 break;
 
             case "IN_PROGRESS":
-                payment_status = "En cours"
+                payment_status = languageJSON.payment_in_progress
                 break;
 
             case "WAITING":
-                payment_status = "En attente"
+                payment_status = languageJSON.payment_waiting
                 break;
 
         }

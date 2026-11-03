@@ -345,8 +345,8 @@ export default class DriverTripAccept extends React.Component {
             Alert.alert(
                 decouvert ? languageJSON.credit_overdrawn_title : languageJSON.credit_insufficient_title,
                 (decouvert ? languageJSON.credit_overdrawn_msg : languageJSON.credit_insufficient_msg)
-                    .replace(/\{balance\}/g, balance.toLocaleString('fr-FR'))
-                    .replace(/\{min\}/g, seuil.toLocaleString('fr-FR'))
+                    .replace(/\{balance\}/g, balance.toLocaleString(languageJSON.locale))
+                    .replace(/\{min\}/g, seuil.toLocaleString(languageJSON.locale))
                     .replace(/\{currency\}/g, symboleMonnaie(rideCurrency))
             );
             return;

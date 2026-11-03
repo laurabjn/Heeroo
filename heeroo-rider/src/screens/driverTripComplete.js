@@ -242,7 +242,7 @@ export default class DriverTripComplete extends React.Component {
 
                     <View style={styles.leftViewContainerStyle} >
                         <View style={styles.leftViewHeaderContainerStyle}>
-                            <Text style={styles.dateViewTextStyle}>{this.state.getDetails ? moment(this.state.getDetails.tripdate).format("DD.MM.YYYY") + " à " + moment(this.state.getDetails.trip_start_time).format("HH[h]mm") : null}</Text>
+                            <Text style={styles.dateViewTextStyle}>{this.state.getDetails ? moment(this.state.getDetails.tripdate).format(languageJSON.date_format_day) + ' ' + languageJSON.date_at + ' ' + moment(this.state.getDetails.trip_start_time).format(languageJSON.date_format_time) : null}</Text>
                             <Text style={styles.priceViewTextStyle}>{this.state.getDetails ? this.state.getDetails.customer_paid > 0 ? parseFloat(this.state.getDetails.customer_paid).toFixed(0) + " " + this.state.settings.symbol : 0 : null}</Text>
                         </View>
                         <View style={styles.leftViewInnerContainerStyle} >

@@ -252,5 +252,43 @@ export default {
     rate_notification_body: "vous a attribué la note de ",
     emailExistInPhoneAccountTitle: "Erreur",
     emailExistInPhoneAccount: "Merci d'utiliser la connexion via N° de téléphone, utilisée lors de l'inscription",
-    resetEmailExistInPhoneAccount: "Cet email est utilisé pour un compte inscrit via N° de téléphone. Vous ne pouvez pas réinitialiser votre mot de passe"
+    resetEmailExistInPhoneAccount: "Cet email est utilisé pour un compte inscrit via N° de téléphone. Vous ne pouvez pas réinitialiser votre mot de passe",
+    // --- Chaines remontees des ecrans (1.6.0) ---
+    // Locale des dates et des nombres : suit la langue choisie, pas l'appareil.
+    locale: 'fr-FR',
+    // Statuts d'une course dans « Mes reservations »
+    ride_status_new: "Recherche d'un chauffeur",
+    ride_status_accepted: 'Chauffeur en route',
+    ride_status_arrived: 'Chauffeur arrivé',
+    ride_status_start: 'Course en cours',
+    ride_status_done: 'Terminée',
+    ride_status_payment_pending: 'Paiement en attente',
+    ride_status_due: 'Règlement attendu',
+    ride_status_unpaid: 'Non réglée',
+    ride_status_cancelled: 'Annulée',
+    rides_ongoing: 'En cours',
+    rides_past: 'Passées',
+    // Statut de reglement sur le detail d'une course
+    payment_paid: 'Payé',
+    payment_unpaid: 'Non payé',
+    payment_in_progress: 'En cours',
+    payment_waiting: 'En attente',
+    // Geolocalisation
+    geoloc_timeout: 'Délai de localisation dépassé',
+    geoloc_denied: 'Permission de localisation refusée',
+    geoloc_denied_settings: "Localisation refusée : activez-la dans les réglages Android de l'application",
+    // Envoi de fichier
+    upload_photo_failed: "L'envoi de la photo a échoué. Réessayez.",
+    // Paiements
+    ride_already_paid_refunded: 'Cette course avait déjà été réglée : votre paiement par carte est remboursé.',
+    stripe_prepare_failed: 'Impossible de préparer le paiement',
+    stripe_hold_failed: "Impossible de préparer l'empreinte bancaire",
+    session_expired: 'session expirée, reconnectez-vous',
+    wave_no_checkout: "Wave n'a pas renvoyé de page de paiement",
+    wave_responded: 'Wave a répondu {status}',
+    // Formats de date passes a moment()
+    date_format_long: 'DD/MM/YYYY [à] HH:mm',
+    date_format_day: 'DD.MM.YYYY',
+    date_format_time: 'HH[h]mm',
+    date_at: 'à',
 }

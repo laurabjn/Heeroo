@@ -23,10 +23,12 @@ function monnaieDuPays(country) {
 }
 
 /** Montant lisible dans une notification : « -22,50 \u20ac », « 5 000 FCFA ». */
-function montantLisible(value, currency) {
+// La locale suit la langue du destinataire : un anglophone lit
+// « -22.50 € ». Elle vaut fr-FR par defaut, ce qu'elle a toujours valu.
+function montantLisible(value, currency, locale) {
   const monnaie = String(currency || 'EUR').toUpperCase();
   const decimales = ZERO_DECIMAL_CURRENCIES.has(monnaie) ? 0 : 2;
-  const montant = (Number(value) || 0).toLocaleString('fr-FR', {
+  const montant = (Number(value) || 0).toLocaleString(locale || 'fr-FR', {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   });

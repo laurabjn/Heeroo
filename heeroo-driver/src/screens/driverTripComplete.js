@@ -99,7 +99,7 @@ export default class DriverTripComplete extends React.Component {
                 this.leftScreen = true;
                 this.paymentRef.off();
                 firebase.database().ref('users/' + this.state.curUid + '/').update({ queue: false });
-                Alert.alert(languageJSON.payment || 'Paiement', 'Le passager a réglé la course par carte.');
+                Alert.alert(languageJSON.payment, languageJSON.rider_paid_by_card);
                 this.props.navigation.navigate('DriverTripAcceptScreen');
             }
         });
@@ -115,7 +115,7 @@ export default class DriverTripComplete extends React.Component {
         // Course réglée par carte : le serveur débite l'empreinte, le chauffeur
         // n'a pas à déclarer d'encaissement.
         if (item && item.payment_mode === 'Card' && item.payment_intent_id) {
-            Alert.alert(languageJSON.payment || 'Paiement', 'Cette course est réglée par carte : le paiement est automatique.');
+            Alert.alert(languageJSON.payment, languageJSON.ride_paid_by_card_auto);
             return;
         }
         this.leftScreen = true;
@@ -234,7 +234,7 @@ export default class DriverTripComplete extends React.Component {
                         onPress={() => {
                             this.onPressDone(this.state.rideDetails, "WAITING");
                         }}
-                    >{'Pas de règlement pour cette course'}</Text>
+                    >{languageJSON.no_payment_for_ride}</Text>
                 </View>
             </View>
         )

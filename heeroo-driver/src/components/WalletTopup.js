@@ -127,7 +127,7 @@ export default class WalletTopup extends React.Component {
     const provider = this.provider();
     const amount = provider.round(Number(this.state.amount));
     if (!(amount >= provider.min)) {
-      Alert.alert(languageJSON.error, languageJSON.topup_min_error.replace('{min}', provider.min.toLocaleString('fr-FR') + ' ' + this.symbol()));
+      Alert.alert(languageJSON.error, languageJSON.topup_min_error.replace('{min}', provider.min.toLocaleString(languageJSON.locale) + ' ' + this.symbol()));
       return;
     }
     this.setState({ loading: true });
@@ -211,7 +211,7 @@ export default class WalletTopup extends React.Component {
         <View style={styles.row}>
           <View style={styles.soldeBloc}>
             <Text style={styles.label}>{languageJSON.credit_balance}</Text>
-            <Text style={styles.balance}>{this.state.balance.toLocaleString('fr-FR')} {symbol}</Text>
+            <Text style={styles.balance}>{this.state.balance.toLocaleString(languageJSON.locale)} {symbol}</Text>
           </View>
           <TouchableOpacity style={styles.button} onPress={() => this.setState({ modalVisible: true })}>
             <Text style={styles.buttonText}>{languageJSON.topup_button}</Text>
@@ -231,13 +231,13 @@ export default class WalletTopup extends React.Component {
         {this.state.apercu && this.state.apercu.available > 0 ? (
           <Text style={styles.pending}>
             {languageJSON.payout_available}
-            {this.state.apercu.available.toLocaleString('fr-FR')} {this.state.apercu.currency}
+            {this.state.apercu.available.toLocaleString(languageJSON.locale)} {this.state.apercu.currency}
           </Text>
         ) : null}
         {this.state.apercu && this.state.apercu.held > 0 ? (
           <Text style={styles.pending}>
             {languageJSON.payout_held}
-            {this.state.apercu.held.toLocaleString('fr-FR')} {this.state.apercu.currency}
+            {this.state.apercu.held.toLocaleString(languageJSON.locale)} {this.state.apercu.currency}
             {' — '}{languageJSON.payout_held_note}
           </Text>
         ) : null}
@@ -260,7 +260,7 @@ export default class WalletTopup extends React.Component {
               <View style={styles.presets}>
                 {provider.presets.map((value) => (
                   <TouchableOpacity key={value} style={[styles.preset, String(value) === this.state.amount && styles.presetActive]} onPress={() => this.setState({ amount: String(value) })}>
-                    <Text style={[styles.presetText, String(value) === this.state.amount && styles.presetTextActive]}>{value.toLocaleString('fr-FR')}</Text>
+                    <Text style={[styles.presetText, String(value) === this.state.amount && styles.presetTextActive]}>{value.toLocaleString(languageJSON.locale)}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

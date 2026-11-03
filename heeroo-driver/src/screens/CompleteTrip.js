@@ -197,7 +197,7 @@ export default class DriverCompleteTrip extends React.Component {
                         if (!respJson.routes || !respJson.routes[0] || !respJson.routes[0].legs) {
                             console.log('[Directions] pas de trajet pour le calcul du prix :', respJson.status, respJson.error_message || '');
                             this.setState({ loadingModal: false });
-                            Alert.alert(languageJSON.Error || 'Erreur', 'Impossible de calculer la distance de la course. Réessayez.');
+                            Alert.alert(languageJSON.Error, languageJSON.trip_distance_failed);
                             return;
                         }
                         const rideCountry = (this.state.rideDetails.pickup && this.state.rideDetails.pickup.country) || 'FR';
@@ -211,13 +211,13 @@ export default class DriverCompleteTrip extends React.Component {
                     .catch((error) => {
                         console.log('[Fin de course] calcul du prix impossible', error);
                         this.setState({ loadingModal: false });
-                        Alert.alert(languageJSON.Error || 'Erreur', 'Impossible de calculer le prix de la course. Vérifiez votre connexion et réessayez.');
+                        Alert.alert(languageJSON.Error, languageJSON.trip_fare_failed);
                     })
             },
             error => {
                 console.log('[Fin de course] position indisponible', error);
                 this.setState({ loadingModal: false });
-                Alert.alert(languageJSON.Error || 'Erreur', 'Position introuvable : impossible de terminer la course. Réessayez.');
+                Alert.alert(languageJSON.Error, languageJSON.trip_position_failed);
             },
             { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
         )
