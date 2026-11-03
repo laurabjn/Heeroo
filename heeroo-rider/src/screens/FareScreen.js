@@ -29,6 +29,7 @@ import { getDistance } from 'geolib';
 import { farehelper } from '../common/FareCalculator';
 import { isCardPaymentAvailable, authorizeRideWithCard } from '../common/stripePayment';
 import { isWaveAvailable } from '../common/wavePayment';
+import { isOrangeAvailable, watchOrangeEnabled } from '../common/orangePayment';
 import countryCurrency from '../constants/countryCurrency.json';
 import { PromoComp } from "../components";
 import { RequestPushMsg } from '../common/RequestPushMsg';
@@ -71,9 +72,14 @@ export default class FareScreen extends React.Component {
             modalVisible: false,
             country: this.props.route.params.country,
             promodalVisible: false,
-            // Moyen choisi à la réservation : 'Cash', 'Card', ou null tant que le
-            // passager n'a pas choisi (si la carte n'est pas proposée, c'est espèces).
+            // Moyen choisi à la réservation : 'Cash', 'Card', 'Wave',
+            // 'OrangeMoney', ou null tant que le passager n'a pas choisi (si la
+            // carte n'est pas proposée et qu'il n'y a pas de portefeuille mobile,
+            // c'est espèces).
             paymentMode: isCardPaymentAvailable() ? null : 'Cash',
+            // credit_settings/orangeEnabled : Orange Money reste invisible tant
+            // que le compte marchand Sonatel n'existe pas.
+            orangeEnabled: false,
             settings: {
                 code: "",
                 symbol: '',
@@ -84,23 +90,37 @@ export default class FareScreen extends React.Component {
     }
 
     /**
-     * Les moyens proposes au depart de ce pays : les especes, et un moyen
-     * electronique.
+     * Les moyens proposes au depart de ce pays : les especes, et un ou deux
+     * moyens electroniques.
      *
      * Wave et la carte ne cohabitent pas. La ou Wave opere, c'est lui le moyen
      * electronique : la carte y est rare, et le franc CFA n'est pas sur d'etre
      * accepte par un acquereur Stripe. Proposer les deux donnerait un bouton
      * qui echoue sans que le passager comprenne pourquoi.
      *
+     * Orange Money, lui, cohabite avec Wave. Ce sont les deux grands
+     * portefeuilles senegalais, et le passager qui n'a pas de compte chez l'un
+     * en a souvent un chez l'autre : n'en proposer qu'un reviendrait a renvoyer
+     * aux especes la moitie des passagers. Il lui faut en plus le compte
+     * marchand, d'ou le drapeau en base, la ou Wave se contente du pays.
+     *
      * Les especes sont toujours la : c'est le seul moyen qui ne depende de
      * personne.
+     *
+     * Les libelles sont courts — « Wave », non « Payer avec Wave ». Ce sont des
+     * puces de selection cote a cote, chacune au tiers de la largeur de
+     * l'ecran quand il y en a trois : la phrase entiere y passerait a la ligne
+     * trois fois.
      */
     moyensDePaiement() {
-        const moyens = [{ key: 'Cash', label: languageJSON.pay_cash }];
+        const moyens = [{ key: 'Cash', label: languageJSON.mode_cash }];
         if (isWaveAvailable(this.state.country)) {
-            moyens.push({ key: 'Wave', label: languageJSON.payWithWave });
+            moyens.push({ key: 'Wave', label: languageJSON.mode_wave });
         } else if (isCardPaymentAvailable()) {
-            moyens.push({ key: 'Card', label: languageJSON.payWithCard });
+            moyens.push({ key: 'Card', label: languageJSON.mode_card });
+        }
+        if (isOrangeAvailable(this.state.country, this.state.orangeEnabled)) {
+            moyens.push({ key: 'OrangeMoney', label: languageJSON.mode_orange });
         }
         return moyens;
     }
@@ -199,6 +219,11 @@ export default class FareScreen extends React.Component {
                 console.log(error)
             });
 
+        this.arreterOrange = watchOrangeEnabled((actif) => this.setState({ orangeEnabled: actif }));
+    }
+
+    componentWillUnmount() {
+        if (this.arreterOrange) this.arreterOrange();
     }
 
     applyPromo() {
@@ -765,6 +790,7 @@ export default class FareScreen extends React.Component {
                             <Text style={[styles.priceText, { color: colors.TEXT_DARK }]}>
                                 {this.state.paymentMode === 'Card' ? languageJSON.payment_by_card
                                     : this.state.paymentMode === 'Wave' ? languageJSON.payment_by_wave
+                                    : this.state.paymentMode === 'OrangeMoney' ? languageJSON.payment_by_orange
                                     : this.state.paymentMode === 'Cash' ? languageJSON.paymentCash
                                         : languageJSON.payment_to_choose}
                             </Text>
@@ -803,7 +829,10 @@ export default class FareScreen extends React.Component {
                                     key={option.key}
                                     onPress={() => this.setState({ paymentMode: option.key })}
                                     style={[styles.payChoice, this.state.paymentMode === option.key && styles.payChoiceActive]}>
-                                    <Text style={[styles.payChoiceText, this.state.paymentMode === option.key && styles.payChoiceTextActive]}>
+                                    <Text
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                        style={[styles.payChoiceText, this.state.paymentMode === option.key && styles.payChoiceTextActive]}>
                                         {option.label}
                                     </Text>
                                 </TouchableOpacity>

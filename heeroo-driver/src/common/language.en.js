@@ -39,6 +39,13 @@ export default {
     topup_hint: 'Pick an amount, then pay with Wave. The commission on every ride is taken from this credit.',
     topup_amount_placeholder: 'Other amount ({devise})',
     topup_confirm: 'Pay with Wave',
+    topup_confirm_orange: 'Pay with Orange Money',
+    topup_hint_orange: 'Pick an amount, then pay with Orange Money. The commission on every ride is taken from this credit.',
+    // Labels for the provider choice: three words at most, the buttons sit
+    // side by side.
+    topup_provider_wave: 'Wave',
+    topup_provider_orange: 'Orange Money',
+    topup_provider_card: 'Bank card',
     topup_confirm_card: 'Pay by card',
     topup_hint_card: 'Pick an amount, then pay by card. The commission on every ride is taken from this credit.',
     topup_min_error: 'The minimum amount is {min}.',

@@ -26,6 +26,7 @@ import { PromoComp } from "../components";
 import languageJSON from '../common/language';
 import { isCardPaymentAvailable, payBookingWithCard } from '../common/stripePayment';
 import { isWaveAvailable, payForRideWithWave, confirmWaveRide } from '../common/wavePayment';
+import { isOrangeAvailable, payForRideWithOrange, confirmOrangeRide, watchOrangeEnabled } from '../common/orangePayment';
 import { DrawerToggle, CloseBtn } from '../components';
 import countryCurrency from '../constants/countryCurrency.json';
 import currencySymbols from '../constants/currencySymbols.json';
@@ -52,6 +53,11 @@ export default class CardDetailsScreen extends React.Component {
       promodalVisible: false,
       // Session Wave ouverte, en attente du retour du passager.
       wavePending: null,
+      // Idem pour Orange Money, separement : le passager peut avoir
+      // essaye l'un, renonce, puis repris avec l'autre. Une seule variable
+      // ferait verifier la session d'un prestataire aupres de l'autre.
+      orangePending: null,
+      orangeEnabled: false,
       settings: {
         code: '',
         symbol: '',
@@ -112,8 +118,12 @@ export default class CardDetailsScreen extends React.Component {
     // confirmé les espèces), on passe directement à la notation.
     const booking = this.props.route.params.data;
     this.appStateSub = AppState.addEventListener('change', (etat) => {
-      if (etat === 'active') this.verifierWave();
+      if (etat === 'active') {
+        this.verifierWave();
+        this.verifierOrange();
+      }
     });
+    this.arreterOrange = watchOrangeEnabled((actif) => this.setState({ orangeEnabled: actif }));
     if (booking && booking.bookingKey) {
       this.paymentStatusRef = firebase.database().ref('bookings/' + booking.bookingKey + '/payment_status');
       this.paymentStatusRef.on('value', (snap) => {
@@ -128,6 +138,7 @@ export default class CardDetailsScreen extends React.Component {
   componentWillUnmount() {
     if (this.paymentStatusRef) this.paymentStatusRef.off();
     if (this.appStateSub) this.appStateSub.remove();
+    if (this.arreterOrange) this.arreterOrange();
   }
 
   /**
@@ -165,6 +176,43 @@ export default class CardDetailsScreen extends React.Component {
       }
     } catch (error) {
       console.log('[wave] verification', error && error.message);
+    }
+  };
+
+  /**
+   * Regle la course avec Orange Money.
+   *
+   * Meme deroule que Wave, a une difference pres : la notification d'Orange est
+   * reputee peu fiable, et le serveur ne la croit pas — il interroge Orange.
+   * La verification au retour n'est donc pas un rattrapage ici, c'est le chemin
+   * normal, et c'est elle qui fera passer la course a PAID la plupart du temps.
+   */
+  orangePayment = async () => {
+    const booking = this.props.route.params.data;
+    try {
+      const { sessionId } = await payForRideWithOrange(booking.bookingKey);
+      this.setState({ orangePending: sessionId });
+    } catch (error) {
+      Alert.alert(languageJSON.Error, error.message || String(error));
+    }
+  };
+
+  verifierOrange = async () => {
+    const sessionId = this.state.orangePending;
+    if (!sessionId) return;
+    try {
+      const statut = await confirmOrangeRide(sessionId);
+      if (statut === 'completed') {
+        this.setState({ orangePending: null });
+        // L'ecouteur de payment_status prend le relais et ouvre la notation.
+      } else if (statut === 'failed') {
+        this.setState({ orangePending: null });
+        Alert.alert(languageJSON.Error, languageJSON.orange_failed);
+      } else {
+        Alert.alert(languageJSON.payment_by_orange, languageJSON.orange_pending);
+      }
+    } catch (error) {
+      console.log('[orange] verification', error && error.message);
     }
   };
 
@@ -583,6 +631,20 @@ export default class CardDetailsScreen extends React.Component {
                     this.wavePayment()
                   }}>
                   <Text style={styles.buttonTitle}>{languageJSON.payWithWave}</Text>
+                </TouchableOpacity>
+                : null}
+              {/* Orange Money a cote de Wave, et non a sa place : ce sont les
+                  deux grands portefeuilles senegalais, et le passager qui n'a
+                  pas de compte chez l'un en a souvent un chez l'autre. Le
+                  bouton exige en plus le compte marchand (drapeau en base),
+                  faute de quoi le serveur repondrait 503. */}
+              {isOrangeAvailable(this.props.route.params.data.pickup.country, this.state.orangeEnabled) ?
+                <TouchableOpacity
+                  style={styles.cardPayBtn}
+                  onPress={() => {
+                    this.orangePayment()
+                  }}>
+                  <Text style={styles.buttonTitle}>{languageJSON.payWithOrange}</Text>
                 </TouchableOpacity>
                 : null}
               {/* Le paiement par carte est engagé à la réservation (empreinte) et

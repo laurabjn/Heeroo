@@ -183,7 +183,12 @@ de frais. Sans société au Sénégal, Orange Money n'est pas ouvrable.
   **déployer l'admin en même temps que le backend.**
 - Activation côté app : `credit_settings/orangeEnabled` à `true` en base, une
   fois le compte marchand ouvert et les fonctions déployées. Aucun nouveau
-  build nécessaire.
+  build nécessaire. Le passager voit alors une puce « Orange Money » à côté de
+  « Wave » au moment de réserver, et un bouton de plus en fin de course ; le
+  chauffeur, un choix entre les deux portefeuilles dans la fenêtre de recharge.
+  **Orange Money cohabite avec Wave**, là où Wave et la carte s'excluent : ce
+  sont les deux grands portefeuilles sénégalais, et qui n'a pas de compte chez
+  l'un en a souvent un chez l'autre.
 - Flux : app → `createOrangeRidePayment` / `createOrangeCheckout` → page
   Orange → `orangeWebhook`, qui **ne croit pas son propre contenu** : il vérifie
   le jeton de notification puis interroge Orange sur le statut, et c'est cette

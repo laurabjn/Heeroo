@@ -29,6 +29,13 @@ export default {
     topup_hint: 'Choisissez un montant, puis payez avec Wave. La commission de chaque course est prélevée sur ce crédit.',
     topup_amount_placeholder: 'Autre montant ({devise})',
     topup_confirm: 'Payer avec Wave',
+    topup_confirm_orange: 'Payer avec Orange Money',
+    topup_hint_orange: 'Choisissez un montant, puis payez avec Orange Money. La commission de chaque course est prélevée sur ce crédit.',
+    // Libellés du choix du prestataire : trois mots au plus, les boutons sont
+    // côte à côte.
+    topup_provider_wave: 'Wave',
+    topup_provider_orange: 'Orange Money',
+    topup_provider_card: 'Carte bancaire',
     topup_confirm_card: 'Payer par carte',
     topup_hint_card: 'Choisissez un montant, puis payez par carte bancaire. La commission de chaque course est prélevée sur ce crédit.',
     topup_min_error: 'Le montant minimum est de {min}.',

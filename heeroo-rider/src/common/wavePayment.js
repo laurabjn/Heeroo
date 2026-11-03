@@ -13,10 +13,8 @@
 // redirigé. L'application Heeroo ne voit jamais ses identifiants, et c'est le
 // webhook Wave qui marque la course payée — la vérification au retour ne sert
 // qu'à ne pas faire attendre le passager devant un écran qui ne bouge pas.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
 import { Linking } from 'react-native';
-import { base_url } from './key';
+import { appelServeur } from './appelServeur';
 import languageJSON from './language';
 
 // Les pays où Wave opère et où la société a un compte marchand. Y ajouter un
@@ -28,20 +26,6 @@ export function isWaveAvailable(country) {
     return PAYS_WAVE.includes(String(country || '').trim().toUpperCase());
 }
 
-async function callFunction(name, body) {
-    const user = firebase.auth().currentUser;
-    if (!user) throw new Error(languageJSON.session_expired);
-    const idToken = await user.getIdToken();
-    const response = await fetch(base_url + name, {
-        method: 'post',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
-        body: JSON.stringify(body || {}),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || languageJSON.wave_responded.replace('{status}', response.status));
-    return data;
-}
-
 /**
  * Ouvre la page de paiement Wave pour une course terminée.
  *
@@ -51,7 +35,7 @@ async function callFunction(name, body) {
  * seul fait foi sur le prix de la course.
  */
 export async function payForRideWithWave(bookingId) {
-    const data = await callFunction('createWaveRidePayment', { bookingId });
+    const data = await appelServeur('createWaveRidePayment', { bookingId }, languageJSON.wave_responded);
     if (!data.launchUrl) throw new Error(languageJSON.wave_no_checkout);
     await Linking.openURL(data.launchUrl);
     return { sessionId: data.sessionId, amount: data.amount, currency: data.currency };
@@ -64,6 +48,6 @@ export async function payForRideWithWave(bookingId) {
  * Wave a pu accepter le paiement sans que son appel au serveur soit arrivé.
  */
 export async function confirmWaveRide(sessionId) {
-    const data = await callFunction('confirmWaveRidePayment', { sessionId });
+    const data = await appelServeur('confirmWaveRidePayment', { sessionId }, languageJSON.wave_responded);
     return data.status;
 }

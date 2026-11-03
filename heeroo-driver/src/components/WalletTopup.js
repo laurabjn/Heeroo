@@ -1,8 +1,8 @@
-// Crédit chauffeur : solde courant et recharge via Wave.
+// Crédit chauffeur : solde courant et recharge.
 // Le solde est lu en temps réel depuis users/<uid>/walletBalance (écrit par le
-// serveur : recharges Wave, commissions). La recharge ouvre l'app Wave ; au
-// retour dans l'app, on demande au serveur de confirmer la session si le
-// webhook n'a pas encore crédité le solde.
+// serveur : recharges, commissions). La recharge ouvre la page du prestataire ;
+// au retour dans l'app, on demande au serveur de confirmer la session si sa
+// notification n'a pas encore crédité le solde.
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, Alert, Linking, AppState, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,12 +13,14 @@ import { colors } from '../common/theme';
 import languageJSON from '../common/language';
 import { base_url } from '../common/key';
 
-// Deux moyens de recharge selon le pays : Wave la ou il opere (Senegal), la
-// carte bancaire ailleurs. Les deux suivent le meme chemin — une page de
-// paiement ouverte dans le navigateur, puis le serveur qui credite le solde —
-// de sorte que l'application n'embarque aucun module de paiement.
+// Les moyens de recharge, tous batis pareil : une page de paiement ouverte
+// dans le navigateur, puis le serveur qui credite le solde. L'application
+// n'embarque donc aucun module de paiement.
+//
+// Au Senegal, deux portefeuilles mobiles ; ailleurs, la carte bancaire. Le
+// pays ne suffit plus a designer le prestataire, d'ou le choix laisse au
+// chauffeur quand les deux sont ouverts.
 const WAVE_COUNTRY = 'SN';
-
 
 const PROVIDERS = {
   wave: {
@@ -26,8 +28,19 @@ const PROVIDERS = {
     min: 1000,
     create: 'createWaveCheckout',
     confirm: 'confirmWaveCheckout',
+    label: () => languageJSON.topup_provider_wave,
     confirmLabel: () => languageJSON.topup_confirm,
     hint: () => languageJSON.topup_hint,
+    round: (value) => Math.round(value),
+  },
+  orange: {
+    presets: [1000, 2500, 5000, 10000],
+    min: 1000,
+    create: 'createOrangeCheckout',
+    confirm: 'confirmOrangeCheckout',
+    label: () => languageJSON.topup_provider_orange,
+    confirmLabel: () => languageJSON.topup_confirm_orange,
+    hint: () => languageJSON.topup_hint_orange,
     round: (value) => Math.round(value),
   },
   card: {
@@ -35,6 +48,7 @@ const PROVIDERS = {
     min: 5,
     create: 'createCardTopup',
     confirm: 'confirmCardTopup',
+    label: () => languageJSON.topup_provider_card,
     confirmLabel: () => languageJSON.topup_confirm_card,
     hint: () => languageJSON.topup_hint_card,
     round: (value) => Math.round(value * 100) / 100,
@@ -54,15 +68,17 @@ async function callFunction(name, body) {
 }
 
 export default class WalletTopup extends React.Component {
-  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, enabled: false, country: null, currencies: [], payoutsEnabled: false, accountStatus: null, apercu: null };
+  state = { balance: 0, history: null, modalVisible: false, amount: '', loading: false, pendingSession: null, waveEnabled: false, orangeEnabled: false, moyenChoisi: null, moyenEnCours: null, country: null, currencies: [], payoutsEnabled: false, accountStatus: null, apercu: null };
 
   componentDidMount() {
     const uid = firebase.auth().currentUser.uid;
     this.countryRef = firebase.database().ref('users/' + uid + '/country');
     this.countryRef.on('value', (snapshot) => this.setState({ country: snapshot.val() }));
-    // Le crédit prépayé et sa recharge Wave ne s'affichent que si l'exploitant
-    // les a activés (credit_settings/waveEnabled = true, une fois la clé Wave
-    // posée côté serveur). Activable à distance, sans nouveau build.
+    // Le crédit prépayé et ses recharges ne s'affichent que si l'exploitant les
+    // a activés (credit_settings/waveEnabled, orangeEnabled — une fois les clés
+    // du prestataire posées côté serveur). Activable à distance, sans nouveau
+    // build, et un drapeau par prestataire : le compte marchand de l'un
+    // n'implique pas celui de l'autre.
     //
     // Sous credit_settings et non sous settings : ce dernier est un tableau de
     // pays, et y ajouter une clé nommée le convertirait en objet, ce qui casse
@@ -73,8 +89,10 @@ export default class WalletTopup extends React.Component {
       const list = snapshot.val();
       this.setState({ currencies: Array.isArray(list) ? list : Object.values(list || {}) });
     });
-    this.enabledRef = firebase.database().ref('credit_settings/waveEnabled');
-    this.enabledRef.on('value', (snapshot) => this.setState({ enabled: snapshot.val() === true }));
+    this.waveEnabledRef = firebase.database().ref('credit_settings/waveEnabled');
+    this.waveEnabledRef.on('value', (snapshot) => this.setState({ waveEnabled: snapshot.val() === true }));
+    this.orangeEnabledRef = firebase.database().ref('credit_settings/orangeEnabled');
+    this.orangeEnabledRef.on('value', (snapshot) => this.setState({ orangeEnabled: snapshot.val() === true }));
     this.balanceRef = firebase.database().ref('users/' + uid + '/walletBalance');
     this.balanceRef.on('value', (snapshot) => this.setState({ balance: Number(snapshot.val()) || 0 }));
     // Etat du dossier bancaire, tenu a jour par le serveur a partir des
@@ -91,16 +109,48 @@ export default class WalletTopup extends React.Component {
 
   componentWillUnmount() {
     if (this.countryRef) this.countryRef.off();
-    if (this.enabledRef) this.enabledRef.off();
+    if (this.waveEnabledRef) this.waveEnabledRef.off();
+    if (this.orangeEnabledRef) this.orangeEnabledRef.off();
     if (this.balanceRef) this.balanceRef.off();
     if (this.payoutsRef) this.payoutsRef.off();
     if (this.statusRef) this.statusRef.off();
     if (this.appStateSubscription) this.appStateSubscription.remove();
   }
 
-  /** Wave au Senegal, carte bancaire ailleurs. */
+  /**
+   * Les moyens de recharge ouverts a ce chauffeur.
+   *
+   * Au Senegal, les deux portefeuilles mobiles, chacun derriere son drapeau.
+   * Ailleurs, la carte bancaire, qui ne depend que de Stripe et n'a donc pas
+   * de drapeau : c'est aussi la que le chauffeur voit sa part des courses
+   * payees par carte, et masquer l'ecran le priverait de ses gains.
+   */
+  moyensDeRecharge() {
+    if (this.state.country !== WAVE_COUNTRY) return ['card'];
+    const moyens = [];
+    if (this.state.waveEnabled) moyens.push('wave');
+    if (this.state.orangeEnabled) moyens.push('orange');
+    return moyens;
+  }
+
+  /**
+   * Le moyen retenu : celui que le chauffeur a choisi, ou le premier ouvert.
+   *
+   * Le choix vit dans l'etat, et non plus dans le pays, parce qu'au Senegal il
+   * y en a desormais deux. On revient au premier ouvert si le choix ne l'est
+   * plus : l'exploitant peut fermer un prestataire pendant que l'ecran est
+   * affiche, et il ne faut pas que le bouton ouvre une page morte.
+   */
+  moyen() {
+    const ouverts = this.moyensDeRecharge();
+    if (this.state.moyenChoisi && ouverts.includes(this.state.moyenChoisi)) {
+      return this.state.moyenChoisi;
+    }
+    return ouverts[0] || 'card';
+  }
+
   provider() {
-    return this.state.country === WAVE_COUNTRY ? PROVIDERS.wave : PROVIDERS.card;
+    return PROVIDERS[this.moyen()];
   }
 
   /**
@@ -133,7 +183,11 @@ export default class WalletTopup extends React.Component {
     this.setState({ loading: true });
     try {
       const data = await callFunction(provider.create, { amount, currency: this.currency() });
-      this.setState({ loading: false, modalVisible: false, amount: '', pendingSession: data.sessionId });
+      // Le prestataire est retenu avec la session : entre l'ouverture et la
+      // confirmation, le chauffeur peut avoir change de moyen dans la fenetre.
+      // Interroger celui qui est selectionne a cet instant plutot que celui qui
+      // a ouvert la session ferait chercher la recharge chez le mauvais.
+      this.setState({ loading: false, modalVisible: false, amount: '', pendingSession: data.sessionId, moyenEnCours: this.moyen() });
       await Linking.openURL(data.launchUrl);
     } catch (error) {
       this.setState({ loading: false });
@@ -144,13 +198,14 @@ export default class WalletTopup extends React.Component {
   confirmPending = async () => {
     const sessionId = this.state.pendingSession;
     if (!sessionId) return;
+    const prestataire = PROVIDERS[this.state.moyenEnCours] || this.provider();
     try {
-      const data = await callFunction(this.provider().confirm, { sessionId });
+      const data = await callFunction(prestataire.confirm, { sessionId });
       if (data.status === 'completed') {
-        this.setState({ pendingSession: null });
+        this.setState({ pendingSession: null, moyenEnCours: null });
         Alert.alert(languageJSON.topup_title, languageJSON.topup_success);
       } else if (data.status === 'failed') {
-        this.setState({ pendingSession: null });
+        this.setState({ pendingSession: null, moyenEnCours: null });
         Alert.alert(languageJSON.topup_title, languageJSON.topup_failed);
       }
       // 'pending' : le prestataire n'a pas encore confirmé ; le solde se mettra à jour tout seul.
@@ -198,12 +253,13 @@ export default class WalletTopup extends React.Component {
 
 
   render() {
-    // Le drapeau credit_settings/waveEnabled commande la recharge Wave, donc le
-    // Senegal. Ailleurs, le portefeuille doit rester visible quoi qu'il arrive :
-    // c'est la que le chauffeur voit sa part des courses payees par carte, et
-    // qu'il ouvre son dossier bancaire. Le masquer derriere un drapeau Wave le
-    // priverait de ses gains sans explication.
-    if (this.state.country === WAVE_COUNTRY && !this.state.enabled) return null;
+    // Au Senegal, la carte ne s'affiche que si au moins un portefeuille est
+    // ouvert : sans aucun, il n'y aurait rien a recharger. Ailleurs,
+    // moyensDeRecharge rend toujours la carte bancaire, et le portefeuille
+    // reste donc visible quoi qu'il arrive — c'est la que le chauffeur voit sa
+    // part des courses payees par carte, et qu'il ouvre son dossier bancaire.
+    // Le masquer derriere un drapeau le priverait de ses gains sans explication.
+    if (this.moyensDeRecharge().length === 0) return null;
     const provider = this.provider();
     const symbol = this.symbol();
     return (
@@ -256,6 +312,22 @@ export default class WalletTopup extends React.Component {
                 inatteignable. */}
             <SafeAreaView edges={['bottom']} style={styles.sheet}>
               <Text style={styles.sheetTitle}>{languageJSON.topup_title}</Text>
+              {/* Le choix n'apparait que s'il y a de quoi choisir : un seul
+                  prestataire ouvert, et la question ne se pose pas. */}
+              {this.moyensDeRecharge().length > 1 ? (
+                <View style={styles.moyens}>
+                  {this.moyensDeRecharge().map((cle) => (
+                    <TouchableOpacity
+                      key={cle}
+                      style={[styles.moyen, this.moyen() === cle && styles.moyenActif]}
+                      onPress={() => this.setState({ moyenChoisi: cle })}>
+                      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.moyenTexte, this.moyen() === cle && styles.moyenTexteActif]}>
+                        {PROVIDERS[cle].label()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
               <Text style={styles.sheetHint}>{provider.hint()}</Text>
               <View style={styles.presets}>
                 {provider.presets.map((value) => (
@@ -302,6 +374,11 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: colors.WHITE, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, paddingBottom: 32 },
   sheetTitle: { fontFamily: 'Montserrat-Bold', fontSize: 18, color: colors.PRIMARY },
   sheetHint: { fontFamily: 'Montserrat-Regular', fontSize: 13, color: colors.GREY.secondary, marginTop: 4, marginBottom: 16 },
+  moyens: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  moyen: { flex: 1, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.GREY.border, alignItems: 'center' },
+  moyenActif: { backgroundColor: colors.PRIMARY, borderColor: colors.PRIMARY },
+  moyenTexte: { fontFamily: 'Montserrat-SemiBold', fontSize: 13, color: colors.PRIMARY },
+  moyenTexteActif: { color: colors.WHITE },
   presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   preset: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.GREY.border },
   presetActive: { backgroundColor: colors.PRIMARY, borderColor: colors.PRIMARY },

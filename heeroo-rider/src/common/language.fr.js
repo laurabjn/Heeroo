@@ -203,6 +203,16 @@ export default {
     payWithCard: 'Payer par carte',
     payWithWave: 'Payer avec Wave',
     payment_by_wave: 'Paiement par Wave',
+    payWithOrange: 'Payer avec Orange Money',
+    // Libelles courts des puces de choix du moyen de paiement : trois
+    // puces cote a cote ne laissent pas la place a une phrase.
+    mode_cash: 'Espèces',
+    mode_card: 'Carte',
+    mode_wave: 'Wave',
+    mode_orange: 'Orange Money',
+    payment_by_orange: 'Paiement par Orange Money',
+    orange_pending: "Orange n'a pas encore confirmé votre paiement. Il sera pris en compte dès réception.",
+    orange_failed: "Le paiement Orange Money n'a pas abouti. Vous pouvez réessayer ou régler autrement.",
     wave_pending: "Wave n'a pas encore confirmé votre paiement. Il sera pris en compte dès réception.",
     wave_failed: "Le paiement Wave n'a pas abouti. Vous pouvez réessayer ou régler en espèces.",
     CardPaymentAmount: 'Payer par CB',
@@ -286,6 +296,8 @@ export default {
     session_expired: 'session expirée, reconnectez-vous',
     wave_no_checkout: "Wave n'a pas renvoyé de page de paiement",
     wave_responded: 'Wave a répondu {status}',
+    orange_no_checkout: "Orange Money n'a pas renvoyé de page de paiement",
+    orange_responded: 'Orange Money a répondu {status}',
     // Formats de date passes a moment()
     date_format_long: 'DD/MM/YYYY [à] HH:mm',
     date_format_day: 'DD.MM.YYYY',
