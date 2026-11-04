@@ -176,7 +176,11 @@ describe('ouvrirPaiement', () => {
 
     assert.equal(reseau.appels.length, 2);
     const [jeton, paiement] = reseau.appels;
-    assert.match(jeton.url, /\/dev\/|\/sn\//);
+    // Le jeton se demande a la passerelle, pas sous le chemin du produit :
+    // surtout pas de segment de pays ni de « orange-money-webpay » ici. La
+    // version precedente de ce test exigeait l'inverse, et validait donc une
+    // adresse qui aurait rendu 404 le jour de la mise en service.
+    assert.equal(jeton.url, 'https://api.orange.com/oauth/v3/token');
     assert.equal(jeton.headers.Authorization, CONFIG.authHeader);
     assert.equal(jeton.body, 'grant_type=client_credentials');
     assert.equal(paiement.headers.Authorization, 'Bearer jeton-abc');

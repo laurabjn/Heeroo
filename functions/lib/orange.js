@@ -37,7 +37,22 @@ const crypto = require('crypto');
 // Rien d'autre dans ce fichier ne depend de leur valeur.
 // ---------------------------------------------------------------------------
 const BASE = 'https://api.orange.com/orange-money-webpay';
-const CHEMIN_JETON = '/v1/oauth/token';            // POST, Basic + grant_type=client_credentials
+
+// Le jeton ne s'obtient PAS sous le chemin du produit : c'est l'unique point
+// d'authentification de toute la passerelle d'Orange, commun au SMS, a la
+// cartographie et au reste. Verifie le 4 nov. 2026 contre le document de
+// decouverte publie par Orange, qui ne connait que cette adresse et que le
+// « client credentials ». La batir a partir de BASE menait a un 404, et donc
+// a un paiement qui echoue avant meme d'etre tente.
+//
+// Un jeton vaut soixante minutes et Orange demande de n'en reclamer qu'un par
+// heure : le cache en memoire, plus bas, n'est pas une optimisation, c'est la
+// regle d'usage.
+const URL_JETON = 'https://api.orange.com/oauth/v3/token';  // POST, Basic + grant_type=client_credentials
+
+// Ces deux-la, si : chemin du produit, segment de pays, puis v1. Forme
+// confirmee par les bibliotheques tierces, qui s'accordent toutes sur
+// « orange-money-webpay/dev/v1 » pour le bac a sable.
 const CHEMIN_PAIEMENT = '/v1/webpayment';          // POST, Bearer
 const CHEMIN_STATUT = '/v1/transactionstatus';     // POST, Bearer
 
@@ -141,7 +156,7 @@ function creerClient({ authHeader, merchantKey, env, fetch: reseau } = {}) {
 
   async function obtenirJeton() {
     if (jeton && Date.now() < jetonExpire) return jeton;
-    const reponse = await appeler(racine + CHEMIN_JETON, {
+    const reponse = await appeler(URL_JETON, {
       method: 'POST',
       headers: {
         Authorization: authHeader,
@@ -264,7 +279,7 @@ function erreurOrange(status, corps, resume) {
 
 module.exports = {
   BASE,
-  CHEMIN_JETON,
+  URL_JETON,
   CHEMIN_PAIEMENT,
   CHEMIN_STATUT,
   ENVIRONNEMENTS,

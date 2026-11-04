@@ -167,11 +167,17 @@ de frais. Sans société au Sénégal, Orange Money n'est pas ouvrable.
   livraison de toutes les autres fonctions et des règles de base. Absente, la
   variable vaut « non » : les points d'entrée Orange sont déployés mais
   répondent 503.
-- **Les trois URL d'Orange sont à confirmer** le jour de la mise en service :
-  elles sont rassemblées en tête de `functions/lib/orange.js`, seules et
-  commentées. Les sources publiques ne s'accordent pas sur deux d'entre elles ;
-  Orange livre ses chemins exacts avec le contrat marchand. Rien d'autre n'en
-  dépend.
+- **Les URL d'Orange** sont rassemblées en tête de `functions/lib/orange.js`,
+  seules et commentées. Vérifiées le 4 nov. 2026, et une correction en est
+  sortie : le jeton ne s'obtient pas sous le chemin du produit mais à l'unique
+  point d'authentification de la passerelle, `https://api.orange.com/oauth/v3/token`,
+  commun à toutes les API d'Orange. Bâtie à partir du chemin du produit, elle
+  rendait 404, et aucun paiement n'aurait abouti. Le test fixe désormais cette
+  adresse au caractère près. Les deux autres, `webpayment` et
+  `transactionstatus`, portent bien le chemin du produit et le segment de pays,
+  forme sur laquelle toutes les bibliothèques tierces s'accordent. À reconfirmer
+  tout de même contre la documentation qu'Orange livre avec le contrat marchand :
+  rien d'autre dans le dépôt n'en dépend.
 - Environnement : déduit du projet Firebase, comme le reste du fichier — bac à
   sable et `OUV` sur dev, production et `XOF` sur le projet de production. Rien
   à régler.
