@@ -9,6 +9,14 @@ on:
   push:
     branches: ['**']
   pull_request:
+  # Declencheur manuel, pour rattraper un evenement perdu.
+  #
+  # Arrive le 4 nov. 2026 : un « git push » refuse par une erreur interne de
+  # GitHub, puis reussi au second essai — la reference a bien ete mise a jour,
+  # mais aucune execution n'a ete creee (zero run, zero check-run sur le
+  # commit dd50931). Sans ce declencheur, le seul rattrapage etait un commit
+  # vide, c'est-a-dire salir l'historique pour reparer une panne de GitHub.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
