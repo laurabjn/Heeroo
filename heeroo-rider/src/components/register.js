@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Dimensions, Modal, ActivityIndicator, ScrollView, KeyboardAvoidingView, Image, TouchableWithoutFeedback, LayoutAnimation, Platform, Keyboard } from 'react-native';
+import { View, Text, Dimensions, Modal, ActivityIndicator, ScrollView, KeyboardAvoidingView, Image, TouchableWithoutFeedback, LayoutAnimation, Platform, Keyboard, TouchableOpacity, Linking, Alert } from 'react-native';
 import Background from './Background';
 import { Icon, Avatar, Button, Header, Input } from '@rneui/themed'
 import { colors } from '../common/theme';
@@ -10,6 +10,7 @@ import 'firebase/compat/database';
 var { height } = Dimensions.get('window');
 import languageJSON from '../common/language';
 import { BackBtn } from '../components'
+import { MENTIONS_LEGALES, POLITIQUE_CONFIDENTIALITE } from '../common/liens';
 
 export default class Registration extends React.Component {
 
@@ -21,6 +22,10 @@ export default class Registration extends React.Component {
             email: this.props.reqData ? this.props.reqData.profile.email : '',
             mobile: this.props.reqData ? this.props.reqData.profile.mobile : '',
             refferalId: '',
+            // Decochee par defaut, et rien ne la coche sauf un geste de
+            // l'utilisateur : un consentement pre-coche n'est pas un
+            // consentement.
+            accepteLegal: false,
             fnameValid: true,
             lnameValid: true,
             mobileValid: true,
@@ -78,6 +83,16 @@ export default class Registration extends React.Component {
     //register button press for validation
     onPressRegister() {
         const { onPressRegister } = this.props;
+        // Le compte ne se cree pas sans acceptation, et le controle passe
+        // AVANT les validateurs : ceux-ci ont des effets de bord — ils font
+        // trembler le champ fautif et affichent son message. Les laisser
+        // courir d'abord reprochait un numero de telephone a quelqu'un dont
+        // le seul tort etait de n'avoir pas encore coche la case.
+        if (!this.state.accepteLegal) {
+            Alert.alert('', languageJSON.legal_required);
+            return;
+        }
+
         LayoutAnimation.easeInEaseOut();
         const fnameValid = this.validateFirstName();
         const lnameValid = this.validateLastname();
@@ -269,6 +284,35 @@ export default class Registration extends React.Component {
                                     containerStyle={styles.textInputStyle}
                                 />
                             </View>
+                            <View style={styles.legalBloc}>
+                                <TouchableOpacity
+                                    style={styles.legalCase}
+                                    onPress={() => this.setState({ accepteLegal: !this.state.accepteLegal })}
+                                    accessibilityRole="checkbox"
+                                    accessibilityState={{ checked: this.state.accepteLegal }}
+                                    accessibilityLabel={languageJSON.legal_accept}
+                                >
+                                    <Icon
+                                        name={this.state.accepteLegal ? 'check-box' : 'check-box-outline-blank'}
+                                        type="material"
+                                        size={26}
+                                        color={this.state.accepteLegal ? colors.BUTTON_PRIMARY : colors.TEXT}
+                                    />
+                                    <Text style={styles.legalTexte}>{languageJSON.legal_accept}</Text>
+                                </TouchableOpacity>
+                                {/* Les deux documents sur une ligne a part : un lien
+                                    glisse dans la phrase de la case se touche mal, et
+                                    decoche la case au lieu de s'ouvrir. */}
+                                <View style={styles.legalLiens}>
+                                    <Text style={styles.legalLien} onPress={() => Linking.openURL(MENTIONS_LEGALES)}>
+                                        {languageJSON.legal_mentions}
+                                    </Text>
+                                    <Text style={styles.legalSep}>   ·   </Text>
+                                    <Text style={styles.legalLien} onPress={() => Linking.openURL(POLITIQUE_CONFIDENTIALITE)}>
+                                        {languageJSON.privacy_policy}
+                                    </Text>
+                                </View>
+                            </View>
                             <Button
                                 onPress={() => { this.onPressRegister() }}
                                 title={languageJSON.register_button}
@@ -288,6 +332,37 @@ export default class Registration extends React.Component {
 };
 
 const styles = {
+    legalBloc: {
+        marginTop: 10,
+        marginBottom: 18,
+        paddingHorizontal: 10,
+    },
+    legalCase: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    legalTexte: {
+        flex: 1,
+        marginLeft: 8,
+        fontSize: 13,
+        lineHeight: 18,
+        color: colors.TEXT,
+    },
+    legalLiens: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 6,
+        marginLeft: 34,
+    },
+    legalLien: {
+        fontSize: 13,
+        color: colors.BUTTON_PRIMARY,
+        textDecorationLine: 'underline',
+    },
+    legalSep: {
+        fontSize: 13,
+        color: colors.TEXT,
+    },
     container: {
         flex: 1,
         backgroundColor: "white"

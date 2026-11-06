@@ -10,6 +10,7 @@ import 'firebase/compat/database';
 import Geolocation from '../common/geolocation';
 import { checkLocationPermission } from '../common/permission';
 import Geocoder from 'react-native-geocoding';
+import { MENTIONS_LEGALES, POLITIQUE_CONFIDENTIALITE, VERSION_DOCUMENTS } from '../common/liens';
 
 export default class RegistrationPage extends React.Component {
   constructor(props) {
@@ -115,7 +116,17 @@ export default class RegistrationPage extends React.Component {
           signupViaReferral: viaRef,
           referarDetails: referralVia,
           createdAt: firebase.database.ServerValue.TIMESTAMP,
-          country: result
+          country: result,
+          // La trace du consentement, ecrite AVEC la fiche et dans le meme
+          // .set() : ailleurs, elle serait effacee par celui-ci. Un
+          // consentement qu'on ne peut pas montrer ne vaut rien (RGPD,
+          // art. 7.1), et la version dit QUOI a ete accepte, pas seulement
+          // que quelqu'un a coche une case un jour.
+          consentement: {
+            accepteLe: firebase.database.ServerValue.TIMESTAMP,
+            version: VERSION_DOCUMENTS,
+            documents: [MENTIONS_LEGALES, POLITIQUE_CONFIDENTIALITE],
+          }
         }
         console.log("clickregister end")
         this.updateProfile(regData)

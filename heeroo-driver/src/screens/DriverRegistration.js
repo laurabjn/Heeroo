@@ -16,6 +16,7 @@ import { google_map_key } from '../common/key';
 import { checkLocationPermission, checkCameraPermission } from "../common/permission";
 import Geolocation from '../common/geolocation';
 import Geocoder from 'react-native-geocoding';
+import { MENTIONS_LEGALES, POLITIQUE_CONFIDENTIALITE, VERSION_DOCUMENTS } from '../common/liens';
 
 export default class DriverRegistrationPage extends React.Component {
   constructor(props) {
@@ -130,6 +131,16 @@ export default class DriverRegistrationPage extends React.Component {
         // autres a null encombrerait le dossier affiche au back-office.
         ...pieces,
         country: this.checkIfCountryAvailable(snapshot.val()),
+        // La trace du consentement, ecrite AVEC la fiche et dans le meme
+        // .set() : ailleurs, elle serait effacee par celui-ci. Un
+        // consentement qu'on ne peut pas montrer ne vaut rien (RGPD,
+        // art. 7.1), et la version dit QUOI a ete accepte, pas seulement
+        // que quelqu'un a coche une case un jour.
+        consentement: {
+          accepteLe: firebase.database.ServerValue.TIMESTAMP,
+          version: VERSION_DOCUMENTS,
+          documents: [MENTIONS_LEGALES, POLITIQUE_CONFIDENTIALITE],
+        },
       };
 
       const user = firebase.auth().currentUser;
