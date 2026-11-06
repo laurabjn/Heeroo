@@ -511,7 +511,7 @@ export default class DiverReg extends React.Component {
                                     name={this.state.accepteLegal ? 'check-box' : 'check-box-outline-blank'}
                                     type="material"
                                     size={26}
-                                    color={this.state.accepteLegal ? colors.BUTTON_PRIMARY : colors.TEXT}
+                                    color={this.state.accepteLegal ? colors.SKY : colors.TEXT}
                                 />
                                 <Text style={styles.legalTexte}>{languageJSON.legal_accept}</Text>
                             </TouchableOpacity>
@@ -570,7 +570,7 @@ const styles = {
     },
     legalLien: {
         fontSize: 13,
-        color: colors.BUTTON_PRIMARY,
+        color: colors.SKY,
         textDecorationLine: 'underline',
     },
     legalSep: {
