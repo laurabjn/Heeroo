@@ -17,6 +17,7 @@ import 'firebase/compat/database';
 
 import languageJSON from '../common/language';
 import { DrawerToggle } from '../components';
+import BoutonSOS from '../components/BoutonSOS';
 
 
 export default class RideListPage extends React.Component {
@@ -75,10 +76,18 @@ export default class RideListPage extends React.Component {
 
         return (
             <View style={styles.mainView}>
+                {/* L'accueil est l'ecran ou le chauffeur attend : le SOS y
+                    est a une seule touche, sans passer par le tiroir.
+                    L'emplacement de droite de l'en-tete etait libre.
+                    Ce commentaire est pose au-dessus de la balise et non
+                    entre deux attributs : glisse dans la liste des
+                    attributs, un commentaire JSX n'est pas valide et
+                    Babel le refuse. */}
                 <Header
                     backgroundColor={"transparent"}
                     leftComponent={<DrawerToggle {...this.props} />}
                     centerComponent={<Text style={styles.headerTitleStyle}>{languageJSON.my_booking}</Text>}
+                    rightComponent={<BoutonSOS size={24} />}
                     containerStyle={styles.headerStyle}
                 />
                 {this.state.allBookings == 0 ?
