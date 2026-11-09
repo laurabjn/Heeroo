@@ -70,6 +70,35 @@ export function numeroUtilisable(numero) {
     return !!propre && propre.replace(/\D/g, '').length >= 4;
 }
 
+// L'interrupteur du bouton, par pays, pilotable depuis le back-office.
+//
+// Le champ s'appelle `sosCoupe` et non `sosActif`, et l'inversion n'est pas
+// un caprice : le champ n'existe dans AUCUNE des neuf lignes de la
+// production. Une colonne « actif » s'y afficherait donc décochée partout,
+// et le client croirait avoir coupé le bouton dans tous les pays alors
+// qu'il fonctionne. Avec « coupé », la case décochée dit la vérité dès le
+// premier jour, sans rien migrer en base.
+//
+// ABSENT VAUT DONC ACTIF. Il faut cocher pour éteindre. Même principe pour
+// le repli en cas d'échec de lecture, côté sos.js : une panne de réseau ne
+// doit pas faire disparaître un bouton d'urgence. Un bouton de sécurité
+// tombe en marche, jamais en panne.
+//
+// La chaîne 'true' est traitée comme true : le back-office écrit un vrai
+// booléen, mais une valeur saisie à la main dans la console Firebase, elle,
+// arriverait en texte.
+export function sosActif(settings, codePays) {
+    if (!settings || !codePays) { return true; }
+    const liste = Array.isArray(settings) ? settings : Object.values(settings || {});
+    for (let i = 0; i < liste.length; i++) {
+        const ligne = liste[i];
+        if (ligne && ligne.country === codePays) {
+            return !(ligne.sosCoupe === true || ligne.sosCoupe === 'true');
+        }
+    }
+    return true;
+}
+
 // Le numéro de Heeroo pour un pays, lu dans l'instantané de settings/.
 // settings/ est tantôt un tableau, tantôt un objet indexé selon la façon
 // dont il a été écrit : les deux formes se rencontrent en production, d'où

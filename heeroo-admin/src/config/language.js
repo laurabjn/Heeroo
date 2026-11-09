@@ -106,6 +106,7 @@ export default {
     createdAt: 'Date de création',
     panic_title: 'Paramètres SOS',
     panic_num: 'Numéro du SOS',
+    sos_coupe: 'Bouton SOS coupé',
     companyName: "Nom de votre société",
     companyAddress: "Adresse de votre société",
     identity: "Pièce d’identité",

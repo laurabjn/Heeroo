@@ -14,17 +14,21 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
 import languageJSON from './language';
-import { numeroUrgence, numeroHeeroo, numeroAppelable } from './urgences';
+import { numeroUrgence, numeroHeeroo, numeroAppelable, sosActif } from './urgences';
 
 // À appeler au MONTAGE de l'écran, jamais à l'appui : au moment d'appuyer, il
 // n'y a plus de temps pour attendre le réseau. La promesse n'est jamais
-// rejetée — en cas d'échec elle rend simplement { pays: null, operateur: null },
-// ce que ouvrirSOS() sait traiter.
+// rejetée — en cas d'échec elle rend { pays: null, operateur: null,
+// actif: true }, ce que ouvrirSOS() sait traiter.
 export function chargerSOS() {
     return new Promise(resolve => {
-        const fini = (pays, operateur) => resolve({
+        const fini = (pays, operateur, actif) => resolve({
             pays: pays || null,
             operateur: operateur || null,
+            // Indéterminé vaut ACTIF. Tous les chemins d'échec ci-dessous
+            // passent ici sans troisième argument : session absente, réseau
+            // coupé, firebase qui lève. Dans tous ces cas le bouton reste.
+            actif: actif !== false,
         });
         try {
             const utilisateur = firebase.auth().currentUser;
@@ -34,7 +38,10 @@ export function chargerSOS() {
                     const pays = instantane.val();
                     if (!pays) { fini(null, null); return; }
                     firebase.database().ref('settings/').once('value')
-                        .then(reglages => fini(pays, numeroHeeroo(reglages.val(), pays)))
+                        .then(reglages => {
+                            const r = reglages.val();
+                            fini(pays, numeroHeeroo(r, pays), sosActif(r, pays));
+                        })
                         .catch(() => fini(pays, null));
                 })
                 .catch(() => fini(null, null));

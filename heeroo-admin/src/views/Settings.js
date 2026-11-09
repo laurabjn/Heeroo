@@ -52,6 +52,12 @@ const Settings = (props) => {
     { title: languageJson.currency_symbol, field: 'symbol' },
     { title: languageJson.currency_code, field: 'code' },
     { title: languageJson.panic_num, field: 'panic' },
+    // COCHER coupe le bouton SOS dans l'app chauffeur de ce pays, sans
+    // nouvelle version ni passage par les magasins. La colonne est dite
+    // « coupe » et non « actif » parce que le champ n'existe dans aucune
+    // ligne : une colonne « actif » s'afficherait decochee partout alors
+    // que le bouton fonctionne.
+    { title: languageJson.sos_coupe, field: 'sosCoupe', type: 'boolean' },
 
   ];
 

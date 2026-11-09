@@ -17,7 +17,10 @@ export default class BoutonSOS extends React.Component {
 
     constructor(props) {
         super(props);
-        this.state = { sos: null };
+        // Actif tant qu'on ne sait pas : sans cette valeur de depart, le
+        // bouton clignoterait — absent le temps du chargement, puis
+        // apparaissant. Il ne disparait que si le back-office l'a coupe.
+        this.state = { sos: { pays: null, operateur: null, actif: true } };
         // Le composant disparait des que la course se termine : sans ce
         // drapeau, le chargement appellerait setState sur un composant demonte.
         this.monte = false;
@@ -35,12 +38,15 @@ export default class BoutonSOS extends React.Component {
     }
 
     render() {
+        // Coupe depuis le back-office : rien n'est affiche, et aucune place
+        // n'est reservee dans l'en-tete.
+        if (this.state.sos && this.state.sos.actif === false) { return null; }
         return (
             <TouchableOpacity
                 style={[styles.bouton, this.props.style]}
-                // this.state.sos vaut null tant que le chargement n'a pas
-                // abouti, et ouvrirSOS sait s'en passer : les secours restent
-                // joignables des la premiere seconde d'affichage.
+                // Tant que le chargement n'a pas abouti, l'etat ne porte que
+                // des valeurs de depart, et ouvrirSOS sait s'en passer : les
+                // secours sont joignables des la premiere seconde d'affichage.
                 onPress={() => ouvrirSOS(this.state.sos)}
                 accessibilityRole="button"
                 accessibilityLabel={languageJSON.panic_text}

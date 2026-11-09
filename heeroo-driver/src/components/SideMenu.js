@@ -24,7 +24,7 @@ export default function SideMenu(props) {
     // Charge a l'ouverture du tiroir et non a l'appui : au moment d'appeler
     // a l'aide, il n'y a plus de temps pour attendre le reseau. Reste a null
     // si la lecture echoue, et ouvrirSOS sait s'en passer.
-    const [sos, setSos] = useState(null)
+    const [sos, setSos] = useState({ pays: null, operateur: null, actif: true })
 
     useEffect(() => {
         chargerSOS().then(setSos);
@@ -58,12 +58,14 @@ export default function SideMenu(props) {
                 huit ecrans principaux, course en cours comprise — c'est ce
                 qui rend le SOS joignable partout, et non seulement pendant
                 une course. */}
-            <DrawerItem
-                style={styles.sosStyle}
-                labelStyle={styles.sosLabelStyle}
-                label={languageJSON.panic_text}
-                onPress={() => ouvrirSOS(sos)}
-            />
+            {sos.actif === false ? null : (
+                <DrawerItem
+                    style={styles.sosStyle}
+                    labelStyle={styles.sosLabelStyle}
+                    label={languageJSON.panic_text}
+                    onPress={() => ouvrirSOS(sos)}
+                />
+            )}
             <DrawerItemList {...props} />
             <DrawerItem style={styles.drawerStyle} labelStyle={styles.drawerLabelStyle} label={languageJSON.sign_out} onPress={() => signOut()} />
         </DrawerContentScrollView>
