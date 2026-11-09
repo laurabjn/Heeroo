@@ -21,6 +21,7 @@ import TicketBtn from '../components/TicketBtn';
 import { TrackNow } from '../components';
 import { Button, Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
+import BoutonSOS from '../components/BoutonSOS';
 import { checkLocationPermission } from '../common/permission';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -374,6 +375,9 @@ export default class DriverCompleteTrip extends React.Component {
                                 <Icon name="phone" type="feather" color={colors.SECONDARY} size={20} />
                             </TouchableOpacity>
                         ) : null}
+                        {/* Le chauffeur aussi est seul dans sa voiture avec un
+                            inconnu : le bouton est des deux cotes. */}
+                        <BoutonSOS style={styles.riderBarAction} size={20} />
                     </View>
                     <Button
                         title={languageJSON.get_direction}

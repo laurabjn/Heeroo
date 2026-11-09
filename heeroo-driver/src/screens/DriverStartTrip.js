@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { MapComponent, TripStartModal } from '../components';
 import TicketBtn from '../components/TicketBtn';
+import BoutonSOS from '../components/BoutonSOS';
 import { Button, Header, Icon } from '@rneui/themed';
 import { colors } from '../common/theme';
 import { RequestPushMsg } from '../common/RequestPushMsg';
@@ -427,6 +428,11 @@ export default class DriverStartTrip extends React.Component {
                                 color={colors.PRIMARY}
                             />
                         </TouchableOpacity>
+                        {/* La prise en charge est le moment le plus expose :
+                            le chauffeur attend un inconnu a l'arret. btnCall
+                            n'a pas de marge a droite, d'ou la marge a gauche
+                            ajoutee ici et non dans le style partage. */}
+                        <BoutonSOS style={[styles.btnCall, { marginLeft: 20 }]} size={20} />
                     </View>
                     <Button
                         title={languageJSON.get_direction}
