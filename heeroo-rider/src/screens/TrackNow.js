@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { Header, Icon } from '@rneui/themed';
 import languageJSON from '../common/language';
-import BoutonSOS from '../components/BoutonSOS';
 import haversine from "haversine";
 import MapView, {
     Marker,
@@ -275,9 +274,6 @@ export default class TrackNow extends React.Component {
                                     <Icon name="phone" type="feather" color={colors.SECONDARY} size={22} />
                                 </TouchableOpacity>
                             ) : null}
-                            {/* Le SOS est le seul des trois a ne dependre d'aucune
-                                donnee de la course : il s'affiche toujours. */}
-                            <BoutonSOS style={styles.tripAction} size={22} />
                         </View>
                     </View>
                 ) : null}
