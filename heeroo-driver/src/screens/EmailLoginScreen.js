@@ -162,34 +162,6 @@ export default class EmailLoginScreen extends Component {
         }
     }
 
-    validatePassword(password, complexity) {
-        const regx1 = /^([a-zA-Z0-9@*#]{8,15})$/
-        const regx2 = /(?=^.{6,10}$)(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&amp;*()_+}{&quot;:;'?/&gt;.&lt;,])(?!.*\s).*$/
-        if (complexity == 'any') {
-            var passwordValid = password.length >= 1;
-            if (!passwordValid) {
-                this.passInput.focus();
-                alert(languageJSON.password_blank_messege);
-            }
-        }
-        else if (complexity == 'alphanumeric') {
-            var passwordValid = regx1.test(password);
-            if (!passwordValid) {
-                this.passInput.focus();
-                alert(languageJSON.password_alphaNumeric_check);
-
-            }
-        }
-        else if (complexity == 'complex') {
-            var passwordValid = regx2.test(password);
-            if (!passwordValid) {
-                this.passInput.focus();
-                alert(languageJSON.password_complexity_check);
-            }
-        }
-        return passwordValid
-    }
-
     handleCustomIndexSelect = (index) => {
         this.setState(prevState => ({ ...prevState, customStyleIndex: index }));
     };

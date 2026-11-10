@@ -184,6 +184,8 @@ function partieDeux() {
         const connexion = sansCommentaires(lire(path.join(chemin, 'src/screens/EmailLoginScreen.js')) || '');
         faux('aucun appel a validatePassword a la connexion', /this\.validatePassword\(/.test(connexion));
         faux('aucun appel a motDePasseValide a la connexion', /motDePasseValide\(/.test(connexion));
+        // Plus fort que « elle ne l appelle pas » : la methode n existe plus.
+        faux('et validatePassword n y est meme plus definie', /validatePassword\s*\(/.test(connexion));
 
         titre(nom + ' : le message affiche dit la verite');
         const attendus = {
@@ -208,6 +210,37 @@ function partieDeux() {
     });
 }
 
+// =====================================================================
+// 3. L'ancienne regle n'existe plus nulle part dans les sources
+// =====================================================================
+function partieTrois() {
+    titre('le vieux motif a disparu de tout le code, pas seulement de l inscription');
+    // Le 10 nov. 2026, le bundle Android fabrique APRES la correction contenait
+    // encore /^([a-zA-Z0-9@*#]{8,15})$/. Il restait un validatePassword mort
+    // dans les deux ecrans de connexion : jamais appele, mais portant le meme
+    // nom et la meme regle. Il suffisait qu on le branche pour enfermer dehors
+    // tous les comptes deja crees. Les essais d alors ne regardaient que
+    // l ecran d inscription ; celui-ci regarde toutes les sources.
+    const MOTIF = '[a-zA-Z0-9@*#]{8,15}';
+    APPS.forEach(({ nom, chemin }) => {
+        const coupables = [];
+        (function parcourir(dossier) {
+            if (!fs.existsSync(dossier)) { return; }
+            fs.readdirSync(dossier, { withFileTypes: true }).forEach((e) => {
+                const p = path.join(dossier, e.name);
+                if (e.isDirectory()) { parcourir(p); return; }
+                if (!/\.js$/.test(e.name)) { return; }
+                // Le commentaire de motDePasse.js cite la regle pour l expliquer :
+                // c'est son role, et Babel le retire du bundle de production.
+                if (sansCommentaires(fs.readFileSync(p, 'utf8')).includes(MOTIF)) {
+                    coupables.push(path.relative(chemin, p).split('\\').join('/'));
+                }
+            });
+        })(path.join(chemin, 'src'));
+        essai(nom + ' : aucun fichier ne porte plus l ancienne regle', coupables, []);
+    });
+}
+
 function terminer() {
     if (echecs.length) {
         console.log('\n' + echecs.length + ' ECHEC(S) sur ' + essais + ' essais :');
@@ -225,4 +258,5 @@ if (outil) {
     console.log('verifie-mot-de-passe : aucun node_modules d application installe, la partie 1 est sautee.');
 }
 partieDeux();
+partieTrois();
 terminer();
