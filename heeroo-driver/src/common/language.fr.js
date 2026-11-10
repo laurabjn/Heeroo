@@ -213,7 +213,7 @@ export default {
     forgot_password_success_messege: 'Un lien de réinitialisation de votre mot de passe a été envoyé sur votre boîte e-mail, veuillez vérifier et réinitialiser votre nouveau mot de passe.',
     email_not_found: 'E-mail non trouvé dans la base de données',
     email_already_used: 'Un autre compte utilise deja cette e-mail',
-    password_alphaNumeric_check: 'Le mot de passe doit être composé d\'au moins 1 caractère alphanumérique et d\'une longueur de 8 à 15 caractères.',
+    password_alphaNumeric_check: 'Le mot de passe doit comporter au moins 8 caractères.',
     password_complexity_check: 'Le mot de passe doit comporter au moins 1 minuscule, 1 majuscule, 1 chiffre, 1 caractère spécial et une longueur de 6 à 10 caractères.',
     email_placeholder: "E-mail",
     password_placeholder: "Mot de passe",

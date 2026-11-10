@@ -17,6 +17,7 @@ import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import languageJSON from '../common/language';
+import { motDePasseValide } from '../common/motDePasse';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import SegmentedControlTab from 'react-native-segmented-control-tab';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -103,7 +104,6 @@ export default class EmailRegisterScreen extends Component {
     }
 
     validatePassword(password, complexity) {
-        const regx1 = /^([a-zA-Z0-9@*#]{8,15})$/
         const regx2 = /(?=^.{6,10}$)(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&amp;*()_+}{&quot;:;'?/&gt;.&lt;,])(?!.*\s).*$/
         if (complexity == 'any') {
             var passwordValid = password.length >= 1;
@@ -113,7 +113,10 @@ export default class EmailRegisterScreen extends Component {
             }
         }
         else if (complexity == 'alphanumeric') {
-            var passwordValid = regx1.test(password);
+            // Voir common/motDePasse.js : la regle d'origine plafonnait a 15
+            // caracteres et interdisait les tirets, donc elle refusait les mots
+            // de passe que le gestionnaire de Google propose sur Android.
+            var passwordValid = motDePasseValide(password);
             if (!passwordValid) {
                 this.passInput.focus();
                 Alert.alert(languageJSON.error, languageJSON.password_alphaNumeric_check);

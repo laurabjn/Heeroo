@@ -18,7 +18,7 @@ export default {
     forgot_password_confirm: "Are you sure you want to reset your password?",
     facebook_login_button: 'Log in with Facebook.',
     password_blank_messege: 'This field cannot be left empty.',
-    password_alphaNumeric_check: 'The password must contain at least 1 alphanumeric character and be 8 to 15 characters long.',
+    password_alphaNumeric_check: 'The password must be at least 8 characters long.',
     password_complexity_check: 'The password must contain at least 1 lowercase letter, 1 uppercase letter, 1 digit, 1 special character, and be 6 to 10 characters long.',
     valid_email_check: 'Please enter a valid email address.',
     email_not_found: 'Your email address was not found in the database',

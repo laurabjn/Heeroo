@@ -16,7 +16,7 @@ export default {
     forgot_password_confirm: "Êtes-vous sûr de vouloir réinitialiser votre mot de passe?",
     facebook_login_button: 'Se connecter avec Facebook.',
     password_blank_messege: 'Ce champ ne peut pas rester vide.',
-    password_alphaNumeric_check: 'Le mot de passe doit être composé d\'au moins 1 caractère alphanumérique et d\'une longueur de 8 à 15 caractères.',
+    password_alphaNumeric_check: 'Le mot de passe doit comporter au moins 8 caractères.',
     password_complexity_check: 'Le mot de passe doit comporter au moins 1 minuscule, 1 majuscule, 1 chiffre, 1 caractère spécial et une longueur de 6 à 10 caractères.',
     valid_email_check: 'Merci de renseigner un e-mail valide.',
     email_not_found: 'Votre e-mail n\'a pas été trouvé dans la base de données',

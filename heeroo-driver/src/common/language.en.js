@@ -223,7 +223,7 @@ export default {
     forgot_password_success_messege: 'A password reset link has been sent to your inbox. Please check it and set your new password.',
     email_not_found: 'Email address not found in the database',
     email_already_used: 'Another account already uses this email address',
-    password_alphaNumeric_check: 'The password must contain at least 1 alphanumeric character and be 8 to 15 characters long.',
+    password_alphaNumeric_check: 'The password must be at least 8 characters long.',
     password_complexity_check: 'The password must contain at least 1 lowercase letter, 1 uppercase letter, 1 digit, 1 special character, and be 6 to 10 characters long.',
     email_placeholder: "Email",
     password_placeholder: "Password",
