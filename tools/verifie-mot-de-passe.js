@@ -239,6 +239,31 @@ function partieTrois() {
         })(path.join(chemin, 'src'));
         essai(nom + ' : aucun fichier ne porte plus l ancienne regle', coupables, []);
     });
+
+    titre('un seul ecran cree des comptes, et c est celui qu on a corrige');
+    // L'analogue du piege du bouton SOS : la logique peut etre juste et posee
+    // sur un ecran que personne n'atteint. Si un second ecran appelait
+    // createUserWithEmailAndPassword, il aurait sa propre validation et la
+    // correction ne servirait a rien la-bas. La pile d'authentification demarre
+    // sur EmailLogin, d'ou le seul chemin vers EmailRegister.
+    APPS.forEach(({ nom, chemin }) => {
+        const createurs = [];
+        (function parcourir(dossier) {
+            if (!fs.existsSync(dossier)) { return; }
+            fs.readdirSync(dossier, { withFileTypes: true }).forEach((e) => {
+                const p = path.join(dossier, e.name);
+                if (e.isDirectory()) { parcourir(p); return; }
+                if (!/\.js$/.test(e.name)) { return; }
+                if (sansCommentaires(fs.readFileSync(p, 'utf8')).includes('createUserWithEmailAndPassword')) {
+                    createurs.push(path.relative(chemin, p).split('\\').join('/'));
+                }
+            });
+        })(path.join(chemin, 'src'));
+        essai(nom + ' : un seul endroit cree un compte', createurs, ['src/screens/EmailRegisterScreen.js']);
+
+        const nav = sansCommentaires(fs.readFileSync(path.join(chemin, 'src/navigation/MainNavigator.js'), 'utf8'));
+        vrai(nom + ' : la navigation expose bien cet ecran', /name="EmailRegister"\s+component=\{EmailRegisterScreen\}/.test(nav));
+    });
 }
 
 function terminer() {
