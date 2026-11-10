@@ -19,6 +19,7 @@ import 'firebase/compat/database';
 
 import languageJSON from '../common/language';
 import { motDePasseValide } from '../common/motDePasse';
+import { erreurInscription } from '../common/erreursAuth';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import SegmentedControlTab from 'react-native-segmented-control-tab';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -50,14 +51,20 @@ export default class EmailRegisterScreen extends Component {
                         this.setState({ loading: false });
                     }
                 } catch (error) {
-                    Alert.alert(languageJSON.Error, languageJSON.email_already_used);
+                    // Avant, toute erreur annoncait une adresse deja utilisee,
+                    // meme une coupure reseau. Voir common/erreursAuth.js.
+                    const { cle, champ } = erreurInscription(error);
+                    console.log("inscription refusee : " + (error && error.code));
+                    Alert.alert(languageJSON.Error, languageJSON[cle]);
+                    // L adresse saisie est conservee : sur une coupure reseau il
+                    // n y a rien a corriger, et la retaper n aide personne.
                     this.setState({
-                        email: '',
                         password: '',
                         confirmpassword: '',
                         loading: false
                     });
-                    this.emailInput.focus();
+                    if (champ === 'email') { this.emailInput.focus(); }
+                    else if (champ === 'motdepasse') { this.passInput.focus(); }
                 }
             } else {
                 this.confirmPassInput.focus();
