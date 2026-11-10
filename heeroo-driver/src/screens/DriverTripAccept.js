@@ -18,6 +18,7 @@ import { RequestPushMsg } from '../common/RequestPushMsg';
 import { google_map_key } from '../common/key';
 import languageJSON from '../common/language';
 import { DrawerToggle, NotificationBtn, Path } from '../components';
+import BoutonSOS from '../components/BoutonSOS';
 import { Icon } from '@rneui/themed';
 import { Pin, Car } from '../icons'
 import { monnaieDuPays, seuilDeCredit, symboleMonnaie } from '../common/credit';
@@ -549,9 +550,16 @@ export default class DriverTripAccept extends React.Component {
 
         return (
             <View style={styles.mainViewStyle}>
+                {/* C'est ICI que le chauffeur attend, pas sur « Mes
+                    reservations » : cet ecran est celui ou l'application
+                    s'ouvre et ou elle reste tant qu'aucune course n'est
+                    acceptee. Le SOS y est donc a une seule touche. Le
+                    creneau de droite etait libre, le NotificationBtn
+                    ci-dessous ayant ete abandonne. */}
                 <Header
                     backgroundColor={"transparent"}
                     leftComponent={<DrawerToggle {...this.props} />}
+                    rightComponent={<BoutonSOS size={24} />}
                     //rightComponent={<NotificationBtn {...this.props}  />}
                     containerStyle={styles.headerStyle}
                 />
