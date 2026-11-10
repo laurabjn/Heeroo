@@ -69,6 +69,17 @@ jobs:
         working-directory: .
         run: node tools/verifie-sos.js
 
+      # La regle du mot de passe a l inscription. Elle plafonnait a quinze
+      # caracteres et interdisait les tirets, donc elle refusait les mots de
+      # passe que le gestionnaire de Google propose sur Android : le client a
+      # signale le 10 nov. 2026 que sur certains telephones l application
+      # demandait un mot de passe long et complique. L essai le plus important
+      # du lot est le dernier : la CONNEXION ne doit jamais valider le mot de
+      # passe, sinon les comptes deja crees se retrouvent dehors.
+      - name: Règle du mot de passe à l'inscription
+        working-directory: .
+        run: node tools/verifie-mot-de-passe.js
+
       # Le contrôle complet est conservé, mais une dérive de versions purement
       # correctives devient un avertissement : Expo en publie plusieurs par
       # semaine, et la CI tombait sur des commits n'ayant touché aucune
