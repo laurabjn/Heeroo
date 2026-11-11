@@ -31,12 +31,12 @@ import { farehelper } from '../common/fareCalculator';
 import Geolocation from '../common/geolocation';
 import { google_map_key } from '../common/key';
 import languageJSON from '../common/language';
+import { ouvrirItineraire } from '../common/itineraire';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 export default class DriverCompleteTrip extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            directionData: {},
             loadingModal: false,
             region: {
                 latitude: 46,
@@ -322,23 +322,8 @@ export default class DriverCompleteTrip extends React.Component {
 
     // google navigations now it not implemented in client side
     handleGetDirections(allDetails) {
-        const data = {
-            latitude: allDetails.drop.lat,
-            longitude: allDetails.drop.lng,
-            sourceLatitude: allDetails.pickup.lat,
-            sourceLongitude: allDetails.pickup.lng,
-            alwaysIncludeGoogle: true, // optional, true will always add Google Maps to iOS and open in Safari, even if app is not installed (default: false)
-            dialogTitle: languageJSON.directionsdialogTitle,
-            dialogMessage: languageJSON.directionsdialogMessage,
-            cancelText: languageJSON.directionscancelText,
-            appsWhiteList: ['google-maps', 'waze', "apple-maps"]
-        }
-        //showLocation(data)
-        /*this.setState({
-            directionData: data,
-            directionPopupVisible: true,
-        })*/
-        Linking.openURL('https://waze.com/ul?ll=' + allDetails.drop.lat + '%2C' + allDetails.drop.lng + '&navigate=yes')
+        // Ici la course a commence : la destination est le point de DEPOSE.
+        ouvrirItineraire(allDetails ? allDetails.drop : null);
     }
 
 

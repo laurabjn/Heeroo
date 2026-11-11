@@ -25,6 +25,7 @@ import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/database';
 import languageJSON from '../common/language';
+import { ouvrirItineraire } from '../common/itineraire';
 var { width, height } = Dimensions.get('window');
 import { google_map_key } from '../common/key';
 import { DrawerToggle, NotificationBtn } from '../components';
@@ -49,8 +50,6 @@ export default class DriverStartTrip extends React.Component {
             allData: "",
             inputCode: "",
             prevPosition: null,
-            directionData: {},
-            directionPopupVisible: false,
             showMap: true,
             // Données synchrones disponibles dès le premier rendu
             rideDetails: props.route.params.allDetails,
@@ -327,37 +326,11 @@ export default class DriverStartTrip extends React.Component {
     }
 
     handleGetDirections() {
-        /* const data = {
-             latitude: this.state.rideDetails.pickup.lat,
-             longitude: this.state.rideDetails.pickup.lng,
-             sourceLatitude: this.state.prevPosition.latitude,
-             sourceLongitude: this.state.prevPosition.longitude,
-             //alwaysIncludeGoogle: true, // optional, true will always add Google Maps to iOS and open in Safari, even if app is not installed (default: false)
-             dialogTitle: languageJSON.directionsdialogTitle,
-             dialogMessage: languageJSON.directionsdialogMessage,
-             cancelText: languageJSON.directionscancelText,
-             appsWhiteList: ['google-maps', 'waze', "apple-maps"]
-         }*/
-
-        Linking.openURL('https://waze.com/ul?ll=' + this.state.rideDetails.pickup.lat + '%2C' + this.state.rideDetails.pickup.lng + '&navigate=yes')
-
-        /* if (this.state.prevPosition.latitude == this.state.rideDetails.pickup.lat && this.state.prevPosition.longitude == this.state.rideDetails.pickup.lng) {
-             Alert.alert(
-                 languageJSON.yourinthepositiontitle,
-                 languageJSON.yourintheposition,
-                 [
-                     { text: "OK", onPress: () => console.log("OK Pressed") }
-                 ],
-                 { cancelable: false }
-             );
-         } else {
-             //showLocation(data)
-        this.setState({
-            directionData: data,
-            directionPopupVisible: true,
-        })
-        }
-             */
+        // La destination ici est le point de PRISE EN CHARGE : le chauffeur
+        // n'a pas encore le client a bord. Voir common/itineraire.js pour le
+        // choix de l'application de navigation.
+        const course = this.state.rideDetails;
+        ouvrirItineraire(course ? course.pickup : null);
     }
 
 

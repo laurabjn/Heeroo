@@ -22,6 +22,10 @@
         "UIBackgroundModes": [
           "location",
           "remote-notification"
+        ],
+        "LSApplicationQueriesSchemes": [
+          "waze",
+          "comgooglemaps"
         ]
       },
       "entitlements": {
