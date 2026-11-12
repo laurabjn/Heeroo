@@ -67,6 +67,24 @@ echo "Comptes d authentification..."
 fb auth:export "$DOSSIER_WIN/auth-comptes.json" --format=json --project "$PROJET" 2>&1 \
   | grep -E "Exported" || true
 
+# Les empreintes des mots de passe ne servent à rien sans les paramètres qui
+# permettent de les vérifier. Ils se relèvent une fois dans la console, et on
+# les recopie ici pour que chaque sauvegarde se suffise à elle-même : au moment
+# de restaurer, on ne veut pas dépendre d'un fichier resté ailleurs.
+PARAMETRES="$(cd "$RACINE/.." && pwd)/heeroo-sauvegardes-base/parametres-hachage.txt"
+if [ -f "$PARAMETRES" ]; then
+  cp "$PARAMETRES" "$DOSSIER/parametres-hachage.txt"
+  echo "  paramètres de hachage joints"
+else
+  echo
+  echo "  !! ATTENTION : parametres-hachage.txt est absent."
+  echo "     Sans lui, ces $(node -e 'const a=require(process.argv[1]);console.log(a.users.length)' "$DOSSIER_WIN/auth-comptes.json" 2>/dev/null || echo '?') comptes se réimportent"
+  echo "     mais plus personne ne peut se connecter avec son mot de passe."
+  echo "     Console Firebase > Authentication > Users > menu ⋮ >"
+  echo "     Paramètres de hachage des mots de passe, à copier dans :"
+  echo "     $PARAMETRES"
+fi
+
 cat > "$DOSSIER/LISEZ-MOI.md" <<FIN
 # Sauvegarde $PROJET du $JOUR
 
@@ -93,22 +111,19 @@ npx firebase-tools database:set /settings settings.json --project $PROJET
 donc tous les comptes créés depuis cette sauvegarde. Dans le doute, restaurer
 une sous-branche, jamais la racine.
 
-Les comptes :
+Les comptes, avec les valeurs lues dans \`parametres-hachage.txt\` :
 
 \`\`\`bash
 npx firebase-tools auth:import auth-comptes.json --project $PROJET \\
-  --hash-algo=SCRYPT --hash-key=... --salt-separator=... --rounds=8 --mem-cost=14
+  --hash-algo=SCRYPT --hash-key=<base64Signer> --salt-separator=<base64Salt> \\
+  --rounds=<rounds> --mem-cost=<memoryCost>
 \`\`\`
 
-## À faire une fois, sans quoi les mots de passe sont perdus
-
-\`auth-comptes.json\` contient les empreintes, mais pas les paramètres qui
-permettent de les vérifier. Sans eux, les comptes se réimportent mais **plus
-personne ne peut se connecter avec son mot de passe**.
-
-Console Firebase → Authentication → Users → menu ⋮ → **Paramètres de hachage
-des mots de passe**. Copier les quatre valeurs dans un fichier
-\`parametres-hachage.txt\` à côté de cette sauvegarde.
+\`auth-comptes.json\` contient les empreintes des mots de passe, mais pas ces
+paramètres : sans eux les comptes se réimportent et **plus personne ne peut se
+connecter**. S'ils manquent à côté de ce fichier, les relever dans la console
+Firebase → Authentication → Users → menu ⋮ → Paramètres de hachage des mots de
+passe.
 FIN
 
 echo
