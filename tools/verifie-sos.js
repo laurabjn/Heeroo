@@ -206,6 +206,10 @@ async function partieDeux(outil, U) {
         'firebase/compat/database': {},
         './language': langue,
         './urgences': U,
+        // Le signalement a Heeroo est inerte ici : il a sa propre suite,
+        // tools/verifie-alerte-sos.js. Sans cette doublure, sos.js tenterait
+        // de resoudre ./alerteSOS depuis la racine de l'application.
+        './alerteSOS': { signalerAppel: () => true },
     });
     const libelles = () => dialogue.boutons.map(b => b.text);
     // Si le bouton attendu n'existe pas, on le dit et on rend null. Sans ce

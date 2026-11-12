@@ -47,7 +47,10 @@ export default class BoutonSOS extends React.Component {
                 // Tant que le chargement n'a pas abouti, l'etat ne porte que
                 // des valeurs de depart, et ouvrirSOS sait s'en passer : les
                 // secours sont joignables des la premiere seconde d'affichage.
-                onPress={() => ouvrirSOS(this.state.sos)}
+                // La course, quand l'ecran en porte une, voyage avec
+                // l'etat SOS : le signalement a Heeroo doit pouvoir dire
+                // quel passager etait a bord. Voir common/alerteSOS.js.
+                onPress={() => ouvrirSOS(Object.assign({}, this.state.sos, { course: this.props.course }))}
                 accessibilityRole="button"
                 accessibilityLabel={languageJSON.panic_text}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

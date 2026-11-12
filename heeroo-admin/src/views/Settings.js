@@ -52,6 +52,10 @@ const Settings = (props) => {
     { title: languageJson.currency_symbol, field: 'symbol' },
     { title: languageJson.currency_code, field: 'code' },
     { title: languageJson.panic_num, field: 'panic' },
+    // L'adresse qui recoit les alertes du bouton SOS, pays par pays.
+    // Vide : le serveur retombe sur la ligne France, puis sur la
+    // premiere adresse renseignee. Voir functions/lib/alerteSOS.js.
+    { title: languageJson.sos_email, field: 'sosEmail' },
     // COCHER coupe le bouton SOS dans l'app chauffeur de ce pays, sans
     // nouvelle version ni passage par les magasins. La colonne est dite
     // « coupe » et non « actif » parce que le champ n'existe dans aucune

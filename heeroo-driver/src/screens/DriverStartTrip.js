@@ -405,7 +405,7 @@ export default class DriverStartTrip extends React.Component {
                             le chauffeur attend un inconnu a l'arret. btnCall
                             n'a pas de marge a droite, d'ou la marge a gauche
                             ajoutee ici et non dans le style partage. */}
-                        <BoutonSOS style={[styles.btnCall, { marginLeft: 20 }]} size={20} />
+                        <BoutonSOS style={[styles.btnCall, { marginLeft: 20 }]} size={20} course={this.state.rideDetails} />
                     </View>
                     <Button
                         title={languageJSON.get_direction}

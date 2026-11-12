@@ -107,6 +107,7 @@ export default {
     panic_title: 'Paramètres SOS',
     panic_num: 'Numéro du SOS',
     sos_coupe: 'Bouton SOS coupé',
+    sos_email: 'E-mail SOS',
     companyName: "Nom de votre société",
     companyAddress: "Adresse de votre société",
     identity: "Pièce d’identité",

@@ -15,6 +15,7 @@ import 'firebase/compat/auth';
 import 'firebase/compat/database';
 import languageJSON from './language';
 import { numeroUrgence, numeroHeeroo, numeroAppelable, sosActif } from './urgences';
+import { signalerAppel } from './alerteSOS';
 
 // À appeler au MONTAGE de l'écran, jamais à l'appui : au moment d'appuyer, il
 // n'y a plus de temps pour attendre le réseau. La promesse n'est jamais
@@ -51,7 +52,7 @@ export function chargerSOS() {
     });
 }
 
-function appeler(numero) {
+function appeler(numero, contexte) {
     const propre = numeroAppelable(numero);
     if (!propre) { return; }
     // Le numéro est répété dans le message d'échec : si le composeur refuse de
@@ -59,6 +60,10 @@ function appeler(numero) {
     Linking.openURL('tel:' + propre).catch(() => {
         Alert.alert('', languageJSON.panic_echec + ' ' + propre);
     });
+    // APRES l'ouverture du composeur, jamais avant, et sans l'attendre :
+    // voir common/alerteSOS.js. Le signalement part meme si le composeur a
+    // refuse de s'ouvrir, car l'appui sur le bouton est deja l'information.
+    signalerAppel(Object.assign({ numero: propre }, contexte || {}));
 }
 
 // `etat` est ce que chargerSOS() a rendu, ou null s'il n'a pas eu le temps
@@ -73,19 +78,23 @@ export function ouvrirSOS(etat) {
     // (à gauche) et le dernier le « positif » (à droite, mis en avant). Les
     // secours sont donc EN DERNIER dans ce tableau pour être le bouton le plus
     // visible. Sur iOS, « cancel » est de toute façon renvoyé en bas.
+    // Ce que le signalement joindra au numero compose. La course n'est
+    // connue que des ecrans qui en portent une ; ailleurs elle vaut null.
+    const contexte = { pays: pays, course: etat && etat.course ? etat.course : null };
+
     const choix = [
         { text: languageJSON.cancel, style: 'cancel' },
     ];
     if (operateur) {
         choix.push({
             text: languageJSON.panic_operateur,
-            onPress: () => appeler(operateur),
+            onPress: () => appeler(operateur, Object.assign({ destinataire: 'heeroo' }, contexte)),
         });
     }
     choix.push({
         text: languageJSON.panic_secours + ' (' + secours + ')',
         style: 'destructive',
-        onPress: () => appeler(secours),
+        onPress: () => appeler(secours, Object.assign({ destinataire: 'secours' }, contexte)),
     });
 
     Alert.alert(languageJSON.panic_text, languageJSON.panic_question, choix);

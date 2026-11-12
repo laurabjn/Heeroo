@@ -362,7 +362,7 @@ export default class DriverCompleteTrip extends React.Component {
                         ) : null}
                         {/* Le chauffeur aussi est seul dans sa voiture avec un
                             inconnu : le bouton est des deux cotes. */}
-                        <BoutonSOS style={styles.riderBarAction} size={20} />
+                        <BoutonSOS style={styles.riderBarAction} size={20} course={this.state.rideDetails} />
                     </View>
                     <Button
                         title={languageJSON.get_direction}

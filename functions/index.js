@@ -38,6 +38,8 @@ const { defineSecret } = require('firebase-functions/params');
 const Stripe = require('stripe');
 const { message, localeDe } = require('./lib/messages');
 const { creerClient: creerClientOrange, referenceCommande, jetonValide } = require('./lib/orange');
+const { adresseSOS, composerCourriel } = require('./lib/alerteSOS');
+const { envoyer: envoyerCourriel } = require('./lib/courriel');
 const { compteStripePour, reglagePays, seuilDeCredit, monnaieDuPays, montantLisible, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, encaissePlateforme, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
@@ -56,6 +58,11 @@ const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const STRIPE_CONNECT_WEBHOOK_SECRET = defineSecret('STRIPE_CONNECT_WEBHOOK_SECRET');
 const WAVE_API_KEY = defineSecret('WAVE_API_KEY');
 const WAVE_WEBHOOK_SECRET = defineSecret('WAVE_WEBHOOK_SECRET');
+// Messagerie des alertes SOS : un seul secret, en JSON
+// { host, port, user, pass, from }. Voir lib/courriel.js. Son absence
+// n'empeche ni le deploiement ni l'alerte : elle est seulement inscrite
+// dans sos_alerts/{id}/mail, et reste lisible au back-office.
+const SOS_SMTP = defineSecret('SOS_SMTP');
 // Les secrets d'Orange Money sont declares plus bas, sous condition : voir
 // SECRETS_ORANGE.
 
@@ -2333,6 +2340,70 @@ exports.onUserDeleted = onValueDeleted(
     } catch (error) {
       // Déjà supprimé, ou clé indisponible : on trace sans faire échouer.
       logger.warn(`Client Stripe ${customerId} non supprimé : ${error.message}`);
+    }
+  }
+);
+
+// Appel d'urgence d'un chauffeur : prevenir Heeroo par courriel.
+//
+// Demande du client le 11 nov. 2026. L'application chauffeur ecrit sous
+// sos_alerts/{id} au moment ou elle ouvre le composeur — le strict minimum,
+// pour ne rien retarder (voir heeroo-driver/src/common/alerteSOS.js). Tout le
+// reste est rassemble ici, ou la lecture est libre et ne coute rien au
+// chauffeur : son profil, sa derniere position connue, la course en cours.
+//
+// Cette fonction n'echoue jamais sur un probleme de messagerie. Un echec
+// ferait rejouer le declencheur en boucle sans rien ameliorer ; le compte
+// rendu est ecrit dans l'alerte elle-meme, ou le back-office le lit.
+exports.onSosAlert = onValueCreated(
+  { ref: '/sos_alerts/{alerteId}', instance: target.instance, region: target.region, secrets: [SOS_SMTP] },
+  async (event) => {
+    const alerte = event.data.val();
+    if (!alerte || typeof alerte !== 'object' || !alerte.driver) return;
+
+    const db = admin.database();
+    // Trace d'abord, envoi ensuite : meme si tout le reste echoue, l'appel
+    // reste inscrit dans les journaux du projet.
+    logger.warn(`SOS : le chauffeur ${alerte.driver} a appele ${alerte.numero || '(inconnu)'} (${alerte.destinataire})`);
+
+    let destinataire = null;
+    let resultat = { envoye: false, raison: 'erreur interne' };
+    try {
+      const [chauffeurSnap, settingsSnap] = await Promise.all([
+        db.ref(`users/${alerte.driver}`).once('value'),
+        db.ref('settings').once('value'),
+      ]);
+      const chauffeur = chauffeurSnap.val() || {};
+      const course = alerte.bookingId
+        ? (await db.ref(`bookings/${alerte.bookingId}`).once('value')).val()
+        : null;
+
+      destinataire = adresseSOS(settingsSnap.val(), alerte.pays || chauffeur.country || null);
+      if (!destinataire) {
+        resultat = { envoye: false, raison: "aucune adresse dans Reglages > E-mail SOS" };
+      } else {
+        const { sujet, texte, html } = composerCourriel({ alerte, chauffeur, course });
+        resultat = await envoyerCourriel(process.env.SOS_SMTP, { to: destinataire, sujet, texte, html });
+      }
+    } catch (error) {
+      resultat = { envoye: false, raison: error.message || 'erreur interne' };
+    }
+
+    if (resultat.envoye) {
+      logger.info(`SOS ${event.params.alerteId} : courriel envoye a ${destinataire}`);
+    } else {
+      logger.error(`SOS ${event.params.alerteId} : courriel NON envoye — ${resultat.raison}`);
+    }
+
+    try {
+      await event.data.ref.child('mail').set({
+        to: destinataire || null,
+        envoye: resultat.envoye === true,
+        raison: resultat.raison || null,
+        at: admin.database.ServerValue.TIMESTAMP,
+      });
+    } catch (error) {
+      logger.error(`SOS ${event.params.alerteId} : compte rendu non ecrit — ${error.message}`);
     }
   }
 );

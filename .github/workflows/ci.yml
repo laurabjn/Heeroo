@@ -69,6 +69,16 @@ jobs:
         working-directory: .
         run: node tools/verifie-sos.js
 
+      # Le signalement a Heeroo d un appel d urgence, demande par le client le
+      # 11 nov. 2026. L essai qui compte est celui de l ORDRE : l appel doit
+      # etre lance avant le signalement et le signalement ne doit jamais etre
+      # attendu, sinon un chauffeur agresse attend le reseau pour composer le
+      # 112. La troisieme partie verifie aussi les regles de la base : une
+      # alerte ne se modifie pas et ne se lit que par un administrateur.
+      - name: Signalement des appels d'urgence
+        working-directory: .
+        run: node tools/verifie-alerte-sos.js
+
       # La regle du mot de passe a l inscription. Elle plafonnait a quinze
       # caracteres et interdisait les tirets, donc elle refusait les mots de
       # passe que le gestionnaire de Google propose sur Android : le client a
