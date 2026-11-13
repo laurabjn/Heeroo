@@ -40,6 +40,7 @@ const { message, localeDe } = require('./lib/messages');
 const { creerClient: creerClientOrange, referenceCommande, jetonValide } = require('./lib/orange');
 const { adresseSOS, composerCourriel } = require('./lib/alerteSOS');
 const { envoyer: envoyerCourriel } = require('./lib/courriel');
+const { DOUZE_MOIS, conversationsAPurger, derniereActivite, positionsAPurger, cheminsAEffacer, paquets } = require('./lib/purge');
 const { compteStripePour, reglagePays, seuilDeCredit, monnaieDuPays, montantLisible, toStripeAmount, fromStripeAmount, waveSignatureValid, databaseTarget, shortName, formatAmount, commissionRate, driverShare, heldShare, waveMobile, encaissePlateforme, ZERO_DECIMAL_CURRENCIES } = require('./lib/helpers');
 
 admin.initializeApp();
@@ -1929,6 +1930,52 @@ exports.waveWebhook = functions.region(REGION).runWith({ secrets: [WAVE_WEBHOOK_
     }
     res.json({ received: true });
   });
+
+// ---------------------------------------------------------------------------
+// Purge des données dont la politique de confidentialité promet la suppression.
+// Voir lib/purge.js pour les règles et pour ce qui n'est délibérément pas
+// touché : les courses, les comptes et les justificatifs comptables ont leur
+// propre durée, imposée par la loi.
+// ---------------------------------------------------------------------------
+
+exports.purgeDonneesAnciennes = onSchedule(
+  {
+    // De nuit : la purge lit la table des profils en entier, et autant que
+    // cette lecture tombe quand personne ne commande de course.
+    schedule: 'every day 03:30',
+    timeZone: 'Europe/Paris',
+    region: REGION,
+  },
+  async () => {
+    const maintenant = Date.now();
+    const [chatSnap, bookingsSnap, usersSnap] = await Promise.all([
+      admin.database().ref('chat').once('value'),
+      admin.database().ref('bookings').once('value'),
+      admin.database().ref('users').once('value'),
+    ]);
+
+    const conversations = conversationsAPurger(chatSnap.val() || {}, maintenant, DOUZE_MOIS);
+    const activite = derniereActivite(bookingsSnap.val() || {});
+    const positions = positionsAPurger(usersSnap.val() || {}, activite, maintenant, DOUZE_MOIS);
+
+    if (!conversations.length && !positions.length) {
+      logger.info('Purge : rien à supprimer.');
+      return;
+    }
+
+    // Le relevé part dans le journal AVANT la suppression : si l'écriture
+    // échoue, on saura quand même ce qui était visé, et si elle réussit on
+    // garde une trace de ce qui a disparu — sans recopier la moindre donnée
+    // personnelle, seulement des identifiants et des nombres.
+    logger.info(`Purge : ${conversations.length} conversation(s) et ${positions.length} position(s) de plus de douze mois.`);
+
+    for (const lot of paquets(cheminsAEffacer(conversations, positions))) {
+      await admin.database().ref().update(lot);
+    }
+
+    logger.info('Purge terminée.');
+  }
+);
 
 /** Taux de commission (%) pour un type de véhicule, d'après rates/car_type. */
 async function commissionRateFor(carType, country) {
