@@ -43,6 +43,16 @@
     margin: 20px 0;
   }
   .encadre p:last-child { margin-bottom: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 11px 12px; border-bottom: 1px solid var(--trait); }
+  th { background: var(--fond-doux); font-weight: 650; }
+  td:last-child { color: var(--encre-douce); }
+  @media (max-width: 560px) {
+    thead { position: absolute; left: -9999px; }
+    tr { display: block; border-bottom: 1px solid var(--trait); padding: 10px 0; }
+    td { display: block; border: 0; padding: 2px 0; }
+    td:first-child { font-weight: 650; }
+  }
   footer { margin-top: 48px; padding: 28px 0 64px; border-top: 1px solid var(--trait); color: var(--encre-douce); font-size: 14px; }
   @media (max-width: 560px) { h1 { font-size: 26px; } }
 </style>
@@ -54,7 +64,7 @@
   <header>
     <a class="retour" href="/">← Heeroo</a>
     <h1>Politique de confidentialité</h1>
-    <p class="maj">Applications Heeroo et Heeroo Driver — dernière mise à jour : 13 octobre 2026</p>
+    <p class="maj">Applications Heeroo et Heeroo Driver — dernière mise à jour : 13 novembre 2026</p>
   </header>
 
   <p>
@@ -142,6 +152,15 @@
     notifications de course. Il ne permet pas de vous identifier en dehors de l'application.
   </p>
 
+  <h3>Les alertes d'urgence</h3>
+  <p>
+    L'application chauffeur comporte un bouton de sécurité qui compose les secours ou Heeroo.
+    Lorsqu'un chauffeur l'utilise, nous enregistrons l'heure de l'appel, le numéro composé, la
+    course en cours s'il y en a une et la dernière position connue du véhicule, et nous en
+    sommes avertis immédiatement. Ce relevé ne sert qu'à porter assistance : il n'est jamais
+    communiqué aux passagers ni utilisé à d'autres fins.
+  </p>
+
   <h2>Pourquoi nous les utilisons</h2>
   <ul>
     <li>mettre en relation un passager et un chauffeur, et permettre la réalisation de la course ;</li>
@@ -149,8 +168,78 @@
     <li>permettre le paiement et le suivi des commissions ;</li>
     <li>vous informer de l'avancement de votre course ;</li>
     <li>vérifier que les chauffeurs remplissent leurs obligations réglementaires ;</li>
+    <li>porter assistance à un chauffeur qui déclenche le bouton de sécurité ;</li>
     <li>traiter les réclamations et assurer la sécurité du service.</li>
   </ul>
+
+  <h2>Sur quel fondement</h2>
+  <p>
+    Le Règlement général sur la protection des données n'autorise un traitement que s'il repose
+    sur l'un des fondements qu'il énumère. Voici celui dont relève chacun de nos usages.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Ce que nous faisons</th><th>Sur quel fondement</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Créer et gérer votre compte</td>
+        <td>Exécution du contrat qui nous lie — article 6.1.b</td>
+      </tr>
+      <tr>
+        <td>Mettre en relation passager et chauffeur, afficher la position du véhicule, calculer
+            l'itinéraire, la distance et le prix</td>
+        <td>Exécution du contrat — article 6.1.b</td>
+      </tr>
+      <tr>
+        <td>Transmettre les messages échangés pendant la course</td>
+        <td>Exécution du contrat — article 6.1.b</td>
+      </tr>
+      <tr>
+        <td>Vous notifier l'avancement de votre course</td>
+        <td>Exécution du contrat — article 6.1.b</td>
+      </tr>
+      <tr>
+        <td>Encaisser le paiement et suivre les commissions</td>
+        <td>Exécution du contrat — article 6.1.b</td>
+      </tr>
+      <tr>
+        <td>Mémoriser votre carte pour vos prochaines courses</td>
+        <td>Votre consentement — article 6.1.a. La case n'est jamais cochée d'avance, et vous
+            pouvez supprimer une carte mémorisée à tout moment.</td>
+      </tr>
+      <tr>
+        <td>Vérifier les justificatifs des chauffeurs — permis, carte professionnelle,
+            assurance, immatriculation</td>
+        <td>Obligation légale pesant sur l'exploitant — article 6.1.c</td>
+      </tr>
+      <tr>
+        <td>Conserver les justificatifs comptables des courses</td>
+        <td>Obligation légale — article 6.1.c</td>
+      </tr>
+      <tr>
+        <td>Répondre aux réquisitions des autorités</td>
+        <td>Obligation légale — article 6.1.c</td>
+      </tr>
+      <tr>
+        <td>Alerter Heeroo lorsqu'un chauffeur déclenche le bouton de sécurité, et transmettre sa
+            dernière position connue</td>
+        <td>Sauvegarde des intérêts vitaux de la personne concernée — article 6.1.d</td>
+      </tr>
+      <tr>
+        <td>Traiter les réclamations, prévenir la fraude et sécuriser le service</td>
+        <td>Notre intérêt légitime — article 6.1.f</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Lorsque nous nous fondons sur notre intérêt légitime, vous pouvez vous opposer au traitement
+    pour des raisons tenant à votre situation particulière (article 21). Lorsque nous nous
+    fondons sur votre consentement, vous pouvez le retirer à tout moment, sans que cela remette
+    en cause ce qui a été fait avant.
+  </p>
 
   <h2>Avec qui elles sont partagées</h2>
   <p>
@@ -179,7 +268,8 @@
     Les données de votre compte sont conservées tant qu'il est actif. L'historique des courses et
     les justificatifs de paiement sont conservés le temps imposé par les obligations comptables
     et fiscales. Les messages et les positions relevées pendant les courses sont supprimés dans
-    un délai de douze mois.
+    un délai de douze mois. Les alertes déclenchées par le bouton de sécurité sont conservées le
+    temps de traiter l'incident.
   </p>
 
   <h2>Vos droits</h2>
